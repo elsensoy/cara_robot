@@ -1,0 +1,27 @@
+image_width: 640
+image_height: 480
+camera_name: innomaker-u20cam-1080p-s1:_inno
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [615.66558,   0.     , 327.50536,
+           0.     , 615.85443, 261.60644,
+           0.     ,   0.     ,   1.     ]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [-0.526530, 0.302742, -0.014834, -0.000457, 0.000000]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1., 0., 0.,
+         0., 1., 0.,
+         0., 0., 1.]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [519.27319,   0.     , 329.26006,   0.     ,
+           0.     , 563.25781, 259.39466,   0.     ,
+           0.     ,   0.     ,   1.     ,   0.     ]
+

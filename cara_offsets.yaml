@@ -1,0 +1,5 @@
+# Calibration offsets in degrees to reach "True Neutral"
+joints:
+  left_hip_pitch: -2.5
+  right_hip_pitch: 1.2
+  waist_roll: 0.5

@@ -1,0 +1,24 @@
+# config/head_dxl.yaml
+controller_manager:
+  ros__parameters:
+    update_rate: 100
+
+    head_controller:
+      type: position_controllers/JointGroupPositionController
+      joints: [head_pan_joint, head_tilt_joint]
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+head_dxl_hardware:
+  ros__parameters:
+    serial_port: /dev/ttyUSB0
+    baud_rate: 1000000
+    dxl_ids:
+      head_pan_joint:  1
+      head_tilt_joint: 2
+    protocol_version: 2.0
+    profile_velocity:  80      # gentle
+    profile_acceleration: 20
+    current_limit_mA: 1200     # safety
+    temperature_limit_C: 70

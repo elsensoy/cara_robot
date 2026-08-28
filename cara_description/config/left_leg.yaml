@@ -1,0 +1,339 @@
+# =============================================================================
+# Cara -- authoritative specification: pelvis + LEFT LEG only
+# =============================================================================
+# SINGLE SOURCE OF TRUTH. The URDF in ../urdf/cara_left_leg.urdf is GENERATED
+# from this file by ../scripts/generate_urdf.py. Do not hand-edit the URDF;
+# edit parameters here and regenerate.
+#
+# SI units everywhere:
+#   length   metre        (m)
+#   mass     kilogram     (kg)
+#   angle    radian       (rad)
+#   torque   newton-metre (N*m)
+#   time     second       (s)
+#
+# Scope: 6 revolute DoF for one leg
+#   hip_yaw, hip_roll, hip_pitch, knee_pitch, ankle_pitch, ankle_roll
+#
+# The file is split into layers on purpose (see the staged-design constraint):
+#   frame_conventions    -- coordinate frames
+#   provisional_geometry -- KINEMATICS: link lengths / offsets  (geometry sweep)
+#   links / joints       -- kinematic tree structure (stable)
+#   frames_of_interest   -- named rigid points (e.g. the sole/contact frame)
+#   dynamics             -- provisional mass / COM / inertia + actuator limits
+#   analysis             -- gravity, reference poses, values for the analysis
+#                           scripts only (NOT properties of the robot)
+#
+# Every dynamic quantity (mass, COM, inertia, actuator effort/velocity) and
+# every unmeasured length is a CLEARLY-LABELLED PROVISIONAL PLACEHOLDER.
+# =============================================================================
+
+meta:
+  name: cara_left_leg
+  schema_version: 2
+  units: {length: metre, mass: kilogram, angle: radian, torque: newton_metre, time: second}
+  description: >-
+    Pelvis/base link plus one (left) leg. Hip is modelled as three coincident
+    rotational axes (spherical-hip approximation); real inter-axis offsets are
+    left as TODO until the servo/bracket stack is designed.
+
+# -----------------------------------------------------------------------------
+# Coordinate-frame conventions
+# -----------------------------------------------------------------------------
+frame_conventions:
+  base_frame: pelvis
+  handedness: right          # right-handed coordinate system
+  axes:
+    x: "forward (Cara's facing direction)"
+    y: "left"
+    z: "up (opposite gravity)"
+  zero_pose: >-
+    All joint angles = 0  =>  leg fully extended straight down, foot sole
+    parallel to the ground, toes pointing +X. At the zero pose EVERY link
+    frame is axis-aligned with the base frame, therefore each joint axis is
+    numerically identical in its parent and child coordinates, and every
+    joint-origin rpy is (0, 0, 0). Joint motion is pure rotation about a
+    single unit axis.
+  sign_convention: >-
+    Axes are kept clean and CONSISTENT (all three pitch joints use +Y, both
+    roll joints use +X, yaw uses +Z) rather than being flipped so that
+    "positive" feels intuitive. Because +Y points left, a positive
+    right-hand-rule rotation about +Y moves the distal segment REARWARD. The
+    physically meaningful direction of a positive rotation is documented
+    per-joint in each joint's `positive_rotation` field. Keep this convention
+    when deriving transforms / Jacobians; document meaning, don't flip axes.
+  calibration_note: >-
+    This kinematic zero is NOT the servo "true neutral". Per-joint calibration
+    offsets (in degrees) live separately in the repo-root cara_offsets.yaml
+    and are applied by the hardware layer, not here.
+
+# =============================================================================
+# PROVISIONAL GEOMETRY (KINEMATICS)   <<<<<  geometry sweep touches THIS  >>>>>
+# =============================================================================
+# Placeholder link lengths / offsets pending CAD / measurement. Isolated from
+# the kinematic structure so lengths can be swept -- e.g. L_thigh in
+# {0.10, 0.12, 0.14} -- WITHOUT editing `links:` / `joints:`. Joint origins and
+# frame points reference these symbols by name (see `origin_expr` / `xyz_expr`).
+#
+# (Mass / COM / inertia sweeps touch `dynamics:` instead; scripts/morphology_
+#  sweep.py can override any dotted path in either block.)
+#
+# TODO: replace EVERY value here with a measured / CAD-derived value. Do not
+#       treat any of these as a finalised design decision.
+# =============================================================================
+provisional_geometry:
+
+  # --- link lengths (each measured along -Z of the proximal link at zero pose)
+  L_thigh:    0.120   # TODO: measured/CAD -- hip-pitch axis  -> knee-pitch axis
+  L_shin:     0.120   # TODO: measured/CAD -- knee-pitch axis -> ankle-pitch axis
+  h_ankle:    0.035   # TODO: measured/CAD -- ankle-roll axis -> foot sole (downward)
+
+  # --- pelvis: pelvis-centre -> left hip-yaw axis
+  w_hip_half: 0.050   # TODO: measured/CAD -- lateral offset (+Y)
+  z_hip:      0.000   # TODO: measured/CAD -- vertical offset (Z)
+  x_hip:      0.000   # TODO: measured/CAD -- fore/aft offset (X)
+
+  # --- foot geometry inside l_foot (see frames_of_interest + docs)
+  foot_len:   0.090   # TODO: measured/CAD -- heel-to-toe length
+  foot_width: 0.045   # TODO: measured/CAD
+  foot_x_off: 0.015   # TODO: measured/CAD -- ankle-roll axis -> sole centre (+X);
+                      #   PROVISIONAL magnitude. The SIGN is a design choice:
+                      #   ankle axis sits behind the foot centre (rear third).
+                      #   This single symbol is the sole source of the +0.015 m
+                      #   X offset of the zero-pose contact point.
+
+# =============================================================================
+# KINEMATIC STRUCTURE   (stable -- NOT part of any sweep)
+# =============================================================================
+
+# ---- Links ------------------------------------------------------------------
+# role: base            -> kinematic root
+#       segment         -> a real physical limb segment (has dynamics below)
+#       virtual_coupling-> zero-length modelling link between coincident axes.
+#                          MASSLESS mathematical abstraction: no mass, no COM,
+#                          no inertia, no collision geometry -- ever.
+#                          (TODO: becomes a real offset once packaging is known)
+links:
+  - {name: pelvis,          role: base}
+  - {name: l_hip_yaw_link,  role: virtual_coupling}
+  - {name: l_hip_roll_link, role: virtual_coupling}
+  - {name: l_thigh,         role: segment}
+  - {name: l_shin,          role: segment}
+  - {name: l_ankle_link,    role: virtual_coupling}
+  - {name: l_foot,          role: segment}
+
+# ---- Joints ---------------------------------------------------------------
+# Each joint is revolute (single-axis hinge).
+#   origin_expr : [x, y, z] translation from the PARENT link frame to the
+#                 child link frame at the zero pose, written as arithmetic
+#                 over provisional_geometry symbols. rpy is always (0,0,0).
+#   axis        : rotation axis as a unit vector in the joint frame.
+#   limits      : lower/upper joint position (rad), lower < upper.
+#   positive_rotation : physical meaning of a positive angle (see
+#                       frame_conventions.sign_convention).
+joints:
+
+  - name: l_hip_yaw
+    type: revolute
+    parent: pelvis
+    child: l_hip_yaw_link
+    origin_expr: [x_hip, w_hip_half, z_hip]     # r_hipyaw = [0, +w_hip_half, 0]
+    axis: [0, 0, 1]                             # a_hipyaw = e_z
+    limits: {lower: -0.79, upper: 0.79}         # TODO: refine from ROM study
+    positive_rotation: "toe yaws toward +Y (toe-out / outward heading)"
+    purpose: >-
+      Rotation of the whole leg about the vertical. Sets foot heading for
+      turning and for directional foot placement.
+
+  - name: l_hip_roll
+    type: revolute
+    parent: l_hip_yaw_link
+    child: l_hip_roll_link
+    origin_expr: [0, 0, 0]                      # TODO: coincident-axis approximation
+    axis: [1, 0, 0]                             # a_hiproll = e_x
+    limits: {lower: -0.52, upper: 0.61}         # TODO
+    positive_rotation: "thigh abducts -- knee moves toward +Y, away from midline"
+    purpose: >-
+      Hip abduction/adduction. Lateral balance, stance width, side-stepping.
+
+  - name: l_hip_pitch
+    type: revolute
+    parent: l_hip_roll_link
+    child: l_thigh
+    origin_expr: [0, 0, 0]                      # TODO: coincident-axis approximation
+    axis: [0, 1, 0]                             # a_hippitch = e_y
+    limits: {lower: -1.75, upper: 1.05}         # TODO
+    positive_rotation: "thigh swings REARWARD (hip extension); negative = forward flexion"
+    purpose: >-
+      Fore/aft thigh swing. Primary driver of walking stride length.
+
+  - name: l_knee_pitch
+    type: revolute
+    parent: l_thigh
+    child: l_shin
+    origin_expr: [0, 0, -L_thigh]               # r_knee = [0, 0, -L_thigh]
+    axis: [0, 1, 0]                             # a_knee = e_y
+    limits: {lower: 0.0, upper: 2.36}           # TODO: knee flexes one way only
+    positive_rotation: "shin swings rearward relative to thigh (knee FLEXION)"
+    purpose: >-
+      Knee flexion; extension is blocked at 0. Swing-leg ground clearance,
+      stance-phase shock absorption, crouch depth.
+
+  - name: l_ankle_pitch
+    type: revolute
+    parent: l_shin
+    child: l_ankle_link
+    origin_expr: [0, 0, -L_shin]                # r_anklepitch = [0, 0, -L_shin]
+    axis: [0, 1, 0]                             # a_anklepitch = e_y
+    limits: {lower: -0.87, upper: 0.61}         # TODO
+    positive_rotation: "toe drops (plantarflexion); negative = dorsiflexion"
+    purpose: >-
+      Ankle plantar/dorsiflexion. Fore/aft centre-of-pressure control,
+      push-off, swing-phase toe clearance.
+
+  - name: l_ankle_roll
+    type: revolute
+    parent: l_ankle_link
+    child: l_foot
+    origin_expr: [0, 0, 0]                      # TODO: coincident with ankle-pitch axis
+    axis: [1, 0, 0]                             # a_ankleroll = e_x
+    limits: {lower: -0.44, upper: 0.44}         # TODO
+    positive_rotation: "sole tilts outer-edge-up (inversion)"
+    purpose: >-
+      Sole tilt. Lateral centre-of-pressure control, adaptation to uneven
+      ground.
+
+# ---- Explicit foot frame hierarchy  (NOT joints) -------------------------
+# Three stacked frames, proximal -> distal:
+#
+#   (1) ankle joint frame  = origin of l_ankle_link  (== l_ankle_roll joint
+#                            frame; l_ankle_pitch and l_ankle_roll axes are
+#                            modelled as intersecting here)
+#            |  l_ankle_roll.origin_expr = [0, 0, 0]   <-- coincident-axis
+#            |                                             approximation, TODO
+#            v
+#   (2) foot body frame    = l_foot link frame. At the zero pose it coincides
+#                            with the ankle joint frame (zero offset above).
+#            |  offset = [foot_x_off, 0, -h_ankle]
+#            v
+#   (3) sole / contact frame = l_foot_sole_center (below). Centre of the
+#                            ground-contact patch.
+#
+# The zero-pose sole X offset of +foot_x_off (= +0.015 m) comes ENTIRELY from
+# `provisional_geometry.foot_x_off`. It is intentional in SIGN (ankle axis
+# behind the foot centre, over the rear third of the foot) and PROVISIONAL in
+# MAGNITUDE. See docs/frames_and_joints.md and docs/dynamics_notes.md. Do not
+# "fix" it -- set it from CAD when the foot exists.
+frames_of_interest:
+  - name: l_foot_sole_center
+    link: l_foot
+    xyz_expr: [foot_x_off, 0, -h_ankle]
+    description: >-
+      Centre of the ground-contact patch, in the l_foot body frame.
+      X = foot_x_off (+0.015 m, PROVISIONAL magnitude / intentional sign):
+      forward of the ankle-roll axis, so the ankle sits over the rear third of
+      the foot. Z = -h_ankle: drop from the ankle axis down to the sole plane.
+      Used as the foot reference point by the FK, Jacobian and torque scripts.
+
+# =============================================================================
+# DYNAMICS -- provisional mass / COM / inertia + actuator limits
+# =============================================================================
+# SEPARATE layer on purpose. PHYSICAL LINKS ONLY carry mass/COM/inertia.
+# The virtual coupling links are massless abstractions: they appear here only
+# as `{is_physical: false}` and MUST NEVER be given inertia or collision
+# geometry (URDF emits them as bare frames; a future MJCF generator must weld
+# them / represent the 3 hip joints on one body -- see docs/dynamics_notes.md).
+#
+# Every value here is PROVISIONAL.  TODO: replace with CAD / measured values.
+# `inertia.method` records HOW each tensor is currently approximated:
+#     solid_box      -> uniform-density box of the given `box` extents [m]
+#     uniform_rod_z  -> uniform slender rod along local Z:
+#                         Ixx = Iyy = m * L^2 / 12   (transverse)
+#                         Izz       = m * r^2 / 2    (axial; r = `radius`)
+# COM and box/length values may be numbers or arithmetic over
+# provisional_geometry symbols (so they follow a geometry sweep).
+# =============================================================================
+dynamics:
+
+  links:
+
+    pelvis:
+      is_physical: true
+      mass: 0.60                     # TODO: measured/CAD  [kg]
+      com:  [0.0, 0.0, 0.0]          # TODO -- in the pelvis link frame [m]
+      inertia:
+        method: solid_box
+        box: [0.06, 0.10, 0.06]      # TODO -- provisional extents, inertia approx only
+
+    l_hip_yaw_link:  {is_physical: false}   # virtual coupling link -- no dynamics
+    l_hip_roll_link: {is_physical: false}   # virtual coupling link -- no dynamics
+
+    l_thigh:
+      is_physical: true
+      mass: 0.15                     # TODO: measured/CAD  [kg]
+      com:  [0.0, 0.0, -L_thigh/2]   # TODO -- assumed mid-segment
+      inertia:
+        method: uniform_rod_z
+        length: L_thigh              # rod length for the transverse term
+        radius: 0.020               # TODO -- provisional, feeds the axial term only
+
+    l_shin:
+      is_physical: true
+      mass: 0.12                     # TODO: measured/CAD  [kg]
+      com:  [0.0, 0.0, -L_shin/2]    # TODO -- assumed mid-segment
+      inertia:
+        method: uniform_rod_z
+        length: L_shin
+        radius: 0.015               # TODO -- provisional
+
+    l_ankle_link:    {is_physical: false}   # virtual coupling link -- no dynamics
+
+    l_foot:
+      is_physical: true
+      mass: 0.05                     # TODO: measured/CAD  [kg]
+      com:  [foot_x_off, 0.0, -h_ankle/2]  # TODO -- centroid of the foot box
+      inertia:
+        method: solid_box
+        box: [foot_len, foot_width, h_ankle]
+
+  # --- provisional actuator limits. ALL TBD -- NO servo has been selected.
+  #     Consumed by generate_urdf.py for the URDF <limit> tags.
+  actuators:
+    defaults:
+      effort:   3.0   # TODO/TBD: N*m   -- placeholder, NOT a real stall/rated torque
+      velocity: 6.0   # TODO/TBD: rad/s -- placeholder
+    overrides:                       # per-joint TBD overrides of the defaults
+      l_ankle_pitch: {effort: 2.0}   # TODO/TBD
+      l_ankle_roll:  {effort: 2.0}   # TODO/TBD
+
+# =============================================================================
+# ANALYSIS -- inputs for the analysis scripts ONLY (not robot properties)
+# =============================================================================
+analysis:
+  gravity: 9.81   # m/s^2. +Z is up, so the gravity acceleration vector is (0, 0, -g).
+
+  # Very rough whole-robot mass, used ONLY by gravity_torques.py --carry-fraction
+  # to estimate stance-leg servo load (body weight carried THROUGH the foot).
+  # This model contains only one leg; this is not one of its links.
+  provisional_total_robot_mass: 3.0   # TODO/TBD: rough estimate  [kg]
+
+  # Named joint configurations (rad); omitted joints default to 0. Each crouch
+  # keeps hip_pitch + knee_pitch + ankle_pitch = 0 so the sole stays flat.
+  reference_poses:
+    zero: {}
+    stand_micro_bend:
+      l_hip_pitch:   -0.10
+      l_knee_pitch:   0.20
+      l_ankle_pitch: -0.10
+    half_crouch:
+      l_hip_pitch:   -0.45
+      l_knee_pitch:   0.90
+      l_ankle_pitch: -0.45
+    deep_crouch:
+      l_hip_pitch:   -0.90
+      l_knee_pitch:   1.70
+      l_ankle_pitch: -0.80
+    leg_swing_forward:        # foot off the ground, mid-swing
+      l_hip_pitch:   -0.50
+      l_knee_pitch:   0.60
+      l_ankle_pitch:  0.00

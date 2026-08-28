@@ -1,0 +1,16 @@
+<link name="base_link"/>
+<link name="head_pan_link"/>
+<joint name="head_pan_joint" type="revolute">
+  <parent link="base_link"/><child link="head_pan_link"/>
+  <origin xyz="0 0 0.10" rpy="0 0 0"/>
+  <axis xyz="0 0 1"/>
+  <limit lower="-1.22" upper="1.22" effort="2.5" velocity="2.0"/> <!-- ±70° -->
+</joint>
+
+<link name="head_tilt_link"/>
+<joint name="head_tilt_joint" type="revolute">
+  <parent link="head_pan_link"/><child link="head_tilt_link"/>
+  <origin xyz="0 0 0.05" rpy="0 0 0"/>
+  <axis xyz="0 1 0"/>
+  <limit lower="-0.17" upper="0.61" effort="2.0" velocity="2.0"/> <!-- -10°..+35° -->
+</joint>

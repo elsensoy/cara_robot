@@ -1,0 +1,15 @@
+{
+  "energy_threshold": 270.0,
+  "dynamic_energy_threshold": true,
+  "dynamic_energy_adjustment_damping": 0.15,
+  "dynamic_energy_ratio": 1.5,
+  "pause_threshold": 0.8,
+  "phrase_threshold": 0.3,
+  "non_speaking_duration": 0.5,
+  "calibration_duration": 1.0,
+  "success_count": 0,
+  "total_attempts": 416,
+  "success_rate": 0.0,
+  "last_calibration": 1781030287.8641403,
+  "attempts_at_last_cal": 407
+}

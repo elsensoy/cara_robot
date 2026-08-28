@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="cara">
+
+  <link name="base_link"/>
+
+  <link name="torso">
+    <inertial>
+      <mass value="1.2"/> 
+      <origin xyz="0.0 0.0 -0.05" rpy="0 0 0"/> 
+      <inertia ixx="0.005" ixy="0" ixz="0" iyy="0.005" iyz="0" izz="0.003"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="package://cara_description/meshes/torso.obj"/></geometry>
+    </visual>
+  </link>
+
+  <joint name="base_to_torso" type="fixed">
+    <parent link="base_link"/>
+    <child link="torso"/>
+  </joint>
+
+  <link name="thigh_l">
+    <inertial>
+      <mass value="0.2"/> <origin xyz="0 0 -0.1"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <joint name="hip_pitch_joint" type="revolute">
+    <parent link="torso"/>
+    <child link="thigh_l"/>
+    <origin xyz="0.05 0.1 -0.05" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="2.5" velocity="6.0"/>
+    <dynamics damping="0.1" friction="0.05"/>
+  </joint>
+
+  <ros2_control name="CaraHardwareInterface" type="system">
+    <hardware>
+      <plugin>pca9685_hardware_interface/PCA9685System</plugin>
+      </hardware>
+    
+    <joint name="hip_pitch_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <param name="kp">400.0</param> 
+      <param name="kd">10.0</param>
+    </joint>
+    
+    </ros2_control>
+
+</robot>

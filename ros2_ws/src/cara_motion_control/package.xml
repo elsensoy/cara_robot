@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>cara_motion_control</name>
+  <version>0.0.1</version>
+  <description>Cara motion/hardware control nodes (head expression, IMU, ros2_control bridges).</description>
+
+  <maintainer email="you@todo.com">your_name</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+
+  <!-- For serial backend -->
+  <!-- You don't need to declare pyserial here unless you package it via rosdep;
+       it can live in requirements.txt / pip. -->
+
+  <!-- If you use RPi.GPIO inside this package, it’s usually system-installed on Jetson -->
+  <!-- If you later add IMU drivers via sensor_msgs, add: -->
+  <!-- <depend>sensor_msgs</depend> -->
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
+

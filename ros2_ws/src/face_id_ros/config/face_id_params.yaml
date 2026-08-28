@@ -1,0 +1,11 @@
+face_id_node:
+  ros__parameters:
+    camera_topic: "/image_raw"
+
+    detector_model: "package://cara_vision_control/models/yunet.onnx"
+    embedder_model: "package://cara_vision_control/models/arcface.onnx"
+
+    db_path: "/root/.cara/face_db.yaml"
+    det_thresh: 0.6
+    recog_thresh: 0.40
+    use_gpu: false

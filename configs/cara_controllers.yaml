@@ -1,0 +1,20 @@
+
+controller_manager:
+  ros__parameters:
+    update_rate: 50  # 50Hz is standard for hobby servos
+
+    cara_body_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+cara_body_controller:
+  ros__parameters:
+    joints:
+      - waist_pitch
+      - waist_yaw
+      - waist_roll
+      - neck_pitch
+      - neck_yaw
+      - neck_roll
+      - right_ear_joint
+      - left_ear_joint
+      # ... and the remaining 12 limb joints

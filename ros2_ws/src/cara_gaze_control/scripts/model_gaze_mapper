@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+
+from cara_gaze_control.model_gaze_mapper import main
+
+if __name__ == "__main__":
+    main()

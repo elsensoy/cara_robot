@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>cara_control</name>
+  <version>0.0.1</version>
+  <description>
+    Actuator-health to observation to control signal path (FDIR prototype).
+    Thin ROS 2 wrapper around the C++ pipeline in jetson/control/. Runs in
+    simulation with no hardware and publishes the health signal as topics.
+  </description>
+  <maintainer email="sensoyelida@gmail.com">Elida Sensoy</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>std_msgs</depend>
+  <depend>trajectory_msgs</depend>
+
+  <!-- scripts/fake_body_policy.py (test helper) -->
+  <exec_depend>rclpy</exec_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

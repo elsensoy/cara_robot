@@ -1,0 +1,30 @@
+[metadata]
+name = cara_vision_control
+version = 0.1.0
+license = MIT
+description = Cara AI Teddy Bear vision and head control nodes
+author = Elida
+author_email = elida@example.com
+
+[options]
+packages = find:
+zip_safe = False
+install_requires =
+    setuptools
+
+[options.entry_points]
+console_scripts =
+    emotion_node = cara_vision_control.cara_emotion_node:main
+    head_controller = cara_vision_control.cara_head_controller:main
+    servo_pca9685 = cara_vision_control.cara_servo_pca9685_node:main
+
+[options.package_data]
+cara_vision_control = 
+    ../models/*.onnx
+
+# <<< THIS is the important part >>>
+[develop]
+script_dir = $base/lib/cara_vision_control
+
+[install]
+install_scripts = $base/lib/cara_vision_control

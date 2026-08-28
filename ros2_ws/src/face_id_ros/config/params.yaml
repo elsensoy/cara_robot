@@ -1,0 +1,9 @@
+face_id_node:
+  ros__parameters:
+    camera_topic: "/image_raw"
+    detector_model: "package://face_id_ros/models/yunet.onnx"
+    embedder_model: "package://face_id_ros/models/arcface.onnx"
+    db_path: "/tmp/known_faces.yaml"
+    det_thresh: 0.6
+    recog_thresh: 0.40
+    use_gpu: false

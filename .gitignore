@@ -1,0 +1,39 @@
+# Virtual environments
+.env
+.venv/
+venv/
+notes/
+# Python caches
+__pycache__/
+*.pyc
+
+# Text files (ignore ALL .txt files)
+*.txt
+
+# Project folders to ignore
+tests/
+outputs/
+notes/
+models/
+log/
+install/
+build/
+utilities/
+media/blender/
+# ROS2 workspace ignores
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+ros2_ws/**/build/
+ros2_ws/**/install/
+ros2_ws/**/log/
+ros2_ws/**/tests/
+ros2_ws/training/
+
+# Personal/private data
+cara_personal_data/
+cara_prompt.json
+
+# Misc
+command_check_api
+

@@ -1,0 +1,19 @@
+{
+  "hardware": {
+    "platform": "NVIDIA Jetson Orin Nano",
+    "servos": "PCA9685 via I2C (SCL_1/SDA_1)",
+    "imu": "BNO055",
+    "camera": "USB webcam for face/emotion tracking",
+    "arduino": "Serial on /dev/ttyAMA0, baud 9600 for LED/blink control"
+  },
+  "ros2": {
+    "topics": {
+      "/cara/emotion": "Visual emotion string e.g. 'happy (0.85)'",
+      "/cara/feedback": "Training correction signals e.g. 'SAVE:thinking'"
+    }
+  },
+  "servo_limits": {
+    "heading": [10, 170],
+    "pitch": [35, 90]
+  }
+}

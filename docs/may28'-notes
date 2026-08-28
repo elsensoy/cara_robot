@@ -1,0 +1,41 @@
+pip3 install smbus2
+```
+cd /workspace/ros2_ws
+rm -rf build/ install/ log/
+  colcon build --packages-select cara_motion_control
+  source install/setup.bash
+  ros2 launch cara_motion_control servo_test.launch.py
+  ```
+  
+  ```
+  
+ recap: Building Cara's ROS2 servo and IMU pipeline on Jetson. Servos work via Arduino serial bridge. Next: run pip3
+  install smbus2 inside the container, then launch servo_test.launch.py to verify IMU data on /imu/data.
+
+ path forward:
+
+  Immediate (this week)
+
+  1. Map emotions → body poses — the biggest bang for effort. behavior_node and emotion_node are already running.
+  Define 4-5 expressive poses (happy = arms up, sad = drooped, curious = head tilt) and have the emotion node publish
+  to a new /cara/body_pose topic that cara_actuator_node subscribes to. This is what makes Cara feel alive.
+  2. IMU safety governor — check_safety_governor in cara_body_node is a stub right now. Before Cara moves freely,
+  implement it: if tilt > ~45°, send all joints to neutral and stop. Protects the servos if she falls.
+
+  Short term
+
+  3. Full bringup launch — cara_stack.launch.py exists but isn't wiring everything together yet. Get one launch
+  command that starts vision + emotion + body + head expression + IMU as a complete system.
+  4. Servo calibration —  joint limits are conservative right now (±10-15° from neutral). Once she's moving, tune
+  the actual mechanical range per joint.
+
+  Longer term
+
+  5. RL policy training in Isaac Lab — cara_body_node already has the inference code waiting for cara_policy.onnx.
+  This is the path to fluid, reactive full-body motion. Start by defining a simple "stay upright" reward in Isaac Lab
+  using the BNO055 data as the real-world counterpart.
+
+  The emotion -> pose mapping is the one I'll do first — it builds on exactly what just got working and makes an
+  immediate visible difference in how Cara behaves.
+
+

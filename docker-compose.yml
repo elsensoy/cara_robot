@@ -1,0 +1,56 @@
+services:
+  cara_runtime:
+    build:
+      context: .
+      dockerfile: jetson/Dockerfile
+    image: cara_jetson:jp62-ros
+    runtime: nvidia
+    stdin_open: true
+    tty: true
+    network_mode: host
+    container_name: cara-cara_runtime-1
+    privileged: true
+
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - DISPLAY=${DISPLAY}
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - ROS_DOMAIN_ID=7
+      - PYTHONPATH=/workspace
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - CARA_SERIAL_PORT=/dev/ttyCH341USB0
+      - CARA_SPEAKER=plughw:2,0
+      - CARA_MIC=plughw:2,0
+
+    devices:
+      # USB CAMERA (C270)
+      - "/dev/video0:/dev/video0"
+      - "/dev/video1:/dev/video1"
+      - "/dev/media1:/dev/media1"
+      
+
+      # I2C servo driver
+      - "/dev/i2c-1:/dev/i2c-1"
+
+      # Audio (optional)
+      - "/dev/snd:/dev/snd"
+
+      # Arduino serial port (CH341 USB-serial chip)
+      - "/dev/ttyCH341USB0:/dev/ttyCH341USB0"
+
+    volumes:
+      - ./ros2_ws:/workspace/ros2_ws
+      - ~/.cache/huggingface:/root/.cache/huggingface
+      - ~/cara_data:/data
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      #- ~/.docker.xauth:/root/.XAuthority
+      - type: bind
+        source: /home/elida_z/cara
+        target: /workspace
+        bind:
+          create_host_path: true
+
+    entrypoint: ["bash"]
+    command: ["-lc", "sleep infinity"]
+

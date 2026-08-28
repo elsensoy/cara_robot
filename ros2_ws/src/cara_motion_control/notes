@@ -1,0 +1,42 @@
+  
+ Build & run  
+
+From inside the container:
+
+```bash
+cd /workspace/ros2_ws
+colcon build --packages-select cara_motion_control
+source install/setup.bash
+ros2 run cara_motion_control head_expression_node
+```
+
+If that works, test topic input:
+
+```bash
+ros2 topic pub --once /cara/affect_state std_msgs/msg/String "{data: 'happy'}"
+ros2 topic pub --once /cara/affect_state std_msgs/msg/String "{data: 'sad'}"
+ros2 topic pub --once /cara/affect_state std_msgs/msg/String "{data: 'neutral'}"
+```
+
+---
+
+## 5) If `ros2 run` still can’t see it, do these two quick diagnostics
+
+### A) Confirm the executable is installed
+
+```bash
+ls install/cara_motion_control/lib/cara_motion_control/
+```
+
+You should see `head_expression_node` in there.
+
+### B) Confirm ROS can list it
+
+```bash
+ros2 pkg executables cara_motion_control
+```
+
+It should list `cara_motion_control  head_expression_node`.
+
+---
+ 
