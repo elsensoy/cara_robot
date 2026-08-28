@@ -41,13 +41,13 @@ just `{is_physical: false}`. They **must never** acquire:
 `generate_urdf.py` emits them as bare `<link name="…"/>` frames.
 `validate_description.py` fails if any of them gains `mass`/`com`/`inertia`.
 
-**MJCF / MuJoCo note (for when a `generate_mjcf.py` is added):** MuJoCo
-requires every `<body>` to have inertia. The correct representation there is
-*not* to give the virtual links a fake epsilon inertia — it is to **not make
-them bodies at all**: attach `l_hip_yaw`, `l_hip_roll`, `l_hip_pitch` as three
-`<joint>` elements on the single `l_thigh` body (and both ankle joints on the
-`l_foot` body). That removes the massless-body problem and is exactly what the
-"coincident axes" approximation means physically.
+**MJCF / MuJoCo:** MuJoCo requires positive mass on every body that carries a
+DOF. `generate_mjcf.py` therefore does **not** make the virtual links bodies
+(no fake epsilon inertia) — it attaches `l_hip_yaw/roll/pitch` as three
+`<joint>` on the single `l_thigh` body, and both ankle joints on `l_foot`.
+That is exactly what "coincident axes" means physically, and
+`validate_mjcf.py` confirms it reproduces `leg_model.forward_kinematics` to
+< 1e-16 m for every reference pose. See the README "MJCF / MuJoCo" section.
 
 ---
 

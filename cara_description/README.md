@@ -11,13 +11,14 @@ locomotion-policy work; it is **not** a full robot, not CAD, not a policy.
 |---|---|
 | ✅ | 6-DoF left-leg kinematic tree: joint origins, axes, limits, purpose |
 | ✅ | one parameterised config file as the single source of truth |
-| ✅ | generated, inspectable URDF |
+| ✅ | generated, inspectable URDF **and** MJCF from that one spec |
+| ✅ | MuJoCo model verified to reproduce the pure-Python FK to machine precision |
 | ✅ | validation + forward-kinematics sanity scripts |
 | ✅ | COM, gravity-torque, foot-Jacobian and morphology-sweep analysis scripts |
 | 🔶 | dynamics — mass / COM / inertia / actuator limits are **provisional, method-tagged placeholders** |
 | ❌ | right leg, arms, waist, neck, head |
 | ❌ | CAD geometry, servo brackets, wiring, shells |
-| ❌ | MuJoCo/MJCF, any RL / control policy |
+| ❌ | actuators, RL / control policy (MJCF has gravity off, no motors) |
 
 Design constraint being followed: **kinematics, dynamics, and manufacturing
 are kept separate.** The YAML is layered accordingly. No servo is selected;
@@ -31,11 +32,16 @@ cara_description/
 │   └── left_leg.yaml            # SINGLE SOURCE OF TRUTH (edit here)
 ├── urdf/
 │   └── cara_left_leg.urdf       # GENERATED from the YAML — do not hand-edit
+├── mjcf/
+│   └── cara_left_leg.xml        # GENERATED from the YAML — do not hand-edit
 ├── scripts/
 │   ├── leg_model.py             # shared loader + pure-Python kinematics & dynamics
 │   ├── generate_urdf.py         # YAML -> URDF
+│   ├── generate_mjcf.py         # YAML -> MJCF (same source of truth)
 │   ├── validate_description.py  # structural checks (kinematics + dynamics)
 │   ├── fk_sanity_check.py       # forward-kinematics behaviour checks
+│   ├── validate_mjcf.py         # MuJoCo body/site positions vs leg_model FK
+│   ├── view_mujoco.py           # load the generated MJCF and open mujoco.viewer
 │   ├── center_of_mass.py        # whole-model COM for any joint configuration
 │   ├── gravity_torques.py       # gravitational joint torques for reference poses
 │   ├── jacobian.py              # foot-position Jacobian + finite-difference validation
@@ -46,8 +52,17 @@ cara_description/
 └── README.md
 ```
 
-Only dependency beyond the Python standard library is **PyYAML**
-(`pip install pyyaml`). **No numpy** — all linear algebra is plain Python.
+One spec, two robot descriptions — never edit URDF or MJCF by hand:
+
+```
+                    ┌──> urdf/cara_left_leg.urdf
+    left_leg.yaml ──┤
+                    └──> mjcf/cara_left_leg.xml
+```
+
+**Dependencies:** **PyYAML** (`pip install pyyaml`) for everything; **mujoco**
+(`pip install mujoco`) only for `validate_mjcf.py` and `view_mujoco.py`.
+**No numpy** — all linear algebra is plain Python.
 
 ## Kinematic tree
 
@@ -95,12 +110,19 @@ cd cara_description
 # validate everything (axes, tree, limits, dynamics structure, virtual links…)
 python3 scripts/validate_description.py
 
-# (re)generate the URDF; --check exits non-zero if it has drifted
-python3 scripts/generate_urdf.py
-python3 scripts/generate_urdf.py --check
+# (re)generate URDF and MJCF; --check exits non-zero if either has drifted
+python3 scripts/generate_urdf.py   &&  python3 scripts/generate_urdf.py --check
+python3 scripts/generate_mjcf.py   &&  python3 scripts/generate_mjcf.py --check
 
 # forward-kinematics behaviour checks + a foot-position reference table
 python3 scripts/fk_sanity_check.py
+
+# confirm YAML -> MJCF -> MuJoCo reproduces the pure-Python FK  (needs mujoco)
+python3 scripts/validate_mjcf.py
+
+# inspect the model in the MuJoCo viewer, loaded programmatically  (needs mujoco)
+python3 scripts/view_mujoco.py --regen
+python3 scripts/view_mujoco.py --pose deep_crouch
 
 # --- analysis (all use the provisional dynamics layer) ---
 python3 scripts/center_of_mass.py                       # COM per reference pose
@@ -132,23 +154,52 @@ so morphology variants can be checked side by side.
 See [`docs/dynamics_notes.md`](docs/dynamics_notes.md) for the math, the
 approximations, and the findings.
 
+## MJCF / MuJoCo
+
+`generate_mjcf.py` writes `mjcf/cara_left_leg.xml` from the same YAML. Design
+choices (documented in the file header and the script docstring):
+
+- **Coincident abstraction, no fake mass.** MuJoCo requires positive mass on
+  any body with a DOF, so the three virtual coupling links are *not* bodies.
+  The coincident joints are stacked on the physical body downstream —
+  `l_hip_yaw/roll/pitch` as three `<joint>` on `l_thigh`, both ankle joints on
+  `l_foot`. This is mathematically identical to the URDF chain; the generator
+  emits per-joint `<joint pos>` anchors so it also stays correct if real
+  inter-axis offsets are added later.
+- **Kinematics-only.** `option gravity="0 0 0"`, all link geoms non-colliding
+  (`contype=conaffinity=0`), no actuators. The viewer shows the pose you set;
+  the leg does not sag. A visual ground plane sits at the zero-pose sole
+  height. Turn gravity on and add actuators when dynamics work begins.
+- **Geometry from the YAML only.** Primitive box/cylinder geoms with sizes
+  straight from `dynamics.links.*` — no new numbers.
+- **Load programmatically.** `view_mujoco.py` builds the model with
+  `mujoco.MjModel.from_xml_path(...)` so the whole pipeline is reproducible —
+  don't use the viewer's *File > Open* as the normal workflow.
+
+`validate_mjcf.py` compiles the model and checks every physical body's world
+position + orientation, and the `l_foot_sole_center` site, against
+`leg_model.forward_kinematics` for all reference poses. Current agreement:
+**< 1e-16 m** — the MJCF reproduces the already-validated kinematics exactly.
+
 ## Editing the model
 
 - Change parameters **only** in `config/left_leg.yaml`.
-- Re-run `generate_urdf.py`, then `validate_description.py`, then the checks.
-- Never hand-edit `urdf/cara_left_leg.urdf` — `generate_urdf.py --check`
-  returns non-zero if it has drifted (handy for CI / a pre-commit hook).
+- Re-run `generate_urdf.py` **and** `generate_mjcf.py`, then
+  `validate_description.py`, then the checks (`validate_mjcf.py` included).
+- Never hand-edit `urdf/cara_left_leg.urdf` or `mjcf/cara_left_leg.xml` — the
+  `--check` flag on each generator returns non-zero if it has drifted (handy
+  for CI / a pre-commit hook).
 
 ## Roadmap (not in this task)
 
 1. CAD/measured values replace every `TODO` in `provisional_geometry` and
    `dynamics.links.*`.
 2. Real inter-axis offsets replace the coincident-hip/ankle approximation.
+   (`generate_mjcf.py` already emits per-joint `<joint pos>` anchors, so this
+   works without a rewrite.)
 3. Right leg by mirroring; attach both legs to a waist/torso chain → full
    20-DoF Cara.
-4. A `generate_mjcf.py` beside `generate_urdf.py` so URDF and MuJoCo are both
-   generated from the one spec and cannot drift apart. **Virtual coupling
-   links must not become MJCF bodies** — represent the coincident hip/ankle
-   joints as multiple `<joint>` on one `<body>` (see `dynamics_notes.md` §1).
-5. Inverted / stance-leg dynamics model for true body-weight torque.
+4. Inverted / stance-leg dynamics model for true body-weight torque.
+5. Turn gravity on in the MJCF and add actuators — the start of dynamics /
+   control work.
 6. Only then: locomotion-policy training.

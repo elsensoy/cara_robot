@@ -297,6 +297,7 @@ against the copy (each script takes an optional config path):
 
 ```bash
 python3 scripts/generate_urdf.py       config/variant_A.yaml -o urdf/variant_A.urdf
+python3 scripts/generate_mjcf.py       config/variant_A.yaml -o mjcf/variant_A.xml
 python3 scripts/validate_description.py config/variant_A.yaml
 python3 scripts/fk_sanity_check.py      config/variant_A.yaml
 python3 scripts/center_of_mass.py       config/variant_A.yaml
@@ -305,16 +306,34 @@ python3 scripts/gravity_torques.py      config/variant_A.yaml
 
 ---
 
-## 6. Open TODOs before this is "real"
+## 6. URDF and MJCF from one spec
+
+`generate_urdf.py` → `urdf/cara_left_leg.urdf` and `generate_mjcf.py` →
+`mjcf/cara_left_leg.xml` both read this YAML; neither output is hand-edited
+(each has a `--check` flag that fails on drift). The frame convention, joint
+origins/axes/limits and the coincident hip/ankle abstraction are preserved
+identically in both.
+
+MJCF specifics: the virtual coupling links are represented as **stacked
+`<joint>` on the physical body downstream** (MuJoCo needs positive mass on any
+DOF-carrying body, so they are not bodies and get no fake inertia). The model
+is kinematics-only for now — gravity off, geoms non-colliding, no actuators.
+`scripts/validate_mjcf.py` compiles it in MuJoCo and confirms every body pose
+and the sole site match `forward_kinematics` here to < 1e-16 m across all
+reference poses. Details in the README "MJCF / MuJoCo" section.
+
+---
+
+## 7. Open TODOs before this is "real"
 
 - [ ] Replace all `provisional_geometry` values with CAD/measured numbers.
 - [ ] Introduce real inter-axis offsets for hip yaw/roll/pitch and ankle
-      pitch/roll (removes the coincident-axis approximation).
+      pitch/roll (removes the coincident-axis approximation). Both generators
+      already handle non-zero inter-axis offsets.
 - [ ] Replace `method`-tagged approximate inertia with CAD inertia tensors +
       true CoM (`dynamics.links.*`; see `dynamics_notes.md`).
 - [ ] Choose servos → real `effort` / `velocity` limits (`dynamics.actuators`
       is all TBD).
 - [ ] Range-of-motion study → real joint limits.
 - [ ] Mirror to the right leg; attach both to the waist/torso chain.
-- [ ] Add a YAML→MJCF generator alongside `generate_urdf.py` so URDF and
-      MuJoCo stay in sync from one spec.
+- [ ] Turn on gravity + add actuators in the MJCF for dynamics/control work.
