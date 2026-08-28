@@ -316,11 +316,14 @@ identically in both.
 
 MJCF specifics: the virtual coupling links are represented as **stacked
 `<joint>` on the physical body downstream** (MuJoCo needs positive mass on any
-DOF-carrying body, so they are not bodies and get no fake inertia). The model
-is kinematics-only for now — gravity off, geoms non-colliding, no actuators.
-`scripts/validate_mjcf.py` compiles it in MuJoCo and confirms every body pose
-and the sole site match `forward_kinematics` here to < 1e-16 m across all
-reference poses. Details in the README "MJCF / MuJoCo" section.
+DOF-carrying body, so they are not bodies and get no fake inertia).
+`generate_mjcf.py` has two modes: **kinematic** (`cara_left_leg.xml` — gravity
+off, non-colliding, no actuators; the FK-reference model) and **dynamic**
+(`--dynamic` → `cara_left_leg_dynamic.xml` — gravity, PD `<position>` servos,
+foot–ground contact). `scripts/validate_mjcf.py` confirms both reproduce
+`forward_kinematics` here to < 1e-16 m; `scripts/dynamic_check.py` runs the
+dynamic model under gravity + PD. Details in the README and
+`dynamics_notes.md` §8.
 
 ---
 

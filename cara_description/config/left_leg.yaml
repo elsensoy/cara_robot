@@ -241,10 +241,14 @@ frames_of_interest:
 # SEPARATE layer on purpose. PHYSICAL LINKS ONLY carry mass/COM/inertia.
 # The virtual coupling links are massless abstractions: they appear here only
 # as `{is_physical: false}` and MUST NEVER be given inertia or collision
-# geometry (URDF emits them as bare frames; a future MJCF generator must weld
-# them / represent the 3 hip joints on one body -- see docs/dynamics_notes.md).
+# geometry. URDF emits them as bare frames; the MJCF generator represents the
+# 3 hip joints as stacked <joint> on l_thigh (both ankle joints on l_foot) --
+# see docs/dynamics_notes.md.
 #
-# Every value here is PROVISIONAL.  TODO: replace with CAD / measured values.
+# Every value here is PROVISIONAL but "realistic-ish": masses are informed by
+# "small servo-driven leg, ~3 kg whole robot" rather than pure geometry, and
+# segment COMs are biased toward the joint that carries the heavier actuator.
+# TODO: replace with CAD / measured values.
 # `inertia.method` records HOW each tensor is currently approximated:
 #     solid_box      -> uniform-density box of the given `box` extents [m]
 #     uniform_rod_z  -> uniform slender rod along local Z:
@@ -259,8 +263,8 @@ dynamics:
 
     pelvis:
       is_physical: true
-      mass: 0.60                     # TODO: measured/CAD  [kg]
-      com:  [0.0, 0.0, 0.0]          # TODO -- in the pelvis link frame [m]
+      mass: 0.85                     # TODO: measured/CAD -- structure + 3 hip servos [kg]
+      com:  [0.0, 0.0, -0.010]       # TODO -- slightly toward the hip axes
       inertia:
         method: solid_box
         box: [0.06, 0.10, 0.06]      # TODO -- provisional extents, inertia approx only
@@ -270,34 +274,34 @@ dynamics:
 
     l_thigh:
       is_physical: true
-      mass: 0.15                     # TODO: measured/CAD  [kg]
-      com:  [0.0, 0.0, -L_thigh/2]   # TODO -- assumed mid-segment
+      mass: 0.22                     # TODO: measured/CAD -- tube + knee servo [kg]
+      com:  [0.0, 0.0, -0.55*L_thigh]  # TODO -- biased toward the knee (servo at distal end)
       inertia:
         method: uniform_rod_z
         length: L_thigh              # rod length for the transverse term
-        radius: 0.020               # TODO -- provisional, feeds the axial term only
+        radius: 0.022               # TODO -- provisional, feeds the axial term only
 
     l_shin:
       is_physical: true
-      mass: 0.12                     # TODO: measured/CAD  [kg]
-      com:  [0.0, 0.0, -L_shin/2]    # TODO -- assumed mid-segment
+      mass: 0.18                     # TODO: measured/CAD -- tube + 2 ankle servos [kg]
+      com:  [0.0, 0.0, -0.58*L_shin]   # TODO -- biased toward the ankle (servos at distal end)
       inertia:
         method: uniform_rod_z
         length: L_shin
-        radius: 0.015               # TODO -- provisional
+        radius: 0.018               # TODO -- provisional
 
     l_ankle_link:    {is_physical: false}   # virtual coupling link -- no dynamics
 
     l_foot:
       is_physical: true
-      mass: 0.05                     # TODO: measured/CAD  [kg]
+      mass: 0.08                     # TODO: measured/CAD -- sole plate + roll bracket [kg]
       com:  [foot_x_off, 0.0, -h_ankle/2]  # TODO -- centroid of the foot box
       inertia:
         method: solid_box
         box: [foot_len, foot_width, h_ankle]
 
   # --- provisional actuator limits. ALL TBD -- NO servo has been selected.
-  #     Consumed by generate_urdf.py for the URDF <limit> tags.
+  #     effort/velocity -> URDF <limit> tags and MJCF actuator forcerange.
   actuators:
     defaults:
       effort:   3.0   # TODO/TBD: N*m   -- placeholder, NOT a real stall/rated torque
@@ -305,6 +309,16 @@ dynamics:
     overrides:                       # per-joint TBD overrides of the defaults
       l_ankle_pitch: {effort: 2.0}   # TODO/TBD
       l_ankle_roll:  {effort: 2.0}   # TODO/TBD
+
+    # --- PD position-servo gains for the DYNAMIC MJCF (scripts/dynamic_check.py
+    #     and generate_mjcf.py --dynamic). Provisional: tuned only for stable
+    #     pose-holding, not a servo model. MJCF <position kp=... dampratio=...>.
+    control:
+      kp: 30.0            # TODO/TBD: N*m/rad -- position gain
+      dampratio: 1.0      # ~critically damped given each joint's reflected inertia
+      overrides:
+        l_hip_pitch:  {kp: 45.0}   # largest fore/aft gravity load
+        l_knee_pitch: {kp: 45.0}
 
 # =============================================================================
 # ANALYSIS -- inputs for the analysis scripts ONLY (not robot properties)
@@ -316,6 +330,15 @@ analysis:
   # to estimate stance-leg servo load (body weight carried THROUGH the foot).
   # This model contains only one leg; this is not one of its links.
   provisional_total_robot_mass: 3.0   # TODO/TBD: rough estimate  [kg]
+
+  # Contact settings for the DYNAMIC MJCF only (generate_mjcf.py --dynamic).
+  # The floor sits at (zero-pose sole height + z_offset). With z_offset = 0 an
+  # extended leg just touches and poses that lift the foot swing free. Raise
+  # z_offset (e.g. 0.04) to make the crouch poses PLANT on the floor and load
+  # the knee/ankle servos -- see docs/dynamics_notes.md. Provisional.
+  ground:
+    friction: [1.0, 0.005, 0.0001]   # MuJoCo geom friction [slide, torsional, rolling]
+    z_offset: 0.0                     # m, added to the floor height
 
   # Named joint configurations (rad); omitted joints default to 0. Each crouch
   # keeps hip_pitch + knee_pitch + ankle_pitch = 0 so the sole stays flat.
@@ -337,3 +360,12 @@ analysis:
       l_hip_pitch:   -0.50
       l_knee_pitch:   0.60
       l_ankle_pitch:  0.00
+    knee_lift:                # marching step: thigh forward, knee folded, foot clears floor
+      l_hip_pitch:   -0.70
+      l_knee_pitch:   1.30
+      l_ankle_pitch:  0.00
+    ankle_tilt:               # foot well clear of the floor, then sole rolled onto its edge
+      l_hip_pitch:   -0.30
+      l_knee_pitch:   0.60
+      l_ankle_pitch: -0.30
+      l_ankle_roll:   0.35

@@ -344,6 +344,39 @@ def reference_poses(spec: dict) -> Dict[str, Dict[str, float]]:
     return {name: {k: float(v) for k, v in (cfg or {}).items()} for name, cfg in poses.items()}
 
 
+def pose_qpos(spec: dict, cfg: Dict[str, float]) -> list:
+    """A reference pose expanded to the full ordered joint vector (missing -> 0)."""
+    return [float(cfg.get(name, 0.0)) for name in joint_names(spec)]
+
+
+def actuator_control(spec: dict) -> Dict[str, Dict[str, float]]:
+    """Per-joint PD position-servo gains: {joint: {'kp': .., 'dampratio': ..}}.
+
+    Reads dynamics.actuators.control (kp / dampratio defaults + per-joint
+    overrides). Returns an entry for every joint even if the block is absent
+    (falling back to kp=0, which a caller can treat as 'no control').
+    """
+    ctrl = ((spec.get("dynamics", {}) or {}).get("actuators", {}) or {}).get("control", {}) or {}
+    kp0 = float(ctrl.get("kp", 0.0))
+    dr0 = float(ctrl.get("dampratio", 1.0))
+    ov = ctrl.get("overrides", {}) or {}
+    out: Dict[str, Dict[str, float]] = {}
+    for name in joint_names(spec):
+        jov = ov.get(name, {}) or {}
+        out[name] = {"kp": float(jov.get("kp", kp0)),
+                     "dampratio": float(jov.get("dampratio", dr0))}
+    return out
+
+
+def ground_params(spec: dict) -> dict:
+    """analysis.ground settings for the dynamic MJCF."""
+    g = (spec.get("analysis", {}) or {}).get("ground", {}) or {}
+    return {
+        "friction": [float(x) for x in g.get("friction", [1.0, 0.005, 0.0001])],
+        "z_offset": float(g.get("z_offset", 0.0)),
+    }
+
+
 ExtraMass = Tuple[float, str]  # (mass_kg, frame_of_interest_name)
 
 

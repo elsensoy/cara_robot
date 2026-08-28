@@ -29,12 +29,15 @@ import leg_model as lm
 POS_TOL = 1e-9
 ROT_TOL = 1e-9
 _HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_MJCF = os.path.normpath(os.path.join(_HERE, os.pardir, "mjcf", "cara_left_leg.xml"))
+_MJCF_DIR = os.path.normpath(os.path.join(_HERE, os.pardir, "mjcf"))
 SOLE = "l_foot_sole_center"
 
 
 def main(argv=None) -> int:
-    config = argv[0] if argv else None
+    args = list(argv or [])
+    dynamic = "--dynamic" in args
+    args = [a for a in args if a != "--dynamic"]
+    config = args[0] if args else None
     try:
         import mujoco
     except ImportError:
@@ -45,14 +48,16 @@ def main(argv=None) -> int:
 
     spec = lm.load_spec(config)
 
-    # Always validate against a FRESH render of the current YAML, and also flag
-    # if the file on disk is stale.
-    xml = generate_mjcf.build_mjcf(spec)
-    if os.path.exists(DEFAULT_MJCF):
-        with open(DEFAULT_MJCF, encoding="utf-8") as fh:
+    # Validate against a FRESH render of the current YAML; flag a stale file.
+    xml = generate_mjcf.build_mjcf(spec, dynamic=dynamic)
+    on_disk = os.path.join(_MJCF_DIR,
+                           "cara_left_leg_dynamic.xml" if dynamic else "cara_left_leg.xml")
+    print(f"({'dynamic' if dynamic else 'kinematic'} model)")
+    if os.path.exists(on_disk):
+        with open(on_disk, encoding="utf-8") as fh:
             if fh.read() != xml:
-                print(f"WARNING: {DEFAULT_MJCF} is stale -- run generate_mjcf.py "
-                      "(validating against a fresh render anyway)\n")
+                print(f"WARNING: {on_disk} is stale -- run generate_mjcf.py"
+                      f"{' --dynamic' if dynamic else ''} (validating a fresh render anyway)\n")
 
     model = mujoco.MjModel.from_xml_string(xml)
     data = mujoco.MjData(model)

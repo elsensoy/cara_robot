@@ -56,21 +56,27 @@ That is exactly what "coincident axes" means physically, and
 Each physical link records an `inertia.method` so it is obvious what is a
 guess. Tensors are diagonal, about the link COM, aligned with the link frame.
 
-| Link | method | formula |
-|------|--------|---------|
-| `pelvis` | `solid_box` | box `[0.06, 0.10, 0.06]` m, uniform density |
-| `l_thigh` | `uniform_rod_z` | `Ixx = Iyy = m L²/12`,  `Izz = m r²/2`  (`L = L_thigh`, `r = 0.020`) |
-| `l_shin` | `uniform_rod_z` | same, `L = L_shin`, `r = 0.015` |
-| `l_foot` | `solid_box` | box `[foot_len, foot_width, h_ankle]` |
+| Link | mass (prov.) | method | formula |
+|------|-------------|--------|---------|
+| `pelvis` | 0.85 kg | `solid_box` | box `[0.06, 0.10, 0.06]` m, uniform density |
+| `l_thigh` | 0.22 kg | `uniform_rod_z` | `Ixx = Iyy = m L²/12`,  `Izz = m r²/2`  (`L = L_thigh`, `r = 0.022`) |
+| `l_shin` | 0.18 kg | `uniform_rod_z` | same, `L = L_shin`, `r = 0.018` |
+| `l_foot` | 0.08 kg | `solid_box` | box `[foot_len, foot_width, h_ankle]` |
+
+Masses are "realistic-ish" for a small servo-driven leg (~3 kg whole robot),
+not pure geometry — pelvis carries the 3 hip servos, thigh the knee servo,
+shin the 2 ankle servos. Total model 1.33 kg; leg below the pelvis 0.48 kg.
+Still `TODO`: replace with CAD.
 
 COM positions are expressions over `provisional_geometry`, so they follow a
-geometry sweep automatically:
+geometry sweep automatically, and each segment's COM is biased toward the
+joint carrying the heavier actuator:
 
 ```
-pelvis   com = [0, 0, 0]
-l_thigh  com = [0, 0, -L_thigh/2]      # assumed mid-segment
-l_shin   com = [0, 0, -L_shin/2]
-l_foot   com = [foot_x_off, 0, -h_ankle/2]   # centroid of the foot box
+pelvis   com = [0, 0, -0.010]
+l_thigh  com = [0, 0, -0.55*L_thigh]        # toward the knee (servo at distal end)
+l_shin   com = [0, 0, -0.58*L_shin]         # toward the ankle
+l_foot   com = [foot_x_off, 0, -h_ankle/2]  # centroid of the foot box
 ```
 
 The slender-rod transverse term `I ≈ m L²/12` is the quantity you sanity-check
@@ -144,8 +150,8 @@ python3 scripts/center_of_mass.py --pose deep_crouch  # per-link breakdown
 python3 scripts/center_of_mass.py --extra 0.4@l_foot_sole_center
 ```
 
-With the current placeholders the leg+pelvis COM sits ~47 mm below the pelvis
-origin at the zero pose and rises to ~31 mm in a deep crouch (folding the leg
+With the current placeholders the leg+pelvis COM sits ~59 mm below the pelvis
+origin at the zero pose and rises to ~40 mm in a deep crouch (folding the leg
 brings mass back up toward the pelvis).
 
 ---
@@ -180,12 +186,14 @@ Order of magnitude with the current placeholders:
 
 | pose | peak hold torque (leg only) | with 1.5 kg at the foot |
 |------|-----------------------------|--------------------------|
-| zero | ~0.007 N·m (hip/knee/ankle pitch) | — |
-| half_crouch | ~0.08 N·m at hip_pitch | ~0.6 N·m at knee_pitch |
-| deep_crouch | ~0.14 N·m at hip_pitch | — |
+| zero | ~0.008 N·m (hip/knee/ankle pitch) | — |
+| half_crouch | ~0.11 N·m at hip_pitch | ~0.63 N·m at knee_pitch |
+| deep_crouch | ~0.21 N·m at hip_pitch | — |
 
 The knee dominates once body weight is carried in a crouch — the expected
 result, and the reason knee-servo torque is the number to pin down first.
+`dynamic_check.py` confirms these same numbers come out of the MuJoCo
+simulation (see §9).
 
 ---
 
@@ -242,15 +250,59 @@ Findings with the current placeholders:
 
 ---
 
-## 8. Open TODOs
+## 8. Dynamic validation — `generate_mjcf.py --dynamic` + `dynamic_check.py`
+
+The kinematic MJCF (§1) is frozen — gravity off, no motors. The **dynamic**
+MJCF adds the physics needed to ask *"does this leg behave plausibly under
+gravity and actuation?"*:
+
+| element | source | detail |
+|---|---|---|
+| gravity | `analysis.gravity` | `(0, 0, -9.81)` |
+| PD servos | `dynamics.actuators.control` | one MJCF `<position kp dampratio>` per joint; `forcerange = ±effort` (the provisional TBD torque limit) |
+| foot contact | `analysis.ground` | foot box ↔ ground plane at the zero-pose sole height (`+ z_offset`), `friction` from YAML; all other geoms stay non-colliding |
+| keyframes | `analysis.reference_poses` | `<key qpos ctrl>` per pose — reset + PD target in one |
+| base | — | **pelvis welded to the world** — a fixed-base single-leg rig |
+
+`dynamic_check.py` commands the PD servos to each reference pose, lets it
+settle (5 s), and reports settle error, jitter (residual joint speed), peak
+actuator torque + saturation, `|τ − τ_gravity|` vs the analytic layer, foot
+contact (count / gap / normal force), and MuJoCo-vs-`forward_kinematics`
+error.
+
+### What it found (provisional masses / gains)
+
+- **Airborne pose-holding is clean.** Every crouch / swing / lift pose settles
+  to < 5 mrad of the command with **zero** residual velocity, and the settled
+  actuator torque **equals the analytic `gravity_joint_torques` to 4+ decimal
+  places** — the simulation and the hand-derived torque layer agree exactly.
+  Peak hold torque ranges ~0.03 N·m (`stand_micro_bend`) to ~0.21 N·m
+  (`deep_crouch`), all at `l_hip_pitch`, well inside the ±3 N·m provisional
+  limit.
+- **Straight-leg floor contact is clean** — `zero` pose: 2 contacts, gap
+  −0.02 mm (flush, no penetration), no jitter.
+- **Fixed-pelvis caveat:** with a straight leg the hinge constraints carry the
+  weight up to the welded pelvis, so the floor barely loads (`Fn ≈ 0.1 N` at
+  `zero`). Real foot loading needs a floating pelvis — that is the single-leg
+  **stance** phase, deliberately not this one.
+- **Servo-sizing probe:** set `analysis.ground.z_offset: 0.04` and re-run —
+  the crouch poses then *plant* on the raised floor and carry the model
+  weight. `l_hip_pitch` (in `zero`) and `l_knee_pitch` (in `half_crouch`)
+  immediately **saturate at 3 N·m**. So the provisional ±3 N·m servos are
+  adequate for holding the *unloaded* leg in any pose, but **marginal-to-weak
+  for a loaded crouch** — knee-servo torque is the spec to pin down first.
+
+### Open TODOs
 
 - [ ] Replace every `dynamics.links.*` value with CAD / measured mass, COM and
       a full inertia tensor (drop the `method` approximations).
 - [ ] Decide whether segment mass should scale with a swept length (currently
       independent) — add a density model if so.
-- [ ] Real actuator `effort` / `velocity` once servos are chosen (`dynamics.
-      actuators` is all TBD).
-- [ ] Inverted / stance-leg model (pelvis free, foot on ground) for true
-      body-weight torque — the `--carry-fraction` point load is only a proxy.
+- [ ] Real actuator `effort` / `velocity` + PD gains once servos are chosen
+      (`dynamics.actuators` is all TBD).
+- [ ] Floating / vertical-slide pelvis → true single-leg **stance** test with
+      the foot carrying real body weight (the `--carry-fraction` point load and
+      the `z_offset` trick are only proxies).
 - [ ] `analysis.provisional_total_robot_mass` is a rough guess; refine once the
       other 14 DoF exist.
+- [ ] Turn on torsional foot friction / `condim=6` if foot yaw-spin shows up.

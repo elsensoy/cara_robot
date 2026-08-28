@@ -16,7 +16,9 @@ Checks (all must pass):
  10. dynamics: inertia diagonals are positive and obey the triangle
      inequality; dynamics.links matches `links` exactly; is_physical agrees
      with each link's role
- 11. analysis: gravity > 0; every reference-pose joint exists
+ 11. analysis: gravity > 0; every reference-pose joint exists and is in range;
+     ground.friction / z_offset well-formed
+ 12. dynamics.actuators.control: kp > 0, dampratio >= 0, overrides name real joints
 
 Exit code 0 = all checks passed, 1 = one or more failures.
 
@@ -229,6 +231,30 @@ def validate(path: str | None) -> int:
         bad = [k for k in (cfg or {}) if k not in jset]
         rep.check(not bad, f"reference_pose '{pose_name}': all joints exist",
                   detail=f"unknown: {bad}")
+        in_range = all(jm.lower - 1e-9 <= float((cfg or {}).get(jm.name, 0.0)) <= jm.upper + 1e-9
+                       for jm in chain)
+        rep.check(in_range, f"reference_pose '{pose_name}': all angles within joint limits")
+    grd = ana.get("ground", {}) or {}
+    if grd:
+        fr = grd.get("friction")
+        rep.check(isinstance(fr, list) and len(fr) == 3 and all(_num(x) and x >= 0 for x in fr),
+                  "analysis.ground.friction is 3 non-negative numbers", detail=str(fr))
+        rep.check(_num(grd.get("z_offset", 0.0)), "analysis.ground.z_offset is numeric")
+
+    print("\n== 12. dynamics.actuators.control (PD gains) ==")
+    ctrl = act.get("control", {}) or {}
+    if not ctrl:
+        rep.check(True, "no control block (dynamic MJCF will have zero-gain servos)")
+    else:
+        rep.check(_num(ctrl.get("kp")) and ctrl["kp"] > 0,
+                  "control.kp > 0", detail=f"{ctrl.get('kp')} N*m/rad")
+        rep.check(_num(ctrl.get("dampratio", 1.0)) and ctrl.get("dampratio", 1.0) >= 0,
+                  "control.dampratio >= 0", detail=f"{ctrl.get('dampratio', 1.0)}")
+        for jname, jov in (ctrl.get("overrides", {}) or {}).items():
+            rep.check(jname in jset, f"control override '{jname}' is a real joint")
+            if "kp" in (jov or {}):
+                rep.check(_num(jov["kp"]) and jov["kp"] > 0,
+                          f"control override '{jname}': kp > 0", detail=f"{jov['kp']}")
 
     print("\n== 9. forward kinematics at zero pose is finite ==")
     try:
