@@ -5,7 +5,15 @@ A 20-DoF articulated teddy bear that learns to see, walk, and care.
 
 > *Author: Elida Sensoy*
 > *Platform: NVIDIA Jetson Orin Nano Super + Arduino Nano | ROS 2 Humble | Docker*
-> *Core Stack: Isaac Lab • TensorRT • ViT-based Emotion Recognition • Reinforcement Learning • Gemini LLM*
+> *Core Stack: MuJoCo (physics + sim-to-real model) • TensorRT • ViT-based Emotion Recognition • Reinforcement Learning • Gemini LLM*
+
+> **Simulation note.** Locomotion was originally scoped for NVIDIA Isaac Lab
+> (the `isaac/` folder holds that earlier RL-environment exploration). The
+> active path is **MuJoCo**: a single parameterised robot description
+> (`cara_description/`) that generates both URDF and MJCF, built and validated
+> in stages — kinematics, then dynamics, then per-limb dynamic checks — before
+> any policy training. Isaac Lab remains an option for large-scale parallel RL
+> once the model is trusted.
 
 ---
 
@@ -56,7 +64,7 @@ Emotion and memory influence *how* motion is generated, by **shaping the constra
 Three principles shape every layer:
 
 1. **Emotion is a control signal, not a label.** Detected affect modifies posture, gait tempo, and stiffness : it never overrides safety constraints.
-2. **One brain, two worlds.** The same RL policy runs in Isaac Sim and on the Jetson. No hand-coded gaits, no animation layers.
+2. **One brain, two worlds.** The same RL policy runs in simulation (MuJoCo) and on the Jetson. No hand-coded gaits, no animation layers.
 3. **Self-maintenance is primary.** Cara has internal "vitals" (thermal margin, actuator health, sensor confidence). When they degrade, behavior adapts : even at the cost of the current task.
 
 ---
@@ -348,9 +356,42 @@ ros2 topic pub -r 20 /joint_commands trajectory_msgs/JointTrajectory \
 ---
 # Embodied Motion & Control
 
+### Robot Description & Simulation Model
+
+Everything downstream — simulation, control, hardware mapping — is generated
+from **one parameterised description**, `cara_description/`:
+
+```
+                        ┌──> urdf/cara_left_leg.urdf          (ROS 2 / ros2_control)
+config/left_leg.yaml  ──┼──> mjcf/cara_left_leg.xml           (MuJoCo, kinematic)
+ (single source of truth)└──> mjcf/cara_left_leg_dynamic.xml   (MuJoCo, gravity + PD + contact)
+```
+
+The description is built and checked in **strict stages**, so a bug in the
+morphology can never hide inside a half-trained policy:
+
+| Stage | What it fixes | Status |
+| ----- | ------------- | ------ |
+| **Kinematics** | joint origins, axes, limits, the coincident hip/ankle abstraction, frame conventions (`+X` fwd, `+Y` left, `+Z` up) | ✅ pelvis + left leg |
+| **Dynamics** | provisional mass / COM / inertia (method-tagged), actuator torque limits, PD gains | ✅ provisional, all `TODO`-marked |
+| **Dynamic validation** | MuJoCo run under gravity + PD control over scripted poses; torques cross-checked against an independent analytic layer; foot–ground contact | ✅ single left leg |
+| Floating-base stance | one leg carrying real body weight | ⬜ next |
+| Second leg → waist → 20 DoF | mirror + assemble | ⬜ |
+| RL locomotion policy | the section below | ⬜ deferred until the model is trusted |
+
+Validation scripts live in `cara_description/scripts/` — `validate_description.py`,
+`fk_sanity_check.py`, `validate_mjcf.py`, `dynamic_check.py`, plus COM /
+gravity-torque / Jacobian / morphology-sweep analysis. See
+[`cara_description/README.md`](cara_description/README.md).
+
 ### Walking as a Learned Stability Problem
 
-Walking is trained in **NVIDIA Isaac Lab** as a reinforcement learning problem where balance, energy efficiency, and recoverability dominate raw speed. Cara does not learn to walk *as fast as possible* : she learns to walk **sustainably**.
+Once the full 20-DoF model is trusted, walking is trained as a reinforcement
+learning problem where balance, energy efficiency, and recoverability dominate
+raw speed. Cara does not learn to walk *as fast as possible* : she learns to
+walk **sustainably**. Training runs in **MuJoCo** (MJX for parallel rollouts);
+**Isaac Lab** — the earlier `isaac/` exploration — stays available if
+large-scale parallel RL is needed.
 
 **Observations (per step):**
 - 20 joint positions, 20 joint velocities
@@ -372,25 +413,33 @@ This mirrors biological locomotion: Cara learns gaits that **let her motors "res
 
 ### Simulation Parameters
 
-| Parameter         | Value          | Effect on Cara                                              |
-| ----------------- | -------------- | ----------------------------------------------------------- |
-| Stiffness (k_p)   | 400–800        | Higher = rigid, aggressive; lower = soft waddle             |
-| Damping (k_d)     | 10–40          | Prevents 3D-printed limbs from vibrating after fast moves   |
-| Effort            | 2.5–5.0 Nm     | Limits force (must not exceed real servo torque)            |
-| Friction          | 0.05           | Simulates gear drag and fur friction                        |
-| Control frequency | **50 Hz**      | Same in sim and on hardware : direct policy transfer        |
+All of these are parameters in `cara_description/config/left_leg.yaml` (the
+single source of truth), currently **provisional** and marked `TODO` / `TBD`
+until real servos are chosen:
+
+| Parameter                    | Value (provisional)  | Effect on Cara                                     |
+| ---------------------------- | -------------------- | ------------------------------------------------- |
+| PD position gain (k_p)       | 30–45 N·m/rad        | Higher = rigid, aggressive; lower = soft waddle   |
+| PD damping                   | critically damped    | Stops 3D-printed limbs vibrating after fast moves |
+| Actuator effort (forcerange) | 2.0–3.0 N·m          | Torque ceiling (must not exceed real servo torque)|
+| Ground friction              | 1.0 / 0.005 / 0.0001 | Slide / torsional / rolling for the foot contact  |
+| Control frequency            | **50 Hz** target     | Same in sim and on hardware : direct policy transfer |
+
+`dynamic_check.py` already flags that the provisional ±3 N·m servos hold the
+unloaded leg in any pose but **saturate in a loaded crouch** — knee-servo
+torque is the first real number to pin down.
 
 ### Sim-to-Real Pipeline
 
 ```
-Isaac Sim -> ROS 2 Topics -> ONNX Policy -> PCA9685 -> Servos
+MuJoCo (from cara_description) -> RL policy -> ONNX -> ROS 2 -> PCA9685 -> Servos
 ```
 
-1. Train locomotion policy in Isaac Lab
-2. Export trained model to ONNX
-3. Load policy on Jetson Orin Nano Super
-4. Run inference at 50 Hz
-5. Map outputs directly to servo angles
+1. Build + validate the model in stages (`cara_description/`)
+2. Train the locomotion policy in MuJoCo / MJX
+3. Export the trained policy to ONNX
+4. Load it on the Jetson Orin Nano Super (`policy_node`)
+5. Run inference at 50 Hz; map outputs to servo angles via `ros2_control`
 
 ### Emotion as a Motion Modifier
 
@@ -422,7 +471,14 @@ Emotional state is represented as a low-dimensional continuous vector that **sha
 | Neck (Pitch)    | −0.7        | 0.4         | −40° to +23° | Prevents heavy head from toppling forward    |
 | Shoulders       | −1.57       | 1.57        | ±90°         | Full expressive waving gestures              |
 
-The structure is formalized in **Xacro-based URDF** that serves as a single source of truth for Isaac Sim dynamics, ROS 2 joint interfaces, and hardware servo mapping. **ros2_control** abstracts servos as standard joint interfaces, so Isaac-trained policies deploy without rewrites.
+The structure is formalized in a **parameterised YAML description**
+(`cara_description/config/left_leg.yaml`) that is the single source of truth
+for MuJoCo dynamics, the generated URDF, ROS 2 joint interfaces, and hardware
+servo mapping — URDF and MJCF are *generated*, never hand-edited, so they
+cannot drift apart. **ros2_control** abstracts servos as standard joint
+interfaces, so a sim-trained policy deploys without rewrites. (The older
+hand-written `urdf/cara.urdf.xacro` is the pre-`cara_description` sketch and
+is being superseded limb by limb.)
 
 ---
 
@@ -592,6 +648,30 @@ See [`docs/mbom.md`](docs/mbom.md) for full part lists. Highlights:
 - **Plush interface:** soft edge tape, hook-and-loop service panels, anti-slip foot pads
 
 ---
+
+## Software Stack & Repo Structure
+
+| Path | What it is |
+| ---- | ---------- |
+| `cara_description/` | **Robot description + simulation model.** `config/left_leg.yaml` is the single source of truth → generated URDF + MJCF (kinematic and dynamic). Validation + analysis scripts. Currently pelvis + left leg; built in stages (kinematics → dynamics → dynamic checks). |
+| `isaac/` | Earlier NVIDIA Isaac Lab RL-environment exploration (locomotion env, PPO config). Superseded by the MuJoCo path for now; kept for possible large-scale parallel RL. |
+| `urdf/` | Pre-`cara_description` hand-written Xacro sketches — being superseded limb by limb. |
+| `ros2_ws/` | ROS 2 workspace: vision, gaze, emotion, behavior, health, and the `policy_node` that will run the trained locomotion policy. |
+| `jetson/` | Jetson-side deployment loop (C++): servo-rail power + IMU → health scalar → controller. See `jetson/control/`. |
+| `app/` | Cara's language brain (`cara_main.py`, Gemini, memory). |
+| `arduino/` | Nano firmware for eye LEDs / blink / head servos. |
+| `training/` | Docker + config for policy-training runs. |
+| `media/`, `configs/`, `cara_offsets.yaml` | Renders/videos, controller configs, hardware calibration offsets. |
+
+**Simulation quick check** (needs `pip install mujoco pyyaml`):
+
+```bash
+cd cara_description
+python3 scripts/validate_description.py      # structural checks on the YAML
+python3 scripts/dynamic_check.py             # MuJoCo: gravity + PD over scripted poses
+python3 scripts/view_mujoco.py --dynamic --pose knee_lift   # open the viewer
+```
+
 ---
 
 ## Quick Start
@@ -677,10 +757,13 @@ Cara has built-in safeguards that are mirrored in both simulation and on hardwar
 
 ## Further Reading
 
+- **[`cara_description/README.md`](cara_description/README.md)** : the parameterised robot description, the YAML → URDF/MJCF pipeline, and the staged build (kinematics → dynamics → dynamic validation)
+- **[`cara_description/docs/frames_and_joints.md`](cara_description/docs/frames_and_joints.md)** : coordinate conventions, per-joint math, the foot frame hierarchy
+- **[`cara_description/docs/dynamics_notes.md`](cara_description/docs/dynamics_notes.md)** : provisional mass/COM/inertia, gravity-torque and Jacobian analysis, the MuJoCo dynamic-plausibility results
 - **`docs/emotion.md`** : ViT architecture, self-attention, the teach-Cara workflow, calibration techniques
-- **`docs/locomotion.md`** : Isaac Lab environment definitions, reward shaping, sim-to-real
 - **`docs/understanding.md`** : Why agency precedes intelligence; the homeostatic loop in detail
 - **`docs/mbom.md`** : Full mechanical bill of materials and print guidance
+- **`isaac/`** : earlier Isaac Lab RL-environment exploration (kept for reference / possible large-scale parallel training)
 
 ---
 
