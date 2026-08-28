@@ -227,11 +227,18 @@ def validate(path: str | None) -> int:
     rep.check(_num(ana.get("gravity")) and ana["gravity"] > 0,
               "analysis.gravity > 0", detail=f"{ana.get('gravity')} m/s^2")
     jset = {jm.name for jm in chain}
-    for pose_name, cfg in (ana.get("reference_poses", {}) or {}).items():
-        bad = [k for k in (cfg or {}) if k not in jset]
+    raw_poses = (ana.get("reference_poses", {}) or {})
+    exp_poses = lm.reference_poses(spec)   # wildcards ('*_hip_pitch') expanded
+    for pose_name, raw_cfg in raw_poses.items():
+        bad_wild = [k for k in (raw_cfg or {})
+                    if k.startswith("*_") and not any(j.endswith("_" + k[2:]) or j == k[2:] for j in jset)]
+        rep.check(not bad_wild, f"reference_pose '{pose_name}': wildcards match a joint",
+                  detail=f"no match: {bad_wild}")
+        cfg = exp_poses.get(pose_name, {})
+        bad = [k for k in cfg if k not in jset]
         rep.check(not bad, f"reference_pose '{pose_name}': all joints exist",
                   detail=f"unknown: {bad}")
-        in_range = all(jm.lower - 1e-9 <= float((cfg or {}).get(jm.name, 0.0)) <= jm.upper + 1e-9
+        in_range = all(jm.lower - 1e-9 <= float(cfg.get(jm.name, 0.0)) <= jm.upper + 1e-9
                        for jm in chain)
         rep.check(in_range, f"reference_pose '{pose_name}': all angles within joint limits")
     grd = ana.get("ground", {}) or {}
@@ -256,10 +263,26 @@ def validate(path: str | None) -> int:
                 rep.check(_num(jov["kp"]) and jov["kp"] > 0,
                           f"control override '{jname}': kp > 0", detail=f"{jov['kp']}")
 
+    print("\n== 13. base / mirror ==")
+    b = spec.get("base", {}) or {}
+    rep.check(b.get("type", "fixed") in ("fixed", "floating"),
+              "base.type is fixed or floating", detail=str(b.get("type")))
+    if b.get("type") == "floating":
+        rp = b.get("rest_pose")
+        rep.check(rp is None or rp in raw_poses,
+                  "base.rest_pose names a reference pose", detail=str(rp))
+    if "_source" in spec and spec.get("meta", {}).get("name", "").endswith("lower_body"):
+        rep.check(any(l["name"].startswith("l_") for l in links)
+                  and any(l["name"].startswith("r_") for l in links),
+                  "mirror expanded both l_ and r_ links")
+        soles = [f["name"] for f in spec.get("frames_of_interest", []) or []]
+        rep.check("l_foot_sole_center" in soles and "r_foot_sole_center" in soles,
+                  "both foot sole frames present", detail=str(soles))
+
     print("\n== 9. forward kinematics at zero pose is finite ==")
     try:
         tf = lm.forward_kinematics(spec, {})
-        sole = lm.frame_world_position(spec, tf, "l_foot_sole_center")
+        sole = lm.frame_world_position(spec, tf, spec["frames_of_interest"][0]["name"])
         rep.check(all(math.isfinite(c) for c in sole),
                   "FK(zero) foot sole position is finite",
                   detail=f"sole={tuple(round(c, 6) for c in sole)} m")

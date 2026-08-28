@@ -84,12 +84,12 @@ def _visual_geom(shape: tuple, com) -> str:
     raise ValueError(f"unhandled shape {shape!r}")
 
 
-def _foot_collision_geom(shape: tuple, com, friction) -> str:
+def _foot_collision_geom(shape: tuple, com, friction, link_name: str) -> str:
     kind, dims = shape
     if kind != "box":
         raise ValueError("expected a box foot for the collision geom")
     half = [d / 2.0 for d in dims]
-    return (f'<geom name="l_foot_collision" type="box" size="{_xyz(half)}" pos="{_xyz(com)}" '
+    return (f'<geom name="{link_name}_collision" type="box" size="{_xyz(half)}" pos="{_xyz(com)}" '
             f'contype="1" conaffinity="1" condim="3" friction="{_xyz(friction)}" '
             f'rgba="{FOOT_COLLISION_RGBA}" group="4"/>')
 
@@ -136,21 +136,34 @@ def build_mjcf(spec: dict, dynamic: bool = False) -> str:
     model_name = spec["meta"]["name"] + ("_dynamic" if dynamic else "")
     syms = lm.resolve_symbols(spec)
     g = lm.analysis_gravity(spec)
-    foot_link = stacks[-1][0]
     ground = lm.ground_params(spec)
     friction = ground["friction"]
     control = lm.actuator_control(spec)
+    poses = lm.reference_poses(spec)
+    foot_links = {child for child, _p, _j in stacks if child.endswith("foot")}
 
-    floor_z = lm.foot_position(spec, {})[2] + ground["z_offset"]   # zero-pose sole height (+ offset)
+    base = spec["frame_conventions"]["base_frame"]
+    base_cfg = lm.base_spec(spec)
+    floating = dynamic and base_cfg["type"] == "floating"
+
+    def rest_height(cfg: dict) -> float:
+        if base_cfg["rest_height"] is not None:
+            return base_cfg["rest_height"]
+        tf = lm.forward_kinematics(spec, cfg)
+        zs = [lm.frame_world_position(spec, tf, foi["name"])[2]
+              for foi in spec.get("frames_of_interest", []) or []]
+        return (-min(zs) + 0.003) if zs else 0.30
+
+    rest_pose = base_cfg["rest_pose"] or (next(iter(poses)) if poses else None)
+    pelvis_z0 = rest_height(poses.get(rest_pose, {})) if floating else 0.0
+
+    if floating:
+        floor_z = 0.0
+    else:
+        floor_z = lm.foot_position(spec, {})[2] + (ground["z_offset"] if dynamic else 0.0)
 
     child_stack = {child: (pos, joints) for child, pos, joints in stacks}
-    base = spec["frame_conventions"]["base_frame"]
-
-    parent_of = {}
-    prev_physical = base
-    for child, _pos, _joints in stacks:
-        parent_of[child] = prev_physical
-        prev_physical = child
+    parent_of = {child: joints[0][0].parent for child, _pos, joints in stacks}
     children_of: dict[str, list[str]] = {}
     for child, parent in parent_of.items():
         children_of.setdefault(parent, []).append(child)
@@ -159,18 +172,24 @@ def build_mjcf(spec: dict, dynamic: bool = False) -> str:
     w = out.append
     mode = "dynamic" if dynamic else "kinematic"
 
+    src = spec.get("_source", "left_leg.yaml")
+    cfg_arg = "" if src == "left_leg.yaml" else f" config/{src}"
     w(f'<mujoco model="{model_name}">')
     w("  <!-- ================================================================")
     w("       GENERATED FILE. Do not edit by hand.")
-    w("       source : cara_description/config/left_leg.yaml")
+    w(f"       source : cara_description/config/{src}")
     w("       tool   : cara_description/scripts/generate_mjcf.py"
       + ("  --dynamic" if dynamic else ""))
-    w(f"       regen  : python3 scripts/generate_mjcf.py{' --dynamic' if dynamic else ''}")
+    w(f"       regen  : python3 scripts/generate_mjcf.py{' --dynamic' if dynamic else ''}{cfg_arg}")
     w("")
     w(f"       mode: {mode.upper()}.  Same source of truth as the URDF.")
-    if dynamic:
+    if dynamic and floating:
+        w("       gravity ON; PD <position> actuators; feet <-> ground contact.")
+        w("       Pelvis is a FLOATING base (freejoint) -- standing is only")
+        w("       stable if the commanded posture keeps the COM over the feet.")
+    elif dynamic:
         w("       gravity ON; PD <position> actuators; foot <-> ground contact.")
-        w("       Pelvis is welded to the world (fixed-base single-leg test rig).")
+        w("       Pelvis is welded to the world (fixed-base test rig).")
     else:
         w("       gravity OFF; geoms non-colliding; no actuators (pose inspection).")
     w("       Coincident hip/ankle joints are stacked on the physical body")
@@ -196,27 +215,34 @@ def build_mjcf(spec: dict, dynamic: bool = False) -> str:
     w("")
     w("  <worldbody>")
     w('    <light pos="0 0 1.5" dir="0 0 -1" diffuse="0.5 0.5 0.5"/>')
+    fsize = "1.0 1.0 0.02" if floating else "0.6 0.6 0.02"
     if dynamic:
-        w(f'    <geom name="floor" type="plane" size="0.6 0.6 0.02" pos="0 0 {_fmt(floor_z)}" '
+        w(f'    <geom name="floor" type="plane" size="{fsize}" pos="0 0 {_fmt(floor_z)}" '
           f'contype="1" conaffinity="1" condim="3" friction="{_xyz(friction)}" '
           f'rgba="{FLOOR_RGBA}" group="1"/>')
     else:
-        w(f'    <geom name="floor" type="plane" size="0.6 0.6 0.02" pos="0 0 {_fmt(floor_z)}" '
+        w(f'    <geom name="floor" type="plane" size="{fsize}" pos="0 0 {_fmt(floor_z)}" '
           f'rgba="{FLOOR_RGBA}" group="1"/>')
     w("")
 
     def emit_body(name: str, indent: str, parent_pos):
         li = inertials[name]
-        body_pos, joints = child_stack.get(name, (parent_pos, []))
+        is_root = name == base
+        if is_root:
+            body_pos, joints = (0.0, 0.0, pelvis_z0), []
+        else:
+            body_pos, joints = child_stack.get(name, (parent_pos, []))
         w(f'{indent}<body name="{name}" pos="{_xyz(body_pos)}">')
+        if is_root and floating:
+            w(f'{indent}  <freejoint name="{name}_free"/>')
         for jm, anchor in joints:
             w(f'{indent}  <joint name="{jm.name}" type="hinge" pos="{_xyz(anchor)}" '
               f'axis="{_xyz(jm.axis)}" range="{_fmt(jm.lower)} {_fmt(jm.upper)}"/>')
         w(f'{indent}  <inertial pos="{_xyz(li.com)}" mass="{_fmt(li.mass)}" '
           f'diaginertia="{_xyz(li.inertia_diag)}"/>')
         w(f'{indent}  {_visual_geom(li.shape, li.com)}')
-        if dynamic and name == foot_link:
-            w(f'{indent}  {_foot_collision_geom(li.shape, li.com, friction)}')
+        if dynamic and name in foot_links:
+            w(f'{indent}  {_foot_collision_geom(li.shape, li.com, friction, name)}')
         w(f'{indent}  <site name="{name}_frame" pos="0 0 0" rgba="{JOINT_SITE_RGBA}"/>')
         for foi in spec.get("frames_of_interest", []) or []:
             if foi["link"] == name:
@@ -231,14 +257,17 @@ def build_mjcf(spec: dict, dynamic: bool = False) -> str:
     w("")
 
     # ---- keyframes (reference poses) ------------------------------------
-    poses = lm.reference_poses(spec)
     if poses:
         w("  <keyframe>")
         for pname, cfg in poses.items():
-            qp = lm.pose_qpos(spec, cfg)
+            jq = lm.pose_qpos(spec, cfg)
+            if floating:
+                qp = [0.0, 0.0, rest_height(cfg), 1.0, 0.0, 0.0, 0.0] + jq
+            else:
+                qp = jq
             line = f'    <key name="{pname}" qpos="{_xyz(qp)}"'
             if dynamic:
-                line += f' ctrl="{_xyz(qp)}"'
+                line += f' ctrl="{_xyz(jq)}"'
             w(line + "/>")
         w("  </keyframe>")
         w("")
@@ -271,9 +300,16 @@ def main(argv=None) -> int:
                     help="exit 1 if the on-disk MJCF differs from a fresh render")
     args = ap.parse_args(argv)
 
-    out = args.output or (DEFAULT_OUT_DYNAMIC if args.dynamic else DEFAULT_OUT)
     spec = lm.load_spec(args.config)
     text = build_mjcf(spec, dynamic=args.dynamic)
+
+    # Default output name tracks the model name, so a non-default config never
+    # overwrites another model's file.
+    if args.output:
+        out = args.output
+    else:
+        stem = spec["meta"]["name"]
+        out = os.path.join(_MJCF_DIR, stem + ("_dynamic.xml" if args.dynamic else ".xml"))
 
     if args.stdout:
         sys.stdout.write(text)

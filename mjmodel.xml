@@ -1,0 +1,72 @@
+<mujoco model="cara_left_leg">
+  <!-- ================================================================
+       GENERATED FILE. Do not edit by hand.
+       source : cara_description/config/left_leg.yaml
+       tool   : cara_description/scripts/generate_mjcf.py
+       regen  : python3 scripts/generate_mjcf.py
+
+       mode: KINEMATIC.  Same source of truth as the URDF.
+       gravity OFF; geoms non-colliding; no actuators (pose inspection).
+       Coincident hip/ankle joints are stacked on the physical body
+       downstream (see the script docstring).
+       Frame convention: +X forward, +Y left, +Z up, right-handed.
+       ============================================================= -->
+  <compiler angle="radian"/>
+
+  <option gravity="0 0 0"/>
+
+  <size nkey="7"/>
+
+  <visual>
+    <global azimuth="130" elevation="-20"/>
+    <headlight ambient="0.35 0.35 0.35" diffuse="0.6 0.6 0.6" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+  </visual>
+
+  <default>
+    <geom contype="0" conaffinity="0" group="2"/>
+    <site size="0.006 0.005 0.005" group="3"/>
+  </default>
+
+  <worldbody>
+    <geom name="floor" size="0.6 0.6 0.02" pos="0 0 -0.275" type="plane" group="1" rgba="0.85 0.85 0.88 1"/>
+    <light pos="0 0 1.5" diffuse="0.5 0.5 0.5"/>
+    <body name="pelvis">
+      <inertial pos="0 0 -0.01" mass="0.85" diaginertia="0.000963333 0.00051 0.000963333"/>
+      <geom size="0.03 0.05 0.03" pos="0 0 -0.01" type="box" rgba="0.75 0.78 0.82 1"/>
+      <site name="pelvis_frame" rgba="0.9 0.5 0.2 1"/>
+      <body name="l_thigh" pos="0 0.05 0">
+        <inertial pos="0 0 -0.066" mass="0.22" diaginertia="0.000264 0.000264 5.324e-05"/>
+        <joint name="l_hip_yaw" range="-0.79 0.79"/>
+        <joint name="l_hip_roll" range="-0.52 0.61" axis="1 0 0"/>
+        <joint name="l_hip_pitch" range="-1.75 1.05" axis="0 1 0"/>
+        <geom size="0.022 0.06" pos="0 0 -0.066" type="cylinder" rgba="0.75 0.78 0.82 1"/>
+        <site name="l_thigh_frame" rgba="0.9 0.5 0.2 1"/>
+        <body name="l_shin" pos="0 0 -0.12">
+          <inertial pos="0 0 -0.0696" mass="0.18" diaginertia="0.000216 0.000216 2.916e-05"/>
+          <joint name="l_knee_pitch" range="0 2.36" axis="0 1 0"/>
+          <geom size="0.018 0.06" pos="0 0 -0.0696" type="cylinder" rgba="0.75 0.78 0.82 1"/>
+          <site name="l_shin_frame" rgba="0.9 0.5 0.2 1"/>
+          <body name="l_foot" pos="0 0 -0.12">
+            <inertial pos="0.015 0 -0.0175" mass="0.08" diaginertia="2.16667e-05 6.21667e-05 6.75e-05"/>
+            <joint name="l_ankle_pitch" range="-0.87 0.61" axis="0 1 0"/>
+            <joint name="l_ankle_roll" range="-0.44 0.44" axis="1 0 0"/>
+            <geom size="0.045 0.0225 0.0175" pos="0.015 0 -0.0175" type="box" rgba="0.75 0.78 0.82 1"/>
+            <site name="l_foot_frame" rgba="0.9 0.5 0.2 1"/>
+            <site name="l_foot_sole_center" pos="0.015 0 -0.035" rgba="0.2 0.7 0.4 1"/>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <keyframe>
+    <key name="zero"/>
+    <key name="stand_micro_bend" qpos="0 0 -0.1 0.2 -0.1 0"/>
+    <key name="half_crouch" qpos="0 0 -0.45 0.9 -0.45 0"/>
+    <key name="deep_crouch" qpos="0 0 -0.9 1.7 -0.8 0"/>
+    <key name="leg_swing_forward" qpos="0 0 -0.5 0.6 0 0"/>
+    <key name="knee_lift" qpos="0 0 -0.7 1.3 0 0"/>
+    <key name="ankle_tilt" qpos="0 0 -0.3 0.6 -0.3 0.35"/>
+  </keyframe>
+</mujoco>

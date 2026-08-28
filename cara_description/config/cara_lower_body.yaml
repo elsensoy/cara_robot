@@ -1,0 +1,79 @@
+# =============================================================================
+# Cara -- LOWER BODY: pelvis + both legs (12 DoF), floating base for standing
+# =============================================================================
+# This file EXTENDS config/left_leg.yaml (the validated single-leg spec, still
+# the single source of truth for one leg) and:
+#   * mirrors the left leg (l_*) into a right leg (r_*) through the sagittal
+#     (x-z) plane -- see leg_model._apply_mirror;
+#   * puts the pelvis on a FLOATING base so the biped can actually stand on the
+#     ground under PD control (scripts/stand_check.py);
+#   * replaces the single-leg reference poses with bilateral standing poses.
+#
+# NOT included yet (deliberately): head, ears, arms, waist, Jetson, battery.
+# Get the lower-body dynamics stable first, then add those masses and measure
+# their effect on balance and torque demand.
+#
+# SI units throughout. Frame convention inherited: +X fwd, +Y left, +Z up.
+# =============================================================================
+
+extends: left_leg.yaml
+
+meta:
+  name: cara_lower_body
+  schema_version: 2
+  description: >-
+    Pelvis + left leg (from left_leg.yaml) + mirrored right leg. 12 revolute
+    DoF. Floating pelvis. Provisional dynamics; no upper body yet.
+
+# Mirror l_* -> r_* through the x-z plane:
+#   position (x, y, z) -> (x, -y, z)
+#   axis     (ax,ay,az) -> (-ax, ay, -az)   (axial-vector reflection)
+# Joint limits are copied unchanged -- the axis flip keeps +angle meaning the
+# same physical thing (e.g. +hip_roll = abduction) on both legs.
+mirror:
+  source: "l_"
+  target: "r_"
+
+# Floating (free) pelvis. The 12 leg joints are PD-actuated; the 6 pelvis DoF
+# are not -- standing is only stable if the commanded posture keeps the COM
+# over the support polygon.
+base:
+  type: floating
+  rest_pose: stand_nominal     # servos initialise + hold this at reset
+  # rest_height is computed per pose by generate_mjcf (feet land on z = 0)
+
+# The pelvis now bridges BOTH hips -- wider, a touch heavier (structure + 6 hip
+# servos). Still provisional. Everything else in dynamics.links is inherited
+# and mirrored.
+dynamics:
+  links:
+    pelvis:
+      mass: 1.10                       # TODO: measured/CAD -- structure + 6 hip servos
+      com: [0.0, 0.0, -0.010]
+      inertia:
+        method: solid_box
+        box: [0.12, 0.16, 0.07]        # TODO -- spans both hip axes
+
+analysis:
+  # gravity, ground, provisional_total_robot_mass inherited from left_leg.yaml.
+  # reference_poses REPLACED (single-leg crouches would just topple the biped).
+  # Each keeps  hip_pitch + knee_pitch + ankle_pitch = 0  so soles stay flat,
+  # and is symmetric so the COM stays on the mid-sagittal line.
+  standing_poses: [stand_nominal, semi_squat, stand_wide]
+  hold_seconds: 10
+
+  reference_poses:
+    stand_nominal:                     # slight knee bend, feet under the hips
+      "*_hip_pitch":   -0.10
+      "*_knee_pitch":   0.20
+      "*_ankle_pitch": -0.10
+    semi_squat:                        # deeper, COM lower, still centred
+      "*_hip_pitch":   -0.55
+      "*_knee_pitch":   1.10
+      "*_ankle_pitch": -0.55
+    stand_wide:                        # hips abducted, ankles roll to keep soles flat
+      "*_hip_pitch":   -0.10
+      "*_knee_pitch":   0.20
+      "*_ankle_pitch": -0.10
+      "*_hip_roll":     0.15
+      "*_ankle_roll":  -0.15

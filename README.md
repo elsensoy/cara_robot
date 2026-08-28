@@ -362,9 +362,10 @@ Everything downstream — simulation, control, hardware mapping — is generated
 from **one parameterised description**, `cara_description/`:
 
 ```
-                        ┌──> urdf/cara_left_leg.urdf          (ROS 2 / ros2_control)
-config/left_leg.yaml  ──┼──> mjcf/cara_left_leg.xml           (MuJoCo, kinematic)
- (single source of truth)└──> mjcf/cara_left_leg_dynamic.xml   (MuJoCo, gravity + PD + contact)
+config/left_leg.yaml ──────┐        ┌──> urdf/*.urdf                (ROS 2 / ros2_control)
+ (one leg, SSOT)            ├─ each ─┼──> mjcf/*.xml                 (MuJoCo, kinematic)
+config/cara_lower_body.yaml ┘        └──> mjcf/*_dynamic.xml         (MuJoCo, gravity + PD + contact)
+ (= left_leg  extends + mirror l_→r_ + floating pelvis)
 ```
 
 The description is built and checked in **strict stages**, so a bug in the
@@ -372,17 +373,26 @@ morphology can never hide inside a half-trained policy:
 
 | Stage | What it fixes | Status |
 | ----- | ------------- | ------ |
-| **Kinematics** | joint origins, axes, limits, the coincident hip/ankle abstraction, frame conventions (`+X` fwd, `+Y` left, `+Z` up) | ✅ pelvis + left leg |
-| **Dynamics** | provisional mass / COM / inertia (method-tagged), actuator torque limits, PD gains | ✅ provisional, all `TODO`-marked |
-| **Dynamic validation** | MuJoCo run under gravity + PD control over scripted poses; torques cross-checked against an independent analytic layer; foot–ground contact | ✅ single left leg |
-| Floating-base stance | one leg carrying real body weight | ⬜ next |
-| Second leg → waist → 20 DoF | mirror + assemble | ⬜ |
+| **1-leg kinematics** | joint origins, axes, limits, the coincident hip/ankle abstraction, frame conventions (`+X` fwd, `+Y` left, `+Z` up) | ✅ |
+| **1-leg dynamics** | provisional mass / COM / inertia (method-tagged), actuator torque limits, PD gains | ✅ all `TODO`-marked |
+| **1-leg dynamic validation** | MuJoCo under gravity + PD over scripted poses; torques cross-checked against an independent analytic layer | ✅ |
+| **2 legs + pelvis** | right leg = mirror of left (no hand-writing); floating base | ✅ 12 DoF |
+| **Static standing** | hold 3 poses (`stand_nominal`, `semi_squat`, `stand_wide`) 10 s each under joint PD | ✅ **milestone met** |
+| **COM / support-polygon checks** | COM stays inside the convex hull of the foot contacts, with margin | ✅ 33–43 mm margin |
+| Weight shifting → balance | shift COM between feet; single-support; disturbance recovery | ⬜ next |
+| Head / ears / waist / arms masses | add deliberately, one at a time, re-measure balance + torque | ⬜ |
 | RL locomotion policy | the section below | ⬜ deferred until the model is trusted |
 
-Validation scripts live in `cara_description/scripts/` — `validate_description.py`,
-`fk_sanity_check.py`, `validate_mjcf.py`, `dynamic_check.py`, plus COM /
-gravity-torque / Jacobian / morphology-sweep analysis. See
-[`cara_description/README.md`](cara_description/README.md).
+`stand_check.py` reports for each pose: pelvis tilt & drift, COM support
+margin, peak / RMS actuator torque + saturation, foot contact, and
+MuJoCo-vs-FK error. Current stand: tilt ≤ 0.3°, zero drift, peak torque
+≤ 0.4 N·m (of a ±3 N·m provisional limit).
+
+Other validation scripts in `cara_description/scripts/`:
+`validate_description.py`, `fk_sanity_check.py`, `validate_mjcf.py`,
+`dynamic_check.py`, plus COM / gravity-torque / Jacobian / morphology-sweep
+analysis. See [`cara_description/README.md`](cara_description/README.md) and
+[`cara_description/docs/standing_notes.md`](cara_description/docs/standing_notes.md).
 
 ### Walking as a Learned Stability Problem
 
@@ -390,8 +400,6 @@ Once the full 20-DoF model is trusted, walking is trained as a reinforcement
 learning problem where balance, energy efficiency, and recoverability dominate
 raw speed. Cara does not learn to walk *as fast as possible* : she learns to
 walk **sustainably**. Training runs in **MuJoCo** (MJX for parallel rollouts);
-**Isaac Lab** — the earlier `isaac/` exploration — stays available if
-large-scale parallel RL is needed.
 
 **Observations (per step):**
 - 20 joint positions, 20 joint velocities
@@ -638,22 +646,11 @@ Full reasoning in [`docs/understanding.md`](docs/understanding.md).
 
 **All grounds must be common.** Failure to tie BEC GND to Jetson GND causes unstable PWM and IMU noise, and risks back-EMF damage to the carrier board.
 
-### Mechanical Bill of Materials
-
-See [`docs/mbom.md`](docs/mbom.md) for full part lists. Highlights:
-
-- **Print materials:** PETG / Nylon-CF for waist + hips (40–60% infill, 4–6 walls); PLA+ acceptable for shoulders, arms, ears
-- **Fasteners:** M3 socket-heads with heat-set inserts; flanged bearings + 3–4 mm steel shafts for hip/waist pivots
-- **Thermal:** rear venting slats + optional 5 V 30–40 mm fan to prevent the plush shell from trapping heat
-- **Plush interface:** soft edge tape, hook-and-loop service panels, anti-slip foot pads
-
----
-
 ## Software Stack & Repo Structure
 
 | Path | What it is |
 | ---- | ---------- |
-| `cara_description/` | **Robot description + simulation model.** `config/left_leg.yaml` is the single source of truth → generated URDF + MJCF (kinematic and dynamic). Validation + analysis scripts. Currently pelvis + left leg; built in stages (kinematics → dynamics → dynamic checks). |
+| `cara_description/` | **Robot description + simulation model.** `config/left_leg.yaml` (one leg, SSOT) and `config/cara_lower_body.yaml` (`extends` + mirror l_→r_ + floating pelvis) → generated URDF + MJCF (kinematic and dynamic). Validation + analysis scripts. Currently pelvis + both legs, **standing under PD control**; built in stages. |
 | `isaac/` | Earlier NVIDIA Isaac Lab RL-environment exploration (locomotion env, PPO config). Superseded by the MuJoCo path for now; kept for possible large-scale parallel RL. |
 | `urdf/` | Pre-`cara_description` hand-written Xacro sketches — being superseded limb by limb. |
 | `ros2_ws/` | ROS 2 workspace: vision, gaze, emotion, behavior, health, and the `policy_node` that will run the trained locomotion policy. |
@@ -667,9 +664,9 @@ See [`docs/mbom.md`](docs/mbom.md) for full part lists. Highlights:
 
 ```bash
 cd cara_description
-python3 scripts/validate_description.py      # structural checks on the YAML
-python3 scripts/dynamic_check.py             # MuJoCo: gravity + PD over scripted poses
-python3 scripts/view_mujoco.py --dynamic --pose knee_lift   # open the viewer
+python3 scripts/validate_description.py config/cara_lower_body.yaml   # structural checks
+python3 scripts/stand_check.py                                       # hold 3 standing poses 10 s each
+python3 scripts/view_mujoco.py --dynamic --config config/cara_lower_body.yaml --regen --pose semi_squat
 ```
 
 ---
@@ -757,9 +754,10 @@ Cara has built-in safeguards that are mirrored in both simulation and on hardwar
 
 ## Further Reading
 
-- **[`cara_description/README.md`](cara_description/README.md)** : the parameterised robot description, the YAML → URDF/MJCF pipeline, and the staged build (kinematics → dynamics → dynamic validation)
+- **[`cara_description/README.md`](cara_description/README.md)** : the parameterised robot description, the YAML → URDF/MJCF pipeline, and the staged build
 - **[`cara_description/docs/frames_and_joints.md`](cara_description/docs/frames_and_joints.md)** : coordinate conventions, per-joint math, the foot frame hierarchy
-- **[`cara_description/docs/dynamics_notes.md`](cara_description/docs/dynamics_notes.md)** : provisional mass/COM/inertia, gravity-torque and Jacobian analysis, the MuJoCo dynamic-plausibility results
+- **[`cara_description/docs/dynamics_notes.md`](cara_description/docs/dynamics_notes.md)** : provisional mass/COM/inertia, gravity-torque and Jacobian analysis, single-leg dynamic-plausibility results
+- **[`cara_description/docs/standing_notes.md`](cara_description/docs/standing_notes.md)** : mirroring the second leg, the floating-base standing rig, and the "hold 3 poses for 10 s" milestone
 - **`docs/emotion.md`** : ViT architecture, self-attention, the teach-Cara workflow, calibration techniques
 - **`docs/understanding.md`** : Why agency precedes intelligence; the homeostatic loop in detail
 - **`docs/mbom.md`** : Full mechanical bill of materials and print guidance

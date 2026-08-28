@@ -19,6 +19,7 @@ Layers exposed here, matching the YAML:
 
 from __future__ import annotations
 
+import copy
 import math
 import os
 from dataclasses import dataclass, field
@@ -51,12 +52,163 @@ DEFAULT_GRAVITY = 9.81
 
 
 # --------------------------------------------------------------------------- #
-# Loading + symbol resolution
+# Loading  (extends + mirror expansion)
 # --------------------------------------------------------------------------- #
-def load_spec(path: str | None = None) -> dict:
-    """Parse the YAML description into a plain dict."""
-    with open(path or DEFAULT_CONFIG, "r", encoding="utf-8") as fh:
+# A spec may:
+#   * `extends: other.yaml`  -- deep-merge on top of a parent spec.
+#   * `mirror: {source: "l_", target: "r_"}`  -- synthesise the opposite leg by
+#     reflecting the source-prefixed links/joints/dynamics/frames through the
+#     sagittal (x-z) plane:  position (x, y, z) -> (x, -y, z);  rotation axis
+#     (ax, ay, az) -> (-ax, ay, -az)  [axial-vector reflection].  Joint LIMITS
+#     are copied unchanged: the axis flip is chosen so the joint coordinate
+#     keeps the same physical meaning (e.g. +angle = abduction) on both sides.
+# All other code operates on the fully expanded (flat) spec.
+
+_REPLACE_KEYS = {"reference_poses"}  # child value replaces, not merges
+
+_MIRROR_SUBS = [("+Y", "\x00"), ("-Y", "+Y"), ("\x00", "-Y"),
+                ("+y", "\x01"), ("-y", "+y"), ("\x01", "-y"),
+                ("left", "\x02"), ("right", "left"), ("\x02", "right"),
+                ("Left", "\x03"), ("Right", "Left"), ("\x03", "Right")]
+
+
+def _mirror_text(s):
+    if not isinstance(s, str):
+        return s
+    for a, b in _MIRROR_SUBS:
+        s = s.replace(a, b)
+    return s
+
+
+def _negate_component(entry):
+    """Negate one origin/axis component (number or expression string)."""
+    if isinstance(entry, bool):
+        return entry
+    if isinstance(entry, (int, float)):
+        return 0.0 if entry == 0 else -float(entry)
+    if isinstance(entry, str):
+        e = entry.strip()
+        try:
+            f = float(e)
+            return 0.0 if f == 0 else -f
+        except ValueError:
+            return f"-({e})"
+    return entry
+
+
+def _mirror_position(v):          # (x, y, z) -> (x, -y, z)
+    return [v[0], _negate_component(v[1]), v[2]]
+
+
+def _mirror_axis(v):              # (ax, ay, az) -> (-ax, ay, -az)
+    return [_negate_component(v[0]), v[1], _negate_component(v[2])]
+
+
+def _deep_merge(base: dict, over: dict) -> dict:
+    out = copy.deepcopy(base)
+    for k, v in (over or {}).items():
+        if k in _REPLACE_KEYS or not (isinstance(v, dict) and isinstance(out.get(k), dict)):
+            out[k] = copy.deepcopy(v)
+        else:
+            out[k] = _deep_merge(out[k], v)
+    return out
+
+
+def _apply_mirror(spec: dict) -> dict:
+    m = spec.get("mirror")
+    if not m:
+        return spec
+    src, tgt = m["source"], m["target"]
+    spec = copy.deepcopy(spec)
+
+    def rn(name):
+        return tgt + name[len(src):] if isinstance(name, str) and name.startswith(src) else name
+
+    # Emit ALL source-side entries first, then ALL mirrored entries, so each
+    # leg's joint chain stays contiguous (generate_mjcf groups by chain order).
+    links = spec.get("links", []) or []
+    spec["links"] = list(links) + [
+        {**lk, "name": rn(lk["name"])} for lk in links if lk["name"].startswith(src)
+    ]
+
+    joints = spec.get("joints", []) or []
+    mirrored = []
+    for j in joints:
+        if j["name"].startswith(src) or str(j.get("child", "")).startswith(src):
+            mj = copy.deepcopy(j)
+            mj["name"] = rn(j["name"])
+            mj["parent"] = rn(j["parent"])
+            mj["child"] = rn(j["child"])
+            mj["origin_expr"] = _mirror_position(j["origin_expr"])
+            mj["axis"] = _mirror_axis(j["axis"])
+            mj["positive_rotation"] = _mirror_text(j.get("positive_rotation", ""))
+            mj["purpose"] = _mirror_text(j.get("purpose", ""))
+            mirrored.append(mj)
+    spec["joints"] = list(joints) + mirrored
+
+    dl = ((spec.get("dynamics") or {}).get("links") or {})
+    for name in list(dl):
+        if name.startswith(src):
+            d = copy.deepcopy(dl[name])
+            if isinstance(d.get("com"), list):
+                d["com"] = _mirror_position(d["com"])
+            dl[rn(name)] = d
+
+    fois = spec.get("frames_of_interest", []) or []
+    spec["frames_of_interest"] = []
+    for foi in fois:
+        spec["frames_of_interest"].append(foi)
+        if str(foi.get("link", "")).startswith(src):
+            mf = copy.deepcopy(foi)
+            mf["name"] = rn(foi["name"])
+            mf["link"] = rn(foi["link"])
+            mf["xyz_expr"] = _mirror_position(foi["xyz_expr"])
+            if "description" in mf:
+                mf["description"] = _mirror_text(mf["description"])
+            spec["frames_of_interest"].append(mf)
+
+    act = (spec.get("dynamics") or {}).get("actuators") or {}
+    for blk in (act.get("overrides") or {}, (act.get("control") or {}).get("overrides") or {}):
+        for name in list(blk):
+            if name.startswith(src):
+                blk[rn(name)] = copy.deepcopy(blk[name])
+
+    return spec
+
+
+def _load_raw(path: str) -> dict:
+    with open(path, "r", encoding="utf-8") as fh:
         return yaml.safe_load(fh)
+
+
+def load_spec(path: str | None = None) -> dict:
+    """Load a YAML spec, applying `extends` (deep merge) then `mirror` expansion.
+
+    The returned spec is fully flat: `links`, `joints`, `dynamics.links` and
+    `frames_of_interest` list every side explicitly.
+    """
+    path = os.path.abspath(path or DEFAULT_CONFIG)
+    src = os.path.basename(path)
+    spec = _load_raw(path)
+    here = os.path.dirname(path)
+    while "extends" in spec:
+        parent_path = os.path.join(here, spec.pop("extends"))
+        parent = _load_raw(parent_path)
+        spec = _deep_merge(parent, spec)
+        here = os.path.dirname(os.path.abspath(parent_path))
+    spec = _apply_mirror(spec)
+    spec["_source"] = src
+    return spec
+
+
+def base_spec(spec: dict) -> dict:
+    """Floating vs fixed base config (MJCF).  Defaults to a fixed (welded) base."""
+    b = spec.get("base", {}) or {}
+    return {
+        "type": b.get("type", "fixed"),
+        "rest_pose": b.get("rest_pose"),
+        "rest_height": (float(b["rest_height"]) if b.get("rest_height") is not None else None),
+    }
 
 
 def resolve_symbols(spec: dict) -> Dict[str, float]:
@@ -340,8 +492,23 @@ def analysis_gravity(spec: dict) -> float:
 
 
 def reference_poses(spec: dict) -> Dict[str, Dict[str, float]]:
+    """Named joint configs.  A key like `*_hip_pitch` expands to every joint
+    whose name ends with `hip_pitch` (both legs)."""
     poses = (spec.get("analysis", {}) or {}).get("reference_poses", {}) or {}
-    return {name: {k: float(v) for k, v in (cfg or {}).items()} for name, cfg in poses.items()}
+    jnames = joint_names(spec)
+    out: Dict[str, Dict[str, float]] = {}
+    for name, cfg in poses.items():
+        expanded: Dict[str, float] = {}
+        for k, v in (cfg or {}).items():
+            if isinstance(k, str) and k.startswith("*_"):
+                suffix = k[2:]
+                for jn in jnames:
+                    if jn == suffix or jn.endswith("_" + suffix):
+                        expanded[jn] = float(v)
+            else:
+                expanded[k] = float(v)
+        out[name] = expanded
+    return out
 
 
 def pose_qpos(spec: dict, cfg: Dict[str, float]) -> list:

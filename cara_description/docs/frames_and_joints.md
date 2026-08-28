@@ -317,13 +317,22 @@ identically in both.
 MJCF specifics: the virtual coupling links are represented as **stacked
 `<joint>` on the physical body downstream** (MuJoCo needs positive mass on any
 DOF-carrying body, so they are not bodies and get no fake inertia).
-`generate_mjcf.py` has two modes: **kinematic** (`cara_left_leg.xml` — gravity
-off, non-colliding, no actuators; the FK-reference model) and **dynamic**
-(`--dynamic` → `cara_left_leg_dynamic.xml` — gravity, PD `<position>` servos,
-foot–ground contact). `scripts/validate_mjcf.py` confirms both reproduce
-`forward_kinematics` here to < 1e-16 m; `scripts/dynamic_check.py` runs the
-dynamic model under gravity + PD. Details in the README and
-`dynamics_notes.md` §8.
+`generate_mjcf.py` has two modes: **kinematic** (gravity off, non-colliding,
+no actuators; the FK-reference model) and **dynamic** (`--dynamic` — gravity,
+PD `<position>` servos, foot–ground contact, one `<keyframe>` per pose). The
+base is welded unless the YAML sets `base: {type: floating}`.
+
+The **lower body** (`config/cara_lower_body.yaml`) `extends` this file and adds
+`mirror: {source: l_, target: r_}` — `leg_model` reflects every `l_*`
+entity through the sagittal (x-z) plane: position `(x,y,z)→(x,−y,z)`, axis
+`(aₓ,a_y,a_z)→(−aₓ,a_y,−a_z)`, joint limits unchanged. The axis rule keeps
+`+angle` meaning the same physical motion on both legs. It also puts the
+pelvis on a floating base so the biped can stand.
+
+`scripts/validate_mjcf.py` confirms every model reproduces `forward_kinematics`
+to < 1e-15 m; `scripts/dynamic_check.py` runs the single leg under gravity+PD;
+`scripts/stand_check.py` holds the lower body's standing poses. Details in the
+README, `dynamics_notes.md` §8, and `standing_notes.md`.
 
 ---
 

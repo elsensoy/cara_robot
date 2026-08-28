@@ -49,7 +49,13 @@ def main(argv=None) -> int:
 
     import leg_model as lm
 
-    mjcf = args.mjcf or (DYNAMIC_MJCF if args.dynamic else KINEMATIC_MJCF)
+    if args.mjcf:
+        mjcf = args.mjcf
+    elif args.config:
+        stem = lm.load_spec(args.config)["meta"]["name"]
+        mjcf = os.path.join(_MJCF_DIR, stem + ("_dynamic.xml" if args.dynamic else ".xml"))
+    else:
+        mjcf = DYNAMIC_MJCF if args.dynamic else KINEMATIC_MJCF
 
     if args.regen:
         import generate_mjcf
@@ -68,7 +74,9 @@ def main(argv=None) -> int:
     model = mujoco.MjModel.from_xml_path(mjcf)
     data = mujoco.MjData(model)
 
-    pose = args.pose or ("zero" if args.dynamic else None)
+    default_pose = "stand_nominal" if model.nkey and mujoco.mj_name2id(
+        model, mujoco.mjtObj.mjOBJ_KEY, "stand_nominal") >= 0 else "zero"
+    pose = args.pose or (default_pose if args.dynamic else None)
     if pose:
         kid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_KEY, pose)
         if kid < 0:

@@ -141,8 +141,8 @@ def build_urdf(spec: dict) -> str:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("config", nargs="?", default=None, help="path to left_leg.yaml")
-    ap.add_argument("-o", "--output", default=DEFAULT_OUT, help="output URDF path")
+    ap.add_argument("config", nargs="?", default=None, help="path to a description YAML")
+    ap.add_argument("-o", "--output", default=None, help="output URDF path")
     ap.add_argument("--stdout", action="store_true", help="print to stdout, do not write")
     ap.add_argument("--check", action="store_true",
                     help="exit 1 if the on-disk URDF differs from a fresh render")
@@ -150,6 +150,8 @@ def main(argv=None) -> int:
 
     spec = lm.load_spec(args.config)
     text = build_urdf(spec)
+    args.output = args.output or os.path.normpath(
+        os.path.join(_HERE, os.pardir, "urdf", spec["meta"]["name"] + ".urdf"))
 
     if args.stdout:
         sys.stdout.write(text)

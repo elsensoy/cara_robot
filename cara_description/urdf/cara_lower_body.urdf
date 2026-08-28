@@ -1,0 +1,291 @@
+<?xml version="1.0"?>
+<!-- ===================================================================
+     GENERATED FILE. Do not edit by hand.
+     source : cara_description/config/left_leg.yaml
+     tool   : cara_description/scripts/generate_urdf.py
+     regen  : python3 scripts/generate_urdf.py
+
+     AUTHORITATIVE : joint origins / axes / limits / tree (kinematics).
+     PLACEHOLDER   : link mass / COM / inertia (dynamics: block,
+                     method-tagged); joint effort / velocity are TBD.
+     Virtual coupling links are bare frames on purpose (massless).
+     Frame convention: +X forward, +Y left, +Z up, right-handed.
+     ================================================================ -->
+<robot name="cara_lower_body">
+
+  <link name="pelvis">
+    <!-- role: base. Mass/COM/inertia PROVISIONAL (method: solid_box). TODO: replace with CAD. -->
+    <inertial>
+      <origin xyz="0 0 -0.01" rpy="0 0 0"/>
+      <mass value="1.1"/>
+      <inertia ixx="0.00279583333" ixy="0" ixz="0" iyy="0.00176916667" iyz="0" izz="0.00366666667"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.01" rpy="0 0 0"/>
+      <geometry><box size="0.12 0.16 0.07"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.01" rpy="0 0 0"/>
+      <geometry><box size="0.12 0.16 0.07"/></geometry>
+    </collision>
+  </link>
+
+  <link name="l_hip_yaw_link">
+    <!-- role: virtual_coupling. Virtual coincident-axis coupling link: massless abstraction, intentionally no inertial/visual/collision. -->
+  </link>
+
+  <link name="l_hip_roll_link">
+    <!-- role: virtual_coupling. Virtual coincident-axis coupling link: massless abstraction, intentionally no inertial/visual/collision. -->
+  </link>
+
+  <link name="l_thigh">
+    <!-- role: segment. Mass/COM/inertia PROVISIONAL (method: uniform_rod_z). TODO: replace with CAD. -->
+    <inertial>
+      <origin xyz="0 0 -0.066" rpy="0 0 0"/>
+      <mass value="0.22"/>
+      <inertia ixx="0.000264" ixy="0" ixz="0" iyy="0.000264" iyz="0" izz="5.324e-05"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.066" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.022" length="0.12"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.066" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.022" length="0.12"/></geometry>
+    </collision>
+  </link>
+
+  <link name="l_shin">
+    <!-- role: segment. Mass/COM/inertia PROVISIONAL (method: uniform_rod_z). TODO: replace with CAD. -->
+    <inertial>
+      <origin xyz="0 0 -0.0696" rpy="0 0 0"/>
+      <mass value="0.18"/>
+      <inertia ixx="0.000216" ixy="0" ixz="0" iyy="0.000216" iyz="0" izz="2.916e-05"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.0696" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.018" length="0.12"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.0696" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.018" length="0.12"/></geometry>
+    </collision>
+  </link>
+
+  <link name="l_ankle_link">
+    <!-- role: virtual_coupling. Virtual coincident-axis coupling link: massless abstraction, intentionally no inertial/visual/collision. -->
+  </link>
+
+  <link name="l_foot">
+    <!-- role: segment. Mass/COM/inertia PROVISIONAL (method: solid_box). TODO: replace with CAD. -->
+    <inertial>
+      <origin xyz="0.015 0 -0.0175" rpy="0 0 0"/>
+      <mass value="0.08"/>
+      <inertia ixx="2.16666667e-05" ixy="0" ixz="0" iyy="6.21666667e-05" iyz="0" izz="6.75e-05"/>
+    </inertial>
+    <visual>
+      <origin xyz="0.015 0 -0.0175" rpy="0 0 0"/>
+      <geometry><box size="0.09 0.045 0.035"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0.015 0 -0.0175" rpy="0 0 0"/>
+      <geometry><box size="0.09 0.045 0.035"/></geometry>
+    </collision>
+  </link>
+
+  <link name="r_hip_yaw_link">
+    <!-- role: virtual_coupling. Virtual coincident-axis coupling link: massless abstraction, intentionally no inertial/visual/collision. -->
+  </link>
+
+  <link name="r_hip_roll_link">
+    <!-- role: virtual_coupling. Virtual coincident-axis coupling link: massless abstraction, intentionally no inertial/visual/collision. -->
+  </link>
+
+  <link name="r_thigh">
+    <!-- role: segment. Mass/COM/inertia PROVISIONAL (method: uniform_rod_z). TODO: replace with CAD. -->
+    <inertial>
+      <origin xyz="0 0 -0.066" rpy="0 0 0"/>
+      <mass value="0.22"/>
+      <inertia ixx="0.000264" ixy="0" ixz="0" iyy="0.000264" iyz="0" izz="5.324e-05"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.066" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.022" length="0.12"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.066" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.022" length="0.12"/></geometry>
+    </collision>
+  </link>
+
+  <link name="r_shin">
+    <!-- role: segment. Mass/COM/inertia PROVISIONAL (method: uniform_rod_z). TODO: replace with CAD. -->
+    <inertial>
+      <origin xyz="0 0 -0.0696" rpy="0 0 0"/>
+      <mass value="0.18"/>
+      <inertia ixx="0.000216" ixy="0" ixz="0" iyy="0.000216" iyz="0" izz="2.916e-05"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.0696" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.018" length="0.12"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.0696" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.018" length="0.12"/></geometry>
+    </collision>
+  </link>
+
+  <link name="r_ankle_link">
+    <!-- role: virtual_coupling. Virtual coincident-axis coupling link: massless abstraction, intentionally no inertial/visual/collision. -->
+  </link>
+
+  <link name="r_foot">
+    <!-- role: segment. Mass/COM/inertia PROVISIONAL (method: solid_box). TODO: replace with CAD. -->
+    <inertial>
+      <origin xyz="0.015 0 -0.0175" rpy="0 0 0"/>
+      <mass value="0.08"/>
+      <inertia ixx="2.16666667e-05" ixy="0" ixz="0" iyy="6.21666667e-05" iyz="0" izz="6.75e-05"/>
+    </inertial>
+    <visual>
+      <origin xyz="0.015 0 -0.0175" rpy="0 0 0"/>
+      <geometry><box size="0.09 0.045 0.035"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0.015 0 -0.0175" rpy="0 0 0"/>
+      <geometry><box size="0.09 0.045 0.035"/></geometry>
+    </collision>
+  </link>
+
+  <joint name="l_hip_yaw" type="revolute">
+    <!-- purpose: Rotation of the whole leg about the vertical. Sets foot heading for turning and for directional foot placement. -->
+    <!-- +angle: toe yaws toward +Y (toe-out / outward heading) -->
+    <parent link="pelvis"/>
+    <child link="l_hip_yaw_link"/>
+    <origin xyz="0 0.05 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.79" upper="0.79" effort="3" velocity="6"/>  <!-- effort/velocity: TBD placeholder -->
+    <dynamics damping="0.0" friction="0.0"/>  <!-- TODO: measured -->
+  </joint>
+
+  <joint name="l_hip_roll" type="revolute">
+    <!-- purpose: Hip abduction/adduction. Lateral balance, stance width, side-stepping. -->
+    <!-- +angle: thigh abducts - knee moves toward +Y, away from midline -->
+    <parent link="l_hip_yaw_link"/>
+    <child link="l_hip_roll_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-0.52" upper="0.61" effort="3" velocity="6"/>  <!-- effort/velocity: TBD placeholder -->
+    <dynamics damping="0.0" friction="0.0"/>  <!-- TODO: measured -->
+  </joint>
+
+  <joint name="l_hip_pitch" type="revolute">
+    <!-- purpose: Fore/aft thigh swing. Primary driver of walking stride length. -->
+    <!-- +angle: thigh swings REARWARD (hip extension); negative = forward flexion -->
+    <parent link="l_hip_roll_link"/>
+    <child link="l_thigh"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.75" upper="1.05" effort="3" velocity="6"/>  <!-- effort/velocity: TBD placeholder -->
+    <dynamics damping="0.0" friction="0.0"/>  <!-- TODO: measured -->
+  </joint>
+
+  <joint name="l_knee_pitch" type="revolute">
+    <!-- purpose: Knee flexion; extension is blocked at 0. Swing-leg ground clearance, stance-phase shock absorption, crouch depth. -->
+    <!-- +angle: shin swings rearward relative to thigh (knee FLEXION) -->
+    <parent link="l_thigh"/>
+    <child link="l_shin"/>
+    <origin xyz="0 0 -0.12" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="0" upper="2.36" effort="3" velocity="6"/>  <!-- effort/velocity: TBD placeholder -->
+    <dynamics damping="0.0" friction="0.0"/>  <!-- TODO: measured -->
+  </joint>
+
+  <joint name="l_ankle_pitch" type="revolute">
+    <!-- purpose: Ankle plantar/dorsiflexion. Fore/aft centre-of-pressure control, push-off, swing-phase toe clearance. -->
+    <!-- +angle: toe drops (plantarflexion); negative = dorsiflexion -->
+    <parent link="l_shin"/>
+    <child link="l_ankle_link"/>
+    <origin xyz="0 0 -0.12" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.87" upper="0.61" effort="2" velocity="6"/>  <!-- effort/velocity: TBD placeholder -->
+    <dynamics damping="0.0" friction="0.0"/>  <!-- TODO: measured -->
+  </joint>
+
+  <joint name="l_ankle_roll" type="revolute">
+    <!-- purpose: Sole tilt. Lateral centre-of-pressure control, adaptation to uneven ground. -->
+    <!-- +angle: sole tilts outer-edge-up (inversion) -->
+    <parent link="l_ankle_link"/>
+    <child link="l_foot"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-0.44" upper="0.44" effort="2" velocity="6"/>  <!-- effort/velocity: TBD placeholder -->
+    <dynamics damping="0.0" friction="0.0"/>  <!-- TODO: measured -->
+  </joint>
+
+  <joint name="r_hip_yaw" type="revolute">
+    <!-- purpose: Rotation of the whole leg about the vertical. Sets foot heading for turning and for directional foot placement. -->
+    <!-- +angle: toe yaws toward -Y (toe-out / outward heading) -->
+    <parent link="pelvis"/>
+    <child link="r_hip_yaw_link"/>
+    <origin xyz="0 -0.05 0" rpy="0 0 0"/>
+    <axis xyz="0 0 -1"/>
+    <limit lower="-0.79" upper="0.79" effort="3" velocity="6"/>  <!-- effort/velocity: TBD placeholder -->
+    <dynamics damping="0.0" friction="0.0"/>  <!-- TODO: measured -->
+  </joint>
+
+  <joint name="r_hip_roll" type="revolute">
+    <!-- purpose: Hip abduction/adduction. Lateral balance, stance width, side-stepping. -->
+    <!-- +angle: thigh abducts - knee moves toward -Y, away from midline -->
+    <parent link="r_hip_yaw_link"/>
+    <child link="r_hip_roll_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="-1 0 0"/>
+    <limit lower="-0.52" upper="0.61" effort="3" velocity="6"/>  <!-- effort/velocity: TBD placeholder -->
+    <dynamics damping="0.0" friction="0.0"/>  <!-- TODO: measured -->
+  </joint>
+
+  <joint name="r_hip_pitch" type="revolute">
+    <!-- purpose: Fore/aft thigh swing. Primary driver of walking stride length. -->
+    <!-- +angle: thigh swings REARWARD (hip extension); negative = forward flexion -->
+    <parent link="r_hip_roll_link"/>
+    <child link="r_thigh"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.75" upper="1.05" effort="3" velocity="6"/>  <!-- effort/velocity: TBD placeholder -->
+    <dynamics damping="0.0" friction="0.0"/>  <!-- TODO: measured -->
+  </joint>
+
+  <joint name="r_knee_pitch" type="revolute">
+    <!-- purpose: Knee flexion; extension is blocked at 0. Swing-leg ground clearance, stance-phase shock absorption, crouch depth. -->
+    <!-- +angle: shin swings rearward relative to thigh (knee FLEXION) -->
+    <parent link="r_thigh"/>
+    <child link="r_shin"/>
+    <origin xyz="0 0 -0.12" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="0" upper="2.36" effort="3" velocity="6"/>  <!-- effort/velocity: TBD placeholder -->
+    <dynamics damping="0.0" friction="0.0"/>  <!-- TODO: measured -->
+  </joint>
+
+  <joint name="r_ankle_pitch" type="revolute">
+    <!-- purpose: Ankle plantar/dorsiflexion. Fore/aft centre-of-pressure control, push-off, swing-phase toe clearance. -->
+    <!-- +angle: toe drops (plantarflexion); negative = dorsiflexion -->
+    <parent link="r_shin"/>
+    <child link="r_ankle_link"/>
+    <origin xyz="0 0 -0.12" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.87" upper="0.61" effort="2" velocity="6"/>  <!-- effort/velocity: TBD placeholder -->
+    <dynamics damping="0.0" friction="0.0"/>  <!-- TODO: measured -->
+  </joint>
+
+  <joint name="r_ankle_roll" type="revolute">
+    <!-- purpose: Sole tilt. Lateral centre-of-pressure control, adaptation to uneven ground. -->
+    <!-- +angle: sole tilts outer-edge-up (inversion) -->
+    <parent link="r_ankle_link"/>
+    <child link="r_foot"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="-1 0 0"/>
+    <limit lower="-0.44" upper="0.44" effort="2" velocity="6"/>  <!-- effort/velocity: TBD placeholder -->
+    <dynamics damping="0.0" friction="0.0"/>  <!-- TODO: measured -->
+  </joint>
+
+</robot>
