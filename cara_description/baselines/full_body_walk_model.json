@@ -1,0 +1,182 @@
+{
+  "model": "cara_full_body",
+  "m_total": 4.43,
+  "z_com": 0.2980632829146795,
+  "omega0": 5.736939413542072,
+  "a_x": 0.045,
+  "a_y": 0.0225,
+  "s_half": 0.05,
+  "lateral_T_min_s": 0.21557881964546163,
+  "lateral_cycle": [
+    {
+      "T": 0.15,
+      "com_vel_handoff": -0.11633001675470288,
+      "com_peak": -0.00429629716844458,
+      "dcm_y": 0.020277365398021344,
+      "margin_inner_mm": -7.22263460197866,
+      "margin_outer_mm": 52.22263460197866,
+      "feasible": false
+    },
+    {
+      "T": 0.2,
+      "com_vel_handoff": -0.14860593790468554,
+      "com_peak": -0.007232996784796397,
+      "dcm_y": 0.02590334796876197,
+      "margin_inner_mm": -1.5966520312380335,
+      "margin_outer_mm": 46.596652031238044,
+      "feasible": false
+    },
+    {
+      "T": 0.25,
+      "com_vel_handoff": -0.17644547928964543,
+      "com_peak": -0.010578348158912794,
+      "dcm_y": 0.030756029752230792,
+      "margin_inner_mm": 3.2560297522307886,
+      "margin_outer_mm": 41.74397024776921,
+      "feasible": true
+    },
+    {
+      "T": 0.3,
+      "com_vel_handoff": -0.19979931594070263,
+      "com_peak": -0.014123920242354244,
+      "dcm_y": 0.034826812963908146,
+      "margin_inner_mm": 7.326812963908143,
+      "margin_outer_mm": 37.67318703609186,
+      "feasible": true
+    },
+    {
+      "T": 0.4,
+      "com_vel_handoff": -0.234321529746897,
+      "com_peak": -0.02116010535958911,
+      "dcm_y": 0.040844344493821905,
+      "margin_inner_mm": 13.3443444938219,
+      "margin_outer_mm": 31.655655506178103,
+      "feasible": true
+    },
+    {
+      "T": 0.6,
+      "com_vel_handoff": -0.2690604979549693,
+      "com_peak": -0.032667312526029293,
+      "dcm_y": 0.046899658260265174,
+      "margin_inner_mm": 19.39965826026517,
+      "margin_outer_mm": 25.600341739734834,
+      "feasible": true
+    },
+    {
+      "T": 1.0,
+      "com_vel_handoff": -0.28500297053374085,
+      "com_peak": -0.04433967650747306,
+      "dcm_y": 0.04967857423437138,
+      "margin_inner_mm": 22.178574234371375,
+      "margin_outer_mm": 22.82142576562863,
+      "feasible": true
+    }
+  ],
+  "forward_cycle": [
+    {
+      "T": 0.3,
+      "v": 0.05,
+      "step_len_mm": 15.0,
+      "com_start_mm": -4.55382560028369,
+      "dcm_rel_newfoot_mm": 8.265857489729092,
+      "cop_margin_mm": 36.73414251027091,
+      "feasible": true
+    },
+    {
+      "T": 0.4,
+      "v": 0.05,
+      "step_len_mm": 20.000000000000004,
+      "com_start_mm": -5.683431302622798,
+      "dcm_rel_newfoot_mm": 10.084313952547912,
+      "cop_margin_mm": 34.915686047452084,
+      "feasible": true
+    },
+    {
+      "T": 0.5,
+      "v": 0.05,
+      "step_len_mm": 25.0,
+      "com_start_mm": -6.573412141963639,
+      "dcm_rel_newfoot_mm": 12.721365271592802,
+      "cop_margin_mm": 32.2786347284072,
+      "feasible": true
+    },
+    {
+      "T": 0.7,
+      "v": 0.05,
+      "step_len_mm": 34.99999999999999,
+      "com_start_mm": -7.726769272464572,
+      "dcm_rel_newfoot_mm": 19.842873334293124,
+      "cop_margin_mm": 25.157126665706873,
+      "feasible": true
+    },
+    {
+      "T": 1.0,
+      "v": 0.05,
+      "step_len_mm": 50.0,
+      "com_start_mm": -8.447286413534455,
+      "dcm_rel_newfoot_mm": 33.16077051277996,
+      "cop_margin_mm": 11.839229487220035,
+      "feasible": true
+    },
+    {
+      "T": 1.5,
+      "v": 0.05,
+      "step_len_mm": 75.00000000000001,
+      "com_start_mm": -8.691163944286862,
+      "dcm_rel_newfoot_mm": 57.62085948204218,
+      "cop_margin_mm": -12.620859482042182,
+      "feasible": false
+    }
+  ],
+  "feasibility_map": {
+    "15.0mm": {
+      "0.12": false,
+      "0.15": false,
+      "0.18": false,
+      "0.22": false,
+      "0.28": false,
+      "0.35": true,
+      "0.50": true
+    },
+    "22.5mm": {
+      "0.12": false,
+      "0.15": false,
+      "0.18": false,
+      "0.22": true,
+      "0.28": true,
+      "0.35": true,
+      "0.50": true
+    },
+    "30.0mm": {
+      "0.12": false,
+      "0.15": true,
+      "0.18": true,
+      "0.22": true,
+      "0.28": true,
+      "0.35": true,
+      "0.50": true
+    },
+    "40.0mm": {
+      "0.12": true,
+      "0.15": true,
+      "0.18": true,
+      "0.22": true,
+      "0.28": true,
+      "0.35": true,
+      "0.50": true
+    },
+    "50.0mm": {
+      "0.12": true,
+      "0.15": true,
+      "0.18": true,
+      "0.22": true,
+      "0.28": true,
+      "0.35": true,
+      "0.50": true
+    }
+  },
+  "omega_check": {
+    "omega0_lipm": 5.736939413542072,
+    "rate_mujoco": 5.072708514093621
+  }
+}

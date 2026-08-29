@@ -21,11 +21,12 @@ a full robot, not CAD, not a policy, and has no upper body yet.
 | ✅ | **U7 — single-foot unloading MET** — the other foot reaches ~0 N with the COM +13 mm inside the *stance* foot polygon, free foot 1 mm off the ground |
 | ✅ | **U8 — first single-support milestone MET** — Cara stands on one foot (free foot 5–10 mm clear) ~1.5 s and returns to double support, both sides, with a minimal roll trim |
 | ✅ | **U9 — single-support balance MET** — a COM-feedback controller holds one-foot balance ≥ 5 s (COM drift 2.3 mm, tilt 2.8°) and rejects a small lateral push (~1 N·100 ms toward swing, ~3 N toward stance), both sides |
-| ✅ | validation + FK + plausibility + standing + weight-shift + unload + lift + balance + one-step + short-walk scripts, and COM / whole-body-inertia / gravity-torque / Jacobian / sweep analysis |
+| ✅ | validation + FK + plausibility + standing + weight-shift + unload + lift + balance + one-step + short-walk scripts, a LIPM / capture-point walking model, and COM / whole-body-inertia / gravity-torque / Jacobian / sweep analysis |
 | 🔶 | dynamics — mass / COM / inertia / actuator limits / PD gains **provisional**; U7–U11 feedback gains hand-picked |
 | ❌ | waist joints, articulated neck / shoulders / ears (all present structurally, locked at 0 for now) |
 | ❌ | CAD geometry, servo brackets, wiring, shells |
-| ❌ | **a continuous / dynamic walking gait** (U12 hit the foot-size CoP wall — needs a ZMP/capture-point controller or wider feet), turning / slopes, a sideways step, sagittal balance feedback, RL |
+| 🔶 | **a dynamic walking gait** — U12's *kinematic* attempt failed, but U13's LIPM/capture-point model shows a dynamic walk IS feasible (`T_min ≈ 0.22 s`); U14 = a DCM-tracking controller |
+| ❌ | turning / slopes, a sideways step, sagittal balance feedback, RL |
 
 Design constraint being followed: **kinematics, dynamics, and manufacturing
 are kept separate.** The YAML is layered accordingly. No servo is selected;
@@ -62,6 +63,7 @@ cara_description/
 │   ├── step_once.py             # U10: one deliberate forward step -- shift/lift/swing/place/transfer -> stable staggered stance  (--view)
 │   ├── gait.py                  # U11: chain the U10 step, alternating legs -> a short quasi-static walk  (--view)
 │   ├── walk.py                  # U12: continuous-walk attempt -- precomputed periodic cycle; DOCUMENTS the dynamic-walk limit  (--view)
+│   ├── walk_model.py            # U13: reduced-order LIPM / DCM model -- predicts the feasible dynamic gait; pure Python (--check adds a MuJoCo omega0 cross-check)
 │   ├── view_mujoco.py           # load a generated MJCF and open mujoco.viewer
 │   ├── center_of_mass.py        # whole-model COM for any joint configuration
 │   ├── gravity_torques.py       # gravitational joint torques for reference poses
@@ -479,11 +481,14 @@ Balance / control (the boundary — new controllers start here):
 - **U11 a short walk** ✅ (`gait.py`; chains the U10 step, alternating legs — 4
   quasi-static steps forward, 110 mm, periodic cycle, ends standing; `stride`
   ≲ 25 mm, forward / straight / flat)
-- **U12 continuous walk** ❌ **documented limit** (`walk.py`; precomputed periodic
-  cycle + gated roll trim — fast: topples at the double-support transfer (the U9
-  CoP wall); slow: upright but no forward drive. Needs a dynamic gait controller
-  / wider feet. U11 stepping stays Cara's locomotion)
-- **U13+** a dynamic gait controller (ZMP / capture-point + push-off) or a
-  hardware revision (wider feet) → RL / learned policy
+- **U12 continuous *kinematic* walk** ❌ **formulation wall** (`walk.py`;
+  precomputed pose cycle + gated roll trim — fast: topples at the transfer; slow:
+  no forward drive)
+- **U13 reduced-order walking model** ✅ (`walk_model.py`; LIPM + capture point,
+  pure Python. **A dynamic walk IS within Cara's morphology** — lateral
+  `T_min ≈ 0.22 s`, forward roomier; ω₀ = 5.7 /s cross-checks against MuJoCo. The
+  U12 wall was the formulation, not the feet)
+- **U14+** a DCM-tracking walk (plan CoP + footholds from U13, track the DCM) →
+  RL / learned policy
 
 CAD/measured values replace every `TODO` before single-support locomotion.

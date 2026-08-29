@@ -305,3 +305,18 @@ analysis:
       speed_consistency: 0.35      # std/mean of the per-step forward speed (start-stop stepping ~1)
       min_speed_frac: 0.5         # mean forward speed >= this * commanded
       tail_hold_drift: 0.012      # m, COM drift over the stop-and-stand
+
+  # --- U13: REDUCED-ORDER WALKING MODEL (scripts/walk_model.py)
+  # Stop replaying joint poses (U12); predict where the COM must go for a valid
+  # step with the linear inverted pendulum + capture point (DCM):
+  #   x'' = omega0^2 (x - p),  omega0 = sqrt(g / z_com),  xi = x + x'/omega0
+  # PURE-PYTHON analysis -- omega0, foot geometry and stance width come from the
+  # model + provisional_geometry; this block only holds the sweep ranges.
+  # Finding: a dynamically-consistent walk IS within Cara's morphology
+  # (lateral T_min ~= 0.22 s, forward roomier) -- U12's wall was the formulation.
+  lipm:
+    target_speed: 0.050         # m/s, forward speed for the forward-cycle table
+    step_times:    [0.15, 0.20, 0.25, 0.30, 0.40, 0.60, 1.00]   # s, lateral-cycle table
+    fwd_step_times: [0.30, 0.40, 0.50, 0.70, 1.00, 1.50]         # s, forward-cycle table
+    foot_half_widths: [0.015, 0.0225, 0.030, 0.040, 0.050]      # m, feasibility-map rows
+    map_step_times:  [0.12, 0.15, 0.18, 0.22, 0.28, 0.35, 0.50] # s, feasibility-map cols

@@ -1,4 +1,4 @@
-# Cara — Single support, the first step, a short walk, and the dynamic-walk wall (U7 → U12)
+# Cara — Single support → stepping → the reduced-order walking model (U7 → U13)
 
 Companion to [`weight_shift_notes.md`](weight_shift_notes.md). This is the first
 work **past the morphology boundary** — U1–U6 validated the whole-body mass model
@@ -8,7 +8,8 @@ work **past the morphology boundary** — U1–U6 validated the whole-body mass 
 … static standing ✅ → weight shifting ✅ → morphology U1–U6 ✅  ──┼── boundary
     U7 unload one foot ✅ → U8 lift one foot ✅ → U9 single-support balance ✅
       → U10 one forward step ✅ → U11 a short quasi-static walk ✅
-      → U12 continuous walk ❌ (design limit — this doc) → dynamic gait controller / wider feet → …
+      → U12 continuous *kinematic* walk ❌ (formulation wall) → U13 reduced-order
+        model ✅ (a dynamic walk IS feasible — this doc) → U14 DCM-tracking walk → …
 ```
 
 Still transparent — the same frontal-plane IK from `weight_shift.py`, plus a
@@ -388,3 +389,93 @@ Two distinct walls, both structural:
 **Quasi-static stepping (U11) remains Cara's locomotion** until one of those
 lands. `walk.py` stays in the tree as the generator + the honest failure
 characterisation (it prints which wall it hit and ties it to the U9 numbers).
+
+---
+
+## Phase U13 — the reduced-order walking model (LIPM / DCM)
+
+Script: `scripts/walk_model.py` (**pure Python** — no sim needed; `--check`
+adds a MuJoCo cross-check). U12 replayed joint poses and hit walls; U13 stops
+replaying and starts **predicting where the COM must go** for a dynamically
+valid step, with the linear inverted pendulum + capture point:
+
+```
+x'' = ω₀² (x − p),   ω₀ = √(g / z_com),   ξ = x + ẋ/ω₀   (the DCM / capture point)
+```
+
+Closed form over a step (`p` constant): `x(T) = p + (x₀−p)cosh ω₀T + (ẋ₀/ω₀)sinh ω₀T`;
+the DCM diverges as `ξ(T) = p + (ξ₀−p)e^{ω₀T}`. **The DCM is what the next
+foot has to catch** — exactly the hand-off that failed in U12.
+
+### Cara's LIPM parameters (from the model + `provisional_geometry`)
+
+| | value |
+|---|---|
+| total mass | 4.43 kg |
+| COM height `z_com` | 298 mm |
+| **ω₀ = √(g/z)** | **5.74 rad/s** (τ = 174 ms) — MuJoCo cross-check: released-lean divergence fits **5.1 /s**, consistent |
+| foot half-length `a_x` (fore/aft CoP range) | 45 mm |
+| foot half-width `a_y` (lateral CoP range) | 22.5 mm |
+| foot lateral offset `s` (½ stance width) | 50 mm |
+
+### Lateral limit cycle — the side-to-side rock
+
+With the CoP at the stance-foot centre, the symmetric periodic solution has the
+COM **crossing the midline at every L↔R hand-off** with the DCM at
+`ξ_y = s·tanh(ω₀T/2)`. For the next foot to catch it: `ξ_y ≥ s − a_y`, i.e.
+
+> **`T ≥ T_min = (2/ω₀)·atanh(1 − a_y/s) ≈ 0.22 s`.**
+
+| step time `T` | sway peak | DCM_y at hand-off | inner margin | feasible |
+|---|---|---|---|---|
+| 0.20 s | 7 mm | 26 mm | −1.6 mm | **no** (topple inward) |
+| 0.25 s | 11 mm | 31 mm | +3.3 mm | yes |
+| 0.30 s | 14 mm | 35 mm | +7.3 mm | yes |
+| 0.40 s | 21 mm | 41 mm | +13 mm | yes |
+| 1.00 s | 44 mm | 50 mm | +22 mm | yes (→ one-foot stance, i.e. U11) |
+
+**A dynamic lateral rock is feasible for Cara for step times ≳ 0.22 s.** The
+22.5 mm foot is *enough* — U12's slow runs (`t_step` 3.5–8 s ≫ T_min) did stay
+upright; U12's fast run toppled because the hand-picked sway + static-hold trim
+**did not follow the pendulum**, not because the morphology forbids it.
+
+### Forward motion
+
+Roomier — the fore/aft CoP range is `a_x` = 45 mm (2× the lateral). At 50 mm/s
+the DCM lands 8–20 mm ahead of the new foothold for `T` = 0.3–0.7 s (CoP margin
+25–37 mm); it only runs out past `T` ≈ 1.4 s (75 mm steps). U12's slow run had
+no forward speed because kinematic playback carries no momentum — the planner
+has to command the forward lean (DCM offset `v/ω₀` ≈ 9 mm) and place each foot
+*ahead of* the DCM.
+
+### Feasibility map — foot half-width × step time
+
+```
+     a_y \ T   0.12  0.15  0.18  0.22  0.28  0.35  0.50        T_min
+    15.0 mm     .     .     .     .     .     Y     Y           302 ms
+    22.5 mm     .     .     .     Y     Y     Y     Y   ← Cara   216 ms
+    30.0 mm     .     Y     Y     Y     Y     Y     Y           148 ms
+    40.0 mm     Y     Y     Y     Y     Y     Y     Y            71 ms
+```
+
+Widening the foot lowers `T_min` (more time before the DCM must reach the foot),
+but Cara **already lands in the feasible region** at sensible step times.
+
+### Finding
+
+> **A dynamically-consistent walk is within Cara's current morphology.** The U12
+> wall was the *kinematic formulation* (replay a fixed pose cycle + a
+> static-hold trim), not the hardware. **U14** is a DCM-tracking walk: plan the
+> CoP trajectory and footholds from this model (`walk_model.py` gives `T_min`,
+> the sway, the foothold offsets), then drive the legs to track the planned DCM
+> — no fixed pose cycle, U9's roll term repurposed as a DCM feedback law.
+> `baselines/full_body_walk_model.json` freezes the numbers.
+
+### Caveats
+
+- Point-mass LIPM — no trunk/leg angular momentum, no knee-height variation, no
+  finite-time double support. It's a *planning* model; U14's controller closes
+  the gap to the full dynamics (the ω₀ cross-check already shows ~12 % model
+  error from leg compliance).
+- CoP fixed at the foot centre in the limit-cycle solve — the real ±`a_y` CoP
+  range is margin against disturbance, not yet spent here.
