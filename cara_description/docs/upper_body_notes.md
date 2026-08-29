@@ -13,7 +13,7 @@ to stand and weight-shift with the existing joint PD, no new controllers).
 **U7 onward is balance / control.**
 
 ```
-lower body ✅  →  U1 torso ✅  →  U2 head/neck ✅  →  U3 Jetson+battery  →
+lower body ✅  →  U1 torso ✅  →  U2 head/neck ✅  →  U3 Jetson+battery ✅  →
 U4 passive arms  →  U5 ears + head inertia  →  U6 full regression  ──┼── boundary
                                               U7 unload a foot  →  U8 lift a foot  → …
 ```
@@ -26,16 +26,16 @@ U4 passive arms  →  U5 ears + head inertia  →  U6 full regression  ──┼
 config/
 ├── left_leg.yaml          SSOT: one leg + pelvis, fixed base
 ├── cara_lower_body.yaml    extends left_leg + mirror l→r + floating pelvis + standing/shift poses
-├── cara_upper_body.yaml    FRAGMENT (not runnable alone): torso (U1) + head/neck (U2) [+ arms/ears later]
-│                           -- links + joints + dynamics + an `upper_body:` param block
+├── cara_upper_body.yaml    FRAGMENT (not runnable alone): torso (U1) + head/neck (U2) + electronics (U3) [+ arms/ears later]
+│                           -- links + joints + dynamics + `upper_body:` / `electronics:` param blocks
 └── cara_full_body.yaml     extends cara_lower_body + include cara_upper_body
 ```
 
 **Load pipeline** (`leg_model.load_spec`): `extends` (deep-merge) → `include`
 (additive: append `links`/`joints`/`frames_of_interest`, merge `dynamics.links`
-and the `upper_body:` param block) → `mirror` (once — expands l→r for legs and,
-later, arms and ears together). Existing single-file / lower-body paths are
-byte-identical.
+and the `upper_body:` / `electronics:` param blocks) → `_resolve_mounts` (wire
+`mount_from` joints to a mount preset) → `mirror` (once). Existing single-file
+and lower-body paths are byte-identical.
 
 `upper_body.*` numeric leaves become expression symbols
 (`upper_body.torso.com_z` → `torso_com_z`), referenced by joint origins and
@@ -186,8 +186,72 @@ whole-body COM and actuator demand is quantified and monotonic.
 
 ---
 
-## Open TODOs (U1–U2)
+## Phase U3 — Jetson + battery, placement study
 
-- [ ] Replace every `upper_body.*` and `dynamics.links.{torso,head}.*` value with CAD / measured.
-- [ ] Weld height / neck base / head COM are guesses — they move both the COM and the shift limit.
-- [ ] U3: Jetson + battery as explicit lumped masses with candidate placement parameters.
+Two lumped masses welded to a **switchable** mount point:
+
+| item | provisional mass | `TODO` |
+|---|---|---|
+| Jetson (module + carrier + heatsink) | 0.15 kg | measured |
+| battery (2S LiPo ~5000 mAh) | 0.25 kg | measured |
+
+`electronics.mounts` is a table of candidate points `{link, x/y/z offset}`;
+`electronics.jetson.mount` / `.battery.mount` name one. A joint with
+`mount_from: electronics.jetson.mount` gets its parent + origin resolved from
+that preset (`leg_model._resolve_mounts`); `leg_model.apply_electronics_layout`
+switches it at run time. Mass is `mass: jetson_mass` — one source of truth
+(`link_inertials` now evaluates `mass` as an expression too).
+
+Candidate mount points (`z` in the parent link's frame): `pelvis_low` (−0.030,
+in the pelvis near the hips), `pelvis_top` (+0.020), `torso_low` (+0.015),
+`torso_mid` (+0.075), `torso_high` (+0.130).
+
+### Placement comparison — `placement_study.py` (0.40 kg to place)
+
+```
+python3 scripts/placement_study.py config/cara_full_body.yaml
+```
+
+| layout | jetson / battery | COM vs pelvis | worst knee τ | shift limit |
+|--------|------------------|---------------|--------------|-------------|
+| `both_pelvis_low` | pelvis_low / pelvis_low | **+17.3 mm** | 1.126 N·m | 0.030 m |
+| `battery_low_jetson_torso` | torso_mid / pelvis_low | +22.5 mm | 1.137 N·m | 0.030 m |
+| `both_torso_low` | torso_low / torso_low | +25.3 mm | 1.146 N·m | 0.030 m |
+| `both_torso_mid` | torso_mid / torso_mid | +31.2 mm | 1.153 N·m | 0.030 m |
+| `both_high` | torso_high / torso_high | +36.7 mm | 1.159 N·m | **0.020 m** |
+
+- **COM spread +19 mm** across the placement options — putting the 0.40 kg low
+  in the pelvis keeps the whole-body COM ~20 mm lower than "everything high".
+- **Knee torque barely moves** (+0.03 N·m) — the electronics are proximal to
+  the knee (they hang off the pelvis/torso, short moment arm at these poses).
+- **Weight-shift envelope: `both_high` costs 0.01 m** (0.030 → 0.020) — a third
+  of the envelope — while every low/mid placement keeps it at ~0.030 m.
+- Read-off: **low in the pelvis** is the stability-preferred placement; the
+  penalty for going higher is COM height and (past `torso_mid`) the shift
+  envelope, not standing torque. `placement_study.py` reports; it does **not**
+  choose.
+
+### Full upper body vs the frozen lower-body baseline
+
+Torso + head + electronics = **2.06 → 4.01 kg** (nearly ×2); whole-body COM
+−72 mm → **+17 mm** (above the pelvis).
+
+- **Standing** (`stand_check.py --baseline`): all 3 poses PASS. semi_squat
+  tilt 1.30° (+1.00), peak knee torque 1.07 N·m (+0.67 — worst pose; PD
+  transients reach ~2.4 N·m of the ±3 N·m provisional limit).
+- **Weight shift**: the ±0.03 m demo now **fails on foot slip** (3.1 mm of a
+  3 mm budget); ±0.025 m passes cleanly (2.0 mm). The full-body quasi-static
+  envelope is **~0.025 m** — down from the lower body's 0.04 m and U2's 0.03 m.
+  Standing is unaffected; only the *dynamic* shift margin tightens.
+
+**U3 acceptance criterion met:** for every candidate placement the whole-body
+COM, support margin, joint torque, tilt and weight-shift envelope are reported;
+no placement is chosen automatically.
+
+---
+
+## Open TODOs (U1–U3)
+
+- [ ] Replace every `upper_body.*` / `electronics.*` / `dynamics.links.*` value with CAD / measured.
+- [ ] Mount offsets are guesses — `pelvis_low` at −30 mm assumes there is room below the pelvis frame.
+- [ ] U4: left/right arm masses in a neutral pose (mirror-generated), no articulation.

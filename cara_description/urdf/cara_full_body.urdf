@@ -135,6 +135,40 @@
     </collision>
   </link>
 
+  <link name="jetson">
+    <!-- role: segment. Mass/COM/inertia PROVISIONAL (method: solid_box). TODO: replace with CAD. -->
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.15"/>
+      <inertia ixx="7.25e-05" ixy="0" ixz="0" iyy="7.25e-05" iyz="0" izz="0.0001225"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.07 0.07 0.03"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.07 0.07 0.03"/></geometry>
+    </collision>
+  </link>
+
+  <link name="battery">
+    <!-- role: segment. Mass/COM/inertia PROVISIONAL (method: solid_box). TODO: replace with CAD. -->
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.25"/>
+      <inertia ixx="9.375e-05" ixy="0" ixz="0" iyy="0.0001875" iyz="0" izz="0.00024375"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.09 0.06 0.03"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.09 0.06 0.03"/></geometry>
+    </collision>
+  </link>
+
   <link name="r_hip_yaw_link">
     <!-- role: virtual_coupling. Virtual coincident-axis coupling link: massless abstraction, intentionally no inertial/visual/collision. -->
   </link>
@@ -290,6 +324,20 @@
     <parent link="neck_roll_link"/>
     <child link="head"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="mount_jetson" type="fixed">
+    <!-- declared type: fixed -->
+    <parent link="pelvis"/>
+    <child link="jetson"/>
+    <origin xyz="0 0 -0.03" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="mount_battery" type="fixed">
+    <!-- declared type: fixed -->
+    <parent link="pelvis"/>
+    <child link="battery"/>
+    <origin xyz="0 0 -0.03" rpy="0 0 0"/>
   </joint>
 
   <joint name="r_hip_yaw" type="revolute">

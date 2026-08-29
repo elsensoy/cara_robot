@@ -231,11 +231,48 @@ def load_spec(path: str | None = None) -> dict:
     for inc in spec.pop("include", []) or []:
         frag = _load_raw(os.path.join(here, inc))
         spec = _merge_include(spec, frag, inc)
+    _resolve_mounts(spec)
     mirrored = bool(spec.get("mirror"))
     spec = _apply_mirror(spec)
     spec["_source"] = src
     spec["_mirrored"] = mirrored
     return spec
+
+
+def _resolve_mounts(spec: dict) -> None:
+    """Wire up `mount_from` joints (electronics).  A joint with
+        mount_from: electronics.jetson.mount
+    takes its `parent` and `origin_expr` from the named mount preset in
+    `electronics.mounts[<that value>]` = {link, x, y, z}.  `mount_from` is kept
+    on the joint so the wiring can be re-resolved after a placement override.
+    """
+    mounts = (spec.get("electronics", {}) or {}).get("mounts", {}) or {}
+    for j in spec.get("joints", []) or []:
+        ref = j.get("mount_from")
+        if not ref:
+            continue
+        node = spec
+        for k in ref.split("."):
+            node = node[k]
+        preset = mounts[node]
+        j["parent"] = preset["link"]
+        j["origin_expr"] = [float(preset.get("x", 0.0)),
+                            float(preset.get("y", 0.0)),
+                            float(preset.get("z", 0.0))]
+
+
+def apply_electronics_layout(spec: dict, layout: Dict[str, str]) -> dict:
+    """Set `electronics.<item>.mount = <preset>` for each item in `layout`
+    ({'jetson': 'torso_mid', 'battery': 'pelvis_low'}) and re-resolve the mount
+    joints, in place.  Returns the spec."""
+    for item, preset in layout.items():
+        spec.setdefault("electronics", {}).setdefault(item, {})["mount"] = preset
+    _resolve_mounts(spec)
+    return spec
+
+
+def electronics_layouts(spec: dict) -> Dict[str, Dict[str, str]]:
+    return dict((spec.get("electronics", {}) or {}).get("layouts", {}) or {})
 
 
 def base_spec(spec: dict) -> dict:
@@ -570,7 +607,7 @@ def link_inertials(spec: dict) -> Dict[str, LinkInertial]:
     for name, d in dyn.items():
         if not (d or {}).get("is_physical", False):
             continue
-        m = float(d["mass"])
+        m = eval_expr(d["mass"], syms)   # number or expression over the symbols
         com = resolve_vec3(d["com"], syms)
         inr = d["inertia"]
         method = inr["method"]

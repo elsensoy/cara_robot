@@ -178,8 +178,10 @@ def validate(path: str | None) -> int:
         role = roles.get(name)
         if role in PHYSICAL_ROLES:
             rep.check(is_phys, f"link '{name}' (role {role}): is_physical is true")
-            rep.check(_num(d.get("mass")) and d["mass"] > 0.0,
-                      f"link '{name}': mass > 0", detail=f"{d.get('mass')} kg")
+            m_resolved = inertials.get(name).mass if name in inertials else None
+            rep.check(m_resolved is not None and m_resolved > 0.0,
+                      f"link '{name}': mass > 0",
+                      detail=f"{d.get('mass')} -> {m_resolved} kg")
             rep.check(isinstance(d.get("com"), list) and len(d["com"]) == 3,
                       f"link '{name}': com is a 3-vector")
             rep.check(isinstance(d.get("inertia"), dict) and "method" in d["inertia"],
@@ -332,6 +334,34 @@ def validate(path: str | None) -> int:
             rep.check(True, "upper_body symbols all resolve in joints + dynamics")
         except Exception as exc:  # noqa: BLE001
             rep.check(False, "upper_body symbols resolve", detail=repr(exc))
+
+    el = spec.get("electronics", {}) or {}
+    if el:
+        print("\n== 13c. electronics block (U3) ==")
+        mounts = el.get("mounts", {}) or {}
+        rep.check(bool(mounts), "electronics.mounts is non-empty")
+        for mn, mv in mounts.items():
+            rep.check((mv or {}).get("link") in {l["name"] for l in links},
+                      f"mount preset '{mn}' -> a real link", detail=str((mv or {}).get("link")))
+            for ax in "xyz":
+                if ax in (mv or {}):
+                    rep.check(_num(mv[ax]), f"mount '{mn}': {ax} offset numeric")
+        for item in ("jetson", "battery"):
+            it = el.get(item, {}) or {}
+            rep.check(_num(it.get("mass")) and it["mass"] > 0,
+                      f"electronics.{item}.mass > 0", detail=f"{it.get('mass')} kg")
+            rep.check(it.get("mount") in mounts,
+                      f"electronics.{item}.mount -> a mount preset", detail=str(it.get("mount")))
+        for ln, lv in (el.get("layouts", {}) or {}).items():
+            for item, preset in (lv or {}).items():
+                rep.check(preset in mounts,
+                          f"layout '{ln}': {item} -> a mount preset", detail=str(preset))
+        # the mount_from joints resolved to real links
+        for j in spec.get("joints", []) or []:
+            if j.get("mount_from"):
+                rep.check(j.get("parent") in {l["name"] for l in links},
+                          f"joint '{j['name']}': mount resolved to a real parent link",
+                          detail=str(j.get("parent")))
 
     print("\n== 9. forward kinematics at zero pose is finite ==")
     try:

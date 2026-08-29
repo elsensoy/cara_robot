@@ -16,7 +16,7 @@ a full robot, not CAD, not a policy, and has no upper body yet.
 | ✅ | generated, inspectable URDF **and** MJCF (kinematic + dynamic) for each model |
 | ✅ | MuJoCo verified to reproduce the pure-Python FK to machine precision |
 | ✅ | **static standing** + **quasi-static weight shifting** — both milestones met (lower body & full body) |
-| ✅ | **Phases U1–U2** — welded torso + head/neck lump (neck `locked`); COM / torque / shift-limit measured vs a frozen baseline |
+| ✅ | **Phases U1–U3** — welded torso + head/neck lump + Jetson/battery placement study; COM / torque / shift-limit measured vs a frozen baseline |
 | ✅ | validation + FK + plausibility + standing + weight-shift scripts, and COM / gravity-torque / Jacobian / sweep analysis |
 | 🔶 | dynamics — mass / COM / inertia / actuator limits / PD gains are **provisional placeholders** |
 | ❌ | head, ears, arms, waist joints, electronics (U2–U5) |
@@ -56,7 +56,8 @@ cara_description/
 │   ├── gravity_torques.py       # gravitational joint torques for reference poses
 │   ├── jacobian.py              # foot-position Jacobian + finite-difference validation
 │   ├── morphology_sweep.py      # pure-Python: param sweep → workspace / COM / analytic torque
-│   └── subsystem_sweep.py       # MuJoCo: param sweep → standing COM / tilt / torque + weight-shift limit
+│   ├── subsystem_sweep.py       # MuJoCo: param sweep → standing COM / tilt / torque + weight-shift limit
+│   └── placement_study.py       # U3: compare electronics.layouts (Jetson/battery mount points)
 ├── docs/
 │   ├── frames_and_joints.md     # frame conventions + per-joint math + foot frame hierarchy
 │   ├── dynamics_notes.md        # provisional dynamics layer + single-leg analysis
@@ -221,12 +222,26 @@ head-mass sweep in MuJoCo:
 | 0.60 kg | 0.312 m | **1.08 N·m** | 0.030 m |
 
 COM height and knee-servo demand rise linearly with head mass; head *height*
-(`upper_body.neck.length`) matters ~3× less. Details in
-[`docs/upper_body_notes.md`](docs/upper_body_notes.md).
+(`upper_body.neck.length`) matters ~3× less.
 
-`type: fixed` / `locked: true` joints (the torso weld, the neck joints) carry
-0 DOF and no servo. The single-leg and lower-body regression outputs stay
-**byte-identical** through every U-phase.
+**Phase U3 — Jetson + battery** (0.15 + 0.25 kg lumped masses on a *switchable*
+mount point). `placement_study.py` compares the named `electronics.layouts`:
+
+| layout (jetson / battery) | COM vs pelvis | knee τ | shift limit |
+|---|---|---|---|
+| `both_pelvis_low` | +17.3 mm | 1.13 N·m | 0.030 m |
+| `both_torso_mid` | +31.2 mm | 1.15 N·m | 0.030 m |
+| `both_high` | +36.7 mm | 1.16 N·m | **0.020 m** |
+
+Read-off: keep the 0.40 kg **low in the pelvis** — COM ~20 mm lower, shift
+envelope preserved; "everything high" costs a third of the envelope. It
+*reports*, it does not choose. Full upper body: **2.06 → 4.01 kg**, COM +17 mm
+above the pelvis, standing solid, weight-shift envelope tightened to ~0.025 m.
+Details in [`docs/upper_body_notes.md`](docs/upper_body_notes.md).
+
+`type: fixed` / `locked: true` joints (the torso weld, the neck joints, the two
+electronics mounts) carry 0 DOF and no servo. The single-leg and lower-body
+regression outputs stay **byte-identical** through every U-phase.
 
 ## The question this layer answers
 
@@ -301,13 +316,13 @@ the file header and the script docstring):
 ## Roadmap
 
 Done: 1-leg kin/dyn/PD → 2 legs + pelvis → **static standing** →
-COM/support-polygon → **quasi-static weight shifting** → **U1 torso lump**.
+COM/support-polygon → **quasi-static weight shifting** → **U1/U2/U3 upper body**.
 
 Morphology / design validation (each measured vs the frozen baseline):
 
 - **U1 torso lump** ✅
 - **U2 head + neck lump** ✅ (neck joints structural but `locked` at 0)
-- **U3** Jetson + battery placement study (`battery_low_pelvis` vs `_mid_torso`, …)
+- **U3 Jetson + battery placement study** ✅ (`placement_study.py` over `electronics.layouts`)
 - **U4** passive arm masses (symmetric, no articulation)
 - **U5** ear + servo masses; head/neck rotational-inertia (`I ~ m r²`) study
 - **U6** full-body standing + weight-shift regression, per-subsystem summary table

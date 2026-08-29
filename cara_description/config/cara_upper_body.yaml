@@ -18,7 +18,9 @@
 meta:
   role: fragment
   name: cara_upper_body
-  description: "Upper-body fragment. U1 torso lump + U2 neck (locked) & head lump."
+  description: >-
+    Upper-body fragment. U1 torso lump + U2 neck (locked) & head lump +
+    U3 Jetson & battery lumped masses with switchable candidate placement.
 
 # --- provisional design knobs ---------------------------------------------
 upper_body:
@@ -37,12 +39,47 @@ upper_body:
     com_z:    0.050      # TODO -- neck axes -> head COM, up [m]
     radius:   0.060      # TODO -- head sphere radius for the inertia approx [m]
 
+# --- U3: electronics as explicit lumped masses with SWITCHABLE placement ----
+# `mount_from` joints below take their parent link + offset from the named
+# preset in `mounts`.  Placement is a DESIGN QUESTION being studied
+# (scripts/placement_study.py) -- these defaults are NOT a final choice.
+electronics:
+  mounts:                              # candidate mount points: {link, x/y/z offset in that link frame} [m]
+    pelvis_low:  {link: pelvis, z: -0.030}   # low in the pelvis (near the hips) -- lowest COM
+    pelvis_top:  {link: pelvis, z:  0.020}
+    torso_low:   {link: torso,  z:  0.015}   # just above the weld
+    torso_mid:   {link: torso,  z:  0.075}
+    torso_high:  {link: torso,  z:  0.130}   # high in the torso -- worst for COM
+
+  jetson:                              # Jetson Orin Nano Super module + carrier + heatsink
+    mass:  0.15     # TODO: measured -- [kg]
+    box_x: 0.070    # TODO
+    box_y: 0.070    # TODO
+    box_z: 0.030    # TODO
+    mount: pelvis_low                  # DEFAULT placement -- see placement_study.py
+
+  battery:                             # 2S LiPo ~5000 mAh
+    mass:  0.25     # TODO: measured -- [kg]
+    box_x: 0.090    # TODO
+    box_y: 0.060    # TODO
+    box_z: 0.030    # TODO
+    mount: pelvis_low                  # DEFAULT placement
+
+  layouts:                             # named whole-electronics layouts to compare
+    both_pelvis_low:      {jetson: pelvis_low, battery: pelvis_low}
+    battery_low_jetson_torso: {jetson: torso_mid, battery: pelvis_low}
+    both_torso_low:       {jetson: torso_low,  battery: torso_low}
+    both_torso_mid:       {jetson: torso_mid,  battery: torso_mid}
+    both_high:            {jetson: torso_high, battery: torso_high}
+
 # --- structure ------------------------------------------------------------
 links:
   - {name: torso,          role: segment}
   - {name: neck_yaw_link,  role: virtual_coupling}   # 3 coincident neck axes,
   - {name: neck_roll_link, role: virtual_coupling}   #   like the hip abstraction
   - {name: head,           role: segment}
+  - {name: jetson,         role: segment}            # U3: lumped mass
+  - {name: battery,        role: segment}            # U3: lumped mass
 
 joints:
   - name: base_to_torso
@@ -83,6 +120,16 @@ joints:
     positive_rotation: "nose pitches down"
     purpose: "Neck pitch -- nod / look down. Locked at 0 until balance work."
 
+  # --- U3: electronics welded to a switchable mount point --------------------
+  - name: mount_jetson
+    type: fixed
+    mount_from: electronics.jetson.mount     # parent + origin resolved from electronics.mounts
+    child: jetson
+  - name: mount_battery
+    type: fixed
+    mount_from: electronics.battery.mount
+    child: battery
+
 dynamics:
   links:
     torso:
@@ -103,3 +150,19 @@ dynamics:
       inertia:
         method: solid_sphere
         radius: head_radius
+
+    jetson:
+      is_physical: true
+      mass: jetson_mass                 # single source of truth: electronics.jetson.mass
+      com:  [0.0, 0.0, 0.0]             # lumped at the mount point
+      inertia:
+        method: solid_box
+        box:  [jetson_box_x, jetson_box_y, jetson_box_z]
+
+    battery:
+      is_physical: true
+      mass: battery_mass                # single source of truth: electronics.battery.mass
+      com:  [0.0, 0.0, 0.0]
+      inertia:
+        method: solid_box
+        box:  [battery_box_x, battery_box_y, battery_box_z]
