@@ -1,0 +1,33 @@
+{
+  "model": "cara_full_body",
+  "total_mass_kg": 4.43,
+  "hold_seconds": 5.0,
+  "balance_gains": [
+    50.0,
+    10.0,
+    15.0
+  ],
+  "sides": {
+    "l_": {
+      "hold_ok": true,
+      "com_drift_mm": 2.2557758437919824,
+      "tilt_deg": 2.772045175505155,
+      "clear_mm": 7.78269421498692,
+      "torque_pct": 75.73454884240421,
+      "recover_toward_swing_N": 1.0,
+      "recover_toward_stance_N": 3.0,
+      "push_duration_s": 0.1
+    },
+    "r_": {
+      "hold_ok": true,
+      "com_drift_mm": 2.255775843791892,
+      "tilt_deg": 2.772045175505247,
+      "clear_mm": 7.782694214986792,
+      "torque_pct": 75.7345488424046,
+      "recover_toward_swing_N": 1.0,
+      "recover_toward_stance_N": 3.0,
+      "push_duration_s": 0.1
+    }
+  },
+  "milestone_met": true
+}

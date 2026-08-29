@@ -159,3 +159,33 @@ analysis:
       max_torque_frac: 1.0
       min_stance_corners: 3         # stance sole ground-contact corners during single support
       min_return_corners: 3        # each sole's corners after returning to double support
+
+  # --- U9: SINGLE-SUPPORT BALANCE (scripts/single_support.py)
+  # Get into single support (U8-style), then switch from U8's pelvis-roll trim to a
+  # proper COM-feedback balance controller and (a) hold for `hold_seconds`,
+  # (b) reject scripted lateral pushes on the pelvis.  Ankle + hip strategy, PD on
+  # the whole-body COM-y error relative to the stance foot; no stepping, no RL.
+  # All gains / thresholds PROVISIONAL.
+  single_support:
+    base_pose: stand_nominal
+    com_target: 0.028
+    lift_height: 0.008           # m, single-support foot clearance
+    ramp_seconds: 4.0
+    hold_seconds: 5.0            # the extended undisturbed hold
+    settle_seconds: 1.5
+    clearance_gain: 0.012
+    balance:                     # COM-y feedback: trims the stance ankle_roll + hip_roll targets
+      kp_ankle_roll: 50.0        # rad of stance ankle_roll target per m of COM-y drift (SIDE-signed)
+      kd_ankle_roll: 10.0        # + per (m/s) of COM-y velocity
+      kp_hip_roll:   15.0        # rad of stance hip_roll target per m of COM-y drift
+    disturbance:
+      push_duration: 0.10        # s, lateral force pulse on the pelvis
+      toward_swing:  [1.0, 2.0, 3.0, 4.0]   # N, sweep of push magnitude toward the swing foot
+      toward_stance: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]   # N, toward the stance foot
+    accept:
+      max_com_drift: 0.020       # m, COM-y drift over the undisturbed hold
+      max_pelvis_tilt_deg: 8.0
+      min_swing_clearance: 0.003 # m, free foot stays off the ground
+      max_torque_frac: 1.0
+      recover_tilt_deg: 25.0     # a push is "recovered" if tilt stays under this and the foot stays up
+      recover_seconds: 2.5       # window to re-stabilize after a push

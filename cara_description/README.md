@@ -19,12 +19,13 @@ a full robot, not CAD, not a policy, and has no upper body yet.
 | ✅ | **Phases U1–U6** — welded torso + head/neck + Jetson/battery placement study + symmetric passive arms + ears/ear-servos (`I ~ m r²` study), then a full-body regression with a per-subsystem summary table; every metric compared to a frozen lower-body baseline |
 | ✅ | **full body (4.43 kg): standing MET, weight-shift MET at ±0.020 m** — morphology-validation phase (U1–U6) closed |
 | ✅ | **U7 — single-foot unloading MET** — the other foot reaches ~0 N with the COM +13 mm inside the *stance* foot polygon, free foot 1 mm off the ground |
-| ✅ | **U8 — first single-support milestone MET** — Cara stands on one foot (free foot 5–10 mm clear, COM +10 mm inside the stance polygon) ~1.5 s and returns to double support, both sides, with a **minimal disclosed roll trim** |
-| ✅ | validation + FK + plausibility + standing + weight-shift + unload + lift scripts, and COM / whole-body-inertia / gravity-torque / Jacobian / sweep analysis |
-| 🔶 | dynamics — mass / COM / inertia / actuator limits / PD gains **provisional**; U7/U8 roll-trim gains hand-picked |
+| ✅ | **U8 — first single-support milestone MET** — Cara stands on one foot (free foot 5–10 mm clear) ~1.5 s and returns to double support, both sides, with a minimal roll trim |
+| ✅ | **U9 — single-support balance MET** — a COM-feedback controller holds one-foot balance ≥ 5 s (COM drift 2.3 mm, tilt 2.8°) and rejects a small lateral push (~1 N·100 ms toward swing, ~3 N toward stance), both sides |
+| ✅ | validation + FK + plausibility + standing + weight-shift + unload + lift + balance scripts, and COM / whole-body-inertia / gravity-torque / Jacobian / sweep analysis |
+| 🔶 | dynamics — mass / COM / inertia / actuator limits / PD gains **provisional**; U7–U9 feedback gains hand-picked |
 | ❌ | waist joints, articulated neck / shoulders / ears (all present structurally, locked at 0 for now) |
 | ❌ | CAD geometry, servo brackets, wiring, shells |
-| ❌ | a real balance controller (U9 — disturbances, longer holds), stepping, RL / locomotion |
+| ❌ | a protective / deliberate step once the balance envelope is exceeded (U10), stepping, RL / locomotion |
 
 Design constraint being followed: **kinematics, dynamics, and manufacturing
 are kept separate.** The YAML is layered accordingly. No servo is selected;
@@ -56,6 +57,7 @@ cara_description/
 │   ├── weight_shift.py          # lower/full body: quasi-static lateral COM shift via task-space IK  (--baseline)
 │   ├── unload_foot.py           # U7: shift + unweight one foot to ~0 N with the COM over the stance foot  (--view)
 │   ├── lift_foot.py             # U8: + lift the free foot 5-10 mm, hold ~1.5 s in single support, return  (--view)
+│   ├── single_support.py        # U9: COM-feedback one-foot balance -- 5 s hold + lateral-push rejection  (--view)
 │   ├── view_mujoco.py           # load a generated MJCF and open mujoco.viewer
 │   ├── center_of_mass.py        # whole-model COM for any joint configuration
 │   ├── gravity_torques.py       # gravitational joint torques for reference poses
@@ -322,9 +324,19 @@ and return to double support. Same minimal roll trim. **MET**, both feet, every
 lift height 5–10 mm: free foot fully unloaded (**0 N**), stance carries **100 %**
 weight, whole-body COM **+10.5 mm inside the stance polygon**, tilt 4.0°, stance
 slip < 4.1 mm, clean return. The torque bottleneck is the **swing `hip_roll`**
-(~2.6 of ±3.0 N·m holding the lifted leg) — not the ankle. The hold is brief and
-undisturbed; a real balance regulator is **U9**. `baselines/full_body_lift.json`
-freezes it. Details in
+(~2.6 of ±3.0 N·m holding the lifted leg) — not the ankle. `baselines/full_body_lift.json`
+freezes it.
+
+**Phase U9 — single-support balance.** `single_support.py` swaps U8's pelvis-roll
+trim for a **COM-feedback controller** (PD on the whole-body COM-y drift relative
+to the stance foot → stance ankle_roll + hip_roll trims; ankle + hip strategy).
+**MET**, both sides: a **5 s** one-foot hold with COM drift **2.3 mm** and tilt
+**2.8°** (5× tighter than U8's trim), and it rejects a lateral push of
+**~1 N·100 ms toward the swing foot / ~3 N·100 ms toward the stance foot** before
+toppling. That envelope is small *by design* — the roll-axis foot half-width is
+22.5 mm, so the stance ankle can make at most ≈ 1 N·m of CoP moment; a bigger
+disturbance needs a wider foot, a hip/angular-momentum strategy, or a protective
+step (U10). `baselines/full_body_single_support.json` freezes it. Details in
 [`docs/single_support_notes.md`](docs/single_support_notes.md).
 
 *(An IK fix during U8 — targeting the swing foot's shifted position, not its
@@ -423,6 +435,9 @@ Balance / control (the boundary — new controllers start here):
 - **U8 lift the unloaded foot 5–10 mm, hold, return** ✅ (`lift_foot.py`; ~1.5 s
   single-support hold, COM +10 mm inside the stance polygon, clean return — both
   sides, with a minimal disclosed roll trim on the position PD)
-- **U9+** single-support balance → stepping → locomotion → learned policy
+- **U9 single-support balance** ✅ (`single_support.py`; COM-feedback controller —
+  5 s one-foot hold, COM drift 2.3 mm, + rejects ~1–3 N·100 ms lateral pushes;
+  envelope bounded by the 22.5 mm foot half-width, both sides)
+- **U10+** protective / deliberate step → stepping → locomotion → learned policy
 
 CAD/measured values replace every `TODO` before single-support locomotion.

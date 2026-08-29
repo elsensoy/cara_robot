@@ -6,13 +6,14 @@ work **past the morphology boundary** — U1–U6 validated the whole-body mass 
 
 ```
 … static standing ✅ → weight shifting ✅ → morphology U1–U6 ✅  ──┼── boundary
-    U7 unload one foot ✅ → U8 lift one foot ✅ (this doc) → U9 single-support balance → stepping → …
+    U7 unload one foot ✅ → U8 lift one foot ✅ → U9 single-support balance ✅ (this doc) → stepping → …
 ```
 
-Still quasi-static. Still transparent — the same frontal-plane IK from
-`weight_shift.py`, plus a **minimal, disclosed roll trim** (a small
-PD-on-pelvis-roll correction to the stance ankle/hip targets). No RL. The model
-under test is the **complete** Cara — `cara_full_body.yaml`, 4.43 kg.
+Still transparent — the same frontal-plane IK from `weight_shift.py`, plus a
+small feedback controller on top of the position PD: a **minimal pelvis-roll
+trim** for U7/U8, upgraded to a **COM-feedback balance controller** for U9. No
+RL. The model under test is the **complete** Cara — `cara_full_body.yaml`,
+4.43 kg.
 
 > **The roll trim.** With both feet planted Cara balances passively, but the
 > instant one foot unweights, the single-support roll moment exceeds what the
@@ -117,18 +118,74 @@ support. The lower body alone does it even more comfortably (slip 0 mm, torque
   `ankle_roll` stays within its provisional ±2.0 N·m (`--ankle-effort 3.0`
   changes nothing — the ankle isn't the limit).
 - **Pelvis tilt ~4°** of the 6° budget — the minimal trim holds her, but not
-  level. U9's job is a real regulator.
-- **Hold is brief (1.5 s) and undisturbed.** No push recovery, no CoP
-  modulation. That is U9.
+  level. **U9's COM controller brings this to 2.8°.**
+- **Hold is brief (1.5 s) and undisturbed.** Push recovery and the longer hold
+  are **U9, below.**
 - COM target 0.028 m (U8) vs 0.033 m (U7): each phase's shift is tuned for its
   own dynamics — U7 freezes at ~1 mm rise, U8 lifts to 5–10 mm and holds.
 
+---
+
+## Phase U9 — single-support balance
+
+Script: `scripts/single_support.py` (`--view` opens the viewer and applies a
+gentle alternating pulse). U8 got Cara onto one foot for 1.5 s with a
+pelvis-roll trim; U9 replaces that with a **COM-feedback balance controller** and
+asks two things:
+
+1. can she hold single support *indefinitely* (tested to `hold_seconds` = 5 s)?
+2. how big a lateral push can she reject without the free foot touching down?
+
+### The controller (`analysis.single_support.balance`)
+
+A PD on the **whole-body COM-y drift** relative to the stance foot, trimming the
+stance `ankle_roll` target, plus a P term on the stance `hip_roll` (ankle + hip
+strategy):
+
+```
+drift  = (COM_y − stance_foot_y) − (its value at the start of the hold)
+ankle_roll_target += SIDE · (kp·drift + kd·COM_y_velocity)     # SIDE = ±1 (mirror flips the axis)
+hip_roll_target   += SIDE · kp_hip·drift
+```
+
+`kp/kd_ankle = 50/10`, `kp_hip = 15` — hand-set provisional values. The swing
+foot stays on the U8 closed-loop clearance. Disturbances are scripted lateral
+force pulses on the pelvis, swept in magnitude, both directions.
+
+### Result — `single_support.py config/cara_full_body.yaml`
+
+| | value (both sides, identical) |
+|---|---|
+| **5 s hold** | COM-y drift **2.3 mm**, pelvis tilt **2.8°**, free foot **7.8 mm** clear, torque 76 % |
+| lateral push **toward the swing foot** | recovers **~1.0 N × 100 ms**, falls at 2.0 N |
+| lateral push **toward the stance foot** | recovers **~3.0 N × 100 ms**, falls at 4.0 N |
+
+**MILESTONE MET**, both stance sides. The COM feedback holds the COM **5× tighter
+than U8's trim** (2.3 mm drift vs 17 mm) and is gentler on the joints (76 % vs
+88 %).
+
+### The disturbance envelope is small — and that's a design finding
+
+A 1 N × 100 ms impulse ≈ 0.1 kg·m/s ≈ a **0.02 m/s** lateral COM-velocity kick.
+Cara can't do much better with an ankle strategy because her **feet are tiny**:
+the roll-axis half-width is 22.5 mm, so the most CoP moment the stance ankle can
+make before the foot rolls onto its edge is ≈ `Fz · d` ≈ 43.5 × 0.0225 ≈
+**1 N·m**. The envelope is asymmetric (bigger toward the stance foot) because
+that direction pushes the COM *deeper* into the support polygon.
+
+To reject a real disturbance Cara needs a **wider foot**, a **stronger hip /
+angular-momentum strategy**, or a **protective step** — which is U10. Adding a
+hip-*velocity* term here only made it oscillate (tested, reverted).
+
 ### Open TODOs
 
-- [ ] Foot friction (slide = 1.0) and foot size (45 × 22.5 mm half-extents) are
-      provisional and both bound the single-support slip.
-- [ ] The roll-trim gains are hand-picked provisional values — U9 replaces this
-      with a designed balance controller (COM/ZMP feedback, disturbance tests,
-      longer holds).
-- [ ] Swing `hip_roll` torque headroom is thin — a servo-sizing input.
-- [ ] U9: single-support balance → U10 stepping.
+- [ ] Foot size (45 × 22.5 mm half-extents) is the single biggest limit on the
+      balance envelope — a design-level input, not a control problem.
+- [ ] Balance gains are hand-set provisional values, tuned for the **full body**
+      (the milestone target); the lower-body model needs its own.
+- [ ] Sagittal (COM-x) balance is not yet controlled — the disturbances tested
+      are lateral only.
+- [ ] Swing `hip_roll` torque headroom is thin (~2.6 of ±3.0 N·m) — a
+      servo-sizing input.
+- [ ] U10: a protective / deliberate step, once the balance envelope is
+      exceeded.
