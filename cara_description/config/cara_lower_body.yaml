@@ -229,3 +229,37 @@ analysis:
       min_final_corners: 3       # each sole's corners in the final staggered stance
       min_progress_frac: 0.6     # net COM travel >= this * (half the step)
       final_hold_drift: 0.006    # m, COM drift over the final hold
+
+  # --- U11: A SHORT WALK -- chain the U10 step (scripts/gait.py)
+  # Repeat the U10 forward step, alternating legs, so Cara walks a few steps.
+  # Nothing new in the controller (same six quasi-static phases + U9's lateral
+  # roll trim while on one foot); the only new machinery is starting each step
+  # from the STAGGERED stance the last one left (not always stand_nominal) and
+  # alternating the lead foot.  No gait optimisation, no dynamic walking, no RL.
+  # All gains / lengths PROVISIONAL.
+  gait:
+    base_pose: stand_nominal
+    n_steps: 4                  # steps to take (alternating l_, r_, l_, r_)
+    stride: 0.024               # m, forward foothold advance per step (kept small -- the
+                                # swing leg must reach ~+-stride from under the hip; U10 capped ~40 mm)
+    com_target: 0.028           # m, lateral COM shift onto the stance foot (as U8-U10)
+    lift_height: 0.010          # m, swing-foot ground clearance
+    ramp_seconds: 4.0           # per-phase ramp (3.0 is too fast -- see the U10 note)
+    swing_seconds: 4.0
+    settle_seconds: 1.5         # initial settle
+    step_settle_seconds: 1.0    # settle at the end of each step before the next
+    final_hold_seconds: 3.0     # dwell at the end of the walk
+    clearance_gain: 0.012
+    balance:                    # U9's lateral (COM-y) roll trim -- unchanged
+      kp_ankle_roll:  50.0
+      kd_ankle_roll:  10.0
+      kp_hip_roll:    15.0
+    accept:
+      place_tol: 0.012          # m, |placed foot - target foothold| in world XY, per step
+      min_support_margin: 0.004 # m, COM inside the CURRENT support polygon during each step
+      max_pelvis_tilt_deg: 8.0
+      max_step_slip: 0.010      # m, stance-foot drift during one step
+      max_torque_frac: 1.0
+      min_stance_corners: 3
+      min_advance_frac: 0.6     # per-step COM advance >= this * stride
+      final_hold_drift: 0.008   # m, COM drift over the final hold

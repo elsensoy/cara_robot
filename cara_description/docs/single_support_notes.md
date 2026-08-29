@@ -1,4 +1,4 @@
-# Cara — Toward single support and the first step (U7 → U10)
+# Cara — Toward single support, the first step, and a short walk (U7 → U11)
 
 Companion to [`weight_shift_notes.md`](weight_shift_notes.md). This is the first
 work **past the morphology boundary** — U1–U6 validated the whole-body mass model
@@ -7,7 +7,7 @@ work **past the morphology boundary** — U1–U6 validated the whole-body mass 
 ```
 … static standing ✅ → weight shifting ✅ → morphology U1–U6 ✅  ──┼── boundary
     U7 unload one foot ✅ → U8 lift one foot ✅ → U9 single-support balance ✅
-      → U10 one forward step ✅ (this doc) → stepping / gait → …
+      → U10 one forward step ✅ → U11 a short walk ✅ (this doc) → dynamic gait / RL → …
 ```
 
 Still transparent — the same frontal-plane IK from `weight_shift.py`, plus a
@@ -279,3 +279,57 @@ with ~35 mm of COM margin**. The COM advances **~half the step**, as designed.
   quasi-static COM-x trajectory; a faster or disturbed step will need it.
 - Step length is capped at 40 mm by the swing IK (the knee reaches its extension
   limit reaching further at constant foot height).
+
+---
+
+## Phase U11 — a short walk
+
+Script: `scripts/gait.py` (`--view` loops it). Milestone question:
+
+> **Can Cara take N consecutive quasi-static steps** (alternating legs),
+> advancing steadily, and end standing — COM inside the support polygon every
+> step, pelvis near level, feet not slipping, no actuator saturated?
+
+**Nothing new in the controller.** Each step is U10's six phases plus U9's
+lateral roll trim. The only new machinery in `gait.py`:
+
+1. **Start each step from the staggered stance the last one left**, not always
+   from `stand_nominal`. The lateral COM shift (phase A) only moves the roll
+   joints, which are decoupled from the sagittal stagger — so the *same*
+   `weight_shift` roll deltas are overlaid on whatever staggered sagittal pose
+   she's in.
+2. **Alternate the lead foot** (`l_, r_, l_, r_, …`), each new foothold one
+   `stride` ahead of the current stance foot.
+3. Phase E puts the pelvis at the **midpoint of the two feet**, which advances it.
+
+Step 1 from rest lands directly in the canonical staggered stance, and every
+step after that is the same cycle mirrored — so the gait is genuinely periodic.
+
+### Result — `gait.py config/cara_full_body.yaml` (4 steps, `stride` 24 mm)
+
+| step | lead | COM advance | foot placed within | COM margin (swing) | pelvis tilt | stance slip | peak τ | verdict |
+|---|---|---|---|---|---|---|---|---|
+| 1 | l_ | 30.6 mm | 5.4 mm | +5.6 mm | 2.2° | 4.3 mm | 76 % | **PASS** |
+| 2 | r_ | 26.6 mm | 5.8 mm | +4.5 mm | 2.6° | 3.9 mm | 76 % | **PASS** |
+| 3 | l_ | 26.4 mm | 5.8 mm | +4.6 mm | 2.3° | 3.8 mm | 76 % | **PASS** |
+| 4 | r_ | 26.3 mm | 5.9 mm | +4.6 mm | 2.3° | 3.8 mm | 76 % | **PASS** |
+
+**MILESTONE MET**: Cara walks **4 steps forward (110 mm total)**, alternating
+legs, and holds the final stance for 3 s **level (0.9°) with 0.1 mm of COM
+drift**. Steps 2–4 are within **0.3 mm** of each other — the gait has settled to
+a **periodic cycle** (verified out to 6 steps). Every step keeps the same
++4.5 mm swing-side COM margin (the U9 CoP limit, once more), 76 % peak torque
+(swing `hip_roll`), and < 4.3 mm stance slip.
+
+### What's tight / deferred
+
+- **`stride` ≲ 25 mm.** At 34 mm step 2 topples — a full periodic step's swing
+  foot must travel ~2 × `stride` relative to the (stationary) pelvis, and that
+  exceeds the swing leg's reach (U10's ~40 mm cap, plus the from-behind part).
+- **Quasi-static, not walking gait.** Each step ramps over ~14 s of sim time and
+  settles to a full stop between steps — this is *stepping*, not a dynamic walk.
+  A real gait (continuous, no stop, using momentum) is the next phase.
+- **Forward, straight, flat ground.** No turning, no slopes, no pushes.
+- **Lower body fails it** — full-body-tuned roll gains, as in U9/U10. Reported.
+- Same open items as U9/U10: foot size, sagittal balance feedback, servo
+  headroom, lower-body gains.

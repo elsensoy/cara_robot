@@ -1,0 +1,83 @@
+{
+  "model": "cara_full_body",
+  "n_steps": 4,
+  "stride_m": 0.024,
+  "total_advance_m": 0.1098494807078296,
+  "milestone_met": true,
+  "steps": [
+    {
+      "i": 1,
+      "lead": "l_",
+      "advance": 0.030563137501613664,
+      "place_err": 0.005411793057118185,
+      "ss_margin": 0.005615342614719158,
+      "ss_tilt": 0.03887761726728892,
+      "ss_slip": 0.0042878526235102825,
+      "ss_sat": 0,
+      "ss_tq": 0.7598396400808144,
+      "ss_stance_corners": 3,
+      "ss_swing_clear": 0.00039942430031410237,
+      "end_tilt": 0.01589834660244654,
+      "end_corners": 4,
+      "ok": true,
+      "fail": []
+    },
+    {
+      "i": 2,
+      "lead": "r_",
+      "advance": 0.02657101114493516,
+      "place_err": 0.005819899958690549,
+      "ss_margin": 0.004509969013401389,
+      "ss_tilt": 0.045305761792625125,
+      "ss_slip": 0.00390722712695968,
+      "ss_sat": 0,
+      "ss_tq": 0.7627958290419633,
+      "ss_stance_corners": 3,
+      "ss_swing_clear": 0.0004770203206315403,
+      "end_tilt": 0.01589901671486553,
+      "end_corners": 4,
+      "ok": true,
+      "fail": []
+    },
+    {
+      "i": 3,
+      "lead": "l_",
+      "advance": 0.02635160489747894,
+      "place_err": 0.005752933217804815,
+      "ss_margin": 0.004610305409347922,
+      "ss_tilt": 0.04055896819845249,
+      "ss_slip": 0.003840481174760223,
+      "ss_sat": 0,
+      "ss_tq": 0.7626979948059956,
+      "ss_stance_corners": 3,
+      "ss_swing_clear": 0.00047814113464313135,
+      "end_tilt": 0.01589774499845633,
+      "end_corners": 4,
+      "ok": true,
+      "fail": []
+    },
+    {
+      "i": 4,
+      "lead": "r_",
+      "advance": 0.026325001048148763,
+      "place_err": 0.005856630011921335,
+      "ss_margin": 0.00464793346113589,
+      "ss_tilt": 0.040004782737464085,
+      "ss_slip": 0.003843728082397974,
+      "ss_sat": 0,
+      "ss_tq": 0.7626934141259579,
+      "ss_stance_corners": 3,
+      "ss_swing_clear": 0.0004781624921611667,
+      "end_tilt": 0.015893031513355933,
+      "end_corners": 4,
+      "ok": true,
+      "fail": []
+    }
+  ],
+  "final_hold": {
+    "tilt": 0.016278943375214624,
+    "drift": 8.825828713800278e-05,
+    "corners": 4.0,
+    "total_advance": 0.1098494807078296
+  }
+}

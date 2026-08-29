@@ -21,11 +21,11 @@ a full robot, not CAD, not a policy, and has no upper body yet.
 | ✅ | **U7 — single-foot unloading MET** — the other foot reaches ~0 N with the COM +13 mm inside the *stance* foot polygon, free foot 1 mm off the ground |
 | ✅ | **U8 — first single-support milestone MET** — Cara stands on one foot (free foot 5–10 mm clear) ~1.5 s and returns to double support, both sides, with a minimal roll trim |
 | ✅ | **U9 — single-support balance MET** — a COM-feedback controller holds one-foot balance ≥ 5 s (COM drift 2.3 mm, tilt 2.8°) and rejects a small lateral push (~1 N·100 ms toward swing, ~3 N toward stance), both sides |
-| ✅ | validation + FK + plausibility + standing + weight-shift + unload + lift + balance + one-step scripts, and COM / whole-body-inertia / gravity-torque / Jacobian / sweep analysis |
-| 🔶 | dynamics — mass / COM / inertia / actuator limits / PD gains **provisional**; U7–U10 feedback gains hand-picked |
+| ✅ | validation + FK + plausibility + standing + weight-shift + unload + lift + balance + one-step + short-walk scripts, and COM / whole-body-inertia / gravity-torque / Jacobian / sweep analysis |
+| 🔶 | dynamics — mass / COM / inertia / actuator limits / PD gains **provisional**; U7–U11 feedback gains hand-picked |
 | ❌ | waist joints, articulated neck / shoulders / ears (all present structurally, locked at 0 for now) |
 | ❌ | CAD geometry, servo brackets, wiring, shells |
-| ❌ | chaining steps into a gait (U11), a sideways step, sagittal balance feedback, RL / locomotion |
+| ❌ | a dynamic walking gait (continuous, uses momentum), turning / slopes, a sideways step, sagittal balance feedback, RL |
 
 Design constraint being followed: **kinematics, dynamics, and manufacturing
 are kept separate.** The YAML is layered accordingly. No servo is selected;
@@ -60,6 +60,7 @@ cara_description/
 │   ├── single_support.py        # U9: COM-feedback one-foot balance -- 5 s hold + lateral-push rejection  (--view)
 │   ├── balance_margin.py        # U9 diagnostic: why the balance envelope is small -- CoP budget + capture point + foot-size sweep
 │   ├── step_once.py             # U10: one deliberate forward step -- shift/lift/swing/place/transfer -> stable staggered stance  (--view)
+│   ├── gait.py                  # U11: chain the U10 step, alternating legs -> a short quasi-static walk  (--view)
 │   ├── view_mujoco.py           # load a generated MJCF and open mujoco.viewer
 │   ├── center_of_mass.py        # whole-model COM for any joint configuration
 │   ├── gravity_torques.py       # gravitational joint torques for reference poses
@@ -356,8 +357,19 @@ hold), U9's lateral roll trim on the position PD while she is on one foot.
 of the foothold, COM stays inside the support polygon throughout, pelvis < 2.5°,
 stance slip < 4.2 mm, and she settles level (< 0.5°) with ~35 mm of COM margin;
 the COM advances **~half the step**. Forward only — a sideways step is past the
-lateral balance envelope; chaining steps into a gait is U11.
-`baselines/full_body_step.json` freezes it. Details in
+lateral balance envelope. `baselines/full_body_step.json` freezes it.
+
+**Phase U11 — a short walk.** `gait.py` chains the U10 step, alternating legs.
+No new controller — the only new machinery is starting each step from the
+*staggered* stance the last one left (the lateral shift only moves the roll
+joints, which are decoupled from the sagittal stagger) and alternating the lead
+foot. **MET**: Cara walks **4 steps forward (110 mm), 24 mm stride**, and ends
+standing **level (0.9°) with 0.1 mm of COM drift**; steps 2–4 are within **0.3
+mm** of each other — the gait has settled to a **periodic cycle** (verified to 6
+steps). Every step keeps the same +4.5 mm swing-side COM margin and 76 % peak
+torque as U10. Quasi-static *stepping*, not a dynamic walk — each step ramps and
+settles to a stop; `stride` ≲ 25 mm (the swing leg's reach). Forward, straight,
+flat ground. `baselines/full_body_gait.json` freezes it. Details in
 [`docs/single_support_notes.md`](docs/single_support_notes.md).
 
 *(An IK fix during U8 — targeting the swing foot's shifted position, not its
@@ -463,6 +475,9 @@ Balance / control (the boundary — new controllers start here):
 - **U10 one deliberate forward step** ✅ (`step_once.py`; shift/lift/swing/place/
   transfer → stable staggered stance, pelvis advances ~half the 20–40 mm step,
   both legs leading; forward only)
-- **U11+** chain steps into a gait → locomotion → learned policy
+- **U11 a short walk** ✅ (`gait.py`; chains the U10 step, alternating legs — 4
+  quasi-static steps forward, 110 mm, periodic cycle, ends standing; `stride`
+  ≲ 25 mm, forward / straight / flat)
+- **U12+** a dynamic walking gait (continuous, momentum) → RL / learned policy
 
 CAD/measured values replace every `TODO` before single-support locomotion.
