@@ -8,7 +8,10 @@
 #   U2: neck + rigid head lump.  Neck yaw/roll/pitch joints exist STRUCTURALLY
 #       (they belong in the long-term 20-DoF design) but are `locked: true`
 #       -- 0 DOF, no servo -- until balance work needs them.
-#   no arms / ears / electronics yet.
+#   U3: Jetson + battery lumped masses with switchable candidate placement.
+#   U4: left/right arms as rigid passive masses, welded at the shoulder.
+#   U5: left/right ears + ear-twitch servos near the head; ear joints locked
+#       for the I ~ m r² inertia study (ear_inertia_study.py).
 #
 # Every value below is PROVISIONAL.  `upper_body.<part>.<x>` numeric leaves
 # become expression symbols (upper_body.head.com_z -> `head_com_z`); MASSES live
@@ -20,7 +23,8 @@ meta:
   name: cara_upper_body
   description: >-
     Upper-body fragment. U1 torso lump + U2 neck (locked) & head lump +
-    U3 Jetson & battery lumped masses with switchable candidate placement.
+    U3 Jetson & battery lumped masses with switchable candidate placement +
+    U4 passive arm masses + U5 ear + ear-servo masses (ear joints locked).
 
 # --- provisional design knobs ---------------------------------------------
 upper_body:
@@ -46,6 +50,23 @@ upper_body:
     length:     0.190    # TODO -- shoulder -> hand, along the hanging arm [m]
     com_z:     -0.095    # TODO -- shoulder -> arm COM, down (neutral hang) [m]
     radius:     0.022    # TODO -- arm rod radius for the inertia approx [m]
+  ear:                   # U5: rigid passive ear lump + a provisional ear-twitch servo, PER SIDE.
+                         # mirror -> r_ear / r_ear_servo.  Offsets are in the HEAD link frame,
+                         # whose origin IS the coincident neck yaw/roll/pitch axes (+Y left).
+                         # Ear joints are LOCKED for the fixed-mass inertia study; ear motion is
+                         # added only after this model validates (see ear_inertia_study.py).
+    mass:            0.020   # TODO -- plush ear shell, per side [kg]
+    servo_mass:      0.010   # TODO -- micro ear-twitch servo + horn, per side [kg]
+    offset_x:        0.005   # TODO -- head frame -> ear centre, fore/aft [m]
+    offset_y:        0.055   # TODO -- head centre -> ear centre, LATERAL from the neck axis (mirror negates) [m]
+    offset_z:        0.050   # TODO -- head frame -> ear centre, up [m]
+    size:            0.035   # TODO -- ear plush bounding cube for the inertia approx [m]
+    servo_offset_x:  0.005   # TODO -- head frame -> ear servo, fore/aft [m]
+    servo_offset_y:  0.030   # TODO -- head centre -> ear servo, lateral (mounted nearer the skull) [m]
+    servo_offset_z:  0.045   # TODO -- head frame -> ear servo, up [m]
+    servo_box_x:     0.020   # TODO -- servo body, fore/aft [m]
+    servo_box_y:     0.012   # TODO -- servo body, lateral [m]
+    servo_box_z:     0.023   # TODO -- servo body, up [m]
 
 # --- U3: electronics as explicit lumped masses with SWITCHABLE placement ----
 # `mount_from` joints below take their parent link + offset from the named
@@ -89,6 +110,8 @@ links:
   - {name: jetson,         role: segment}            # U3: lumped mass
   - {name: battery,        role: segment}            # U3: lumped mass
   - {name: l_arm,          role: segment}            # U4: rigid passive lump (mirror makes r_arm)
+  - {name: l_ear,          role: segment}            # U5: passive ear lump (mirror makes r_ear)
+  - {name: l_ear_servo,    role: segment}            # U5: ear-twitch servo mass (mirror makes r_ear_servo)
 
 joints:
   - name: base_to_torso
@@ -147,6 +170,24 @@ joints:
     child: l_arm
     origin_expr: [arm_shoulder_x, arm_shoulder_y, arm_shoulder_z]
 
+  # --- U5: ears -- 1 DoF each in the 20-DoF design, LOCKED at 0 for the
+  #     fixed-mass inertia study.  mirror -> r_ear_joint / r_ear_servo_mount.
+  - name: l_ear_joint
+    type: revolute
+    locked: true
+    parent: head
+    child: l_ear
+    origin_expr: [ear_offset_x, ear_offset_y, ear_offset_z]
+    axis: [1, 0, 0]
+    limits: {lower: -0.60, upper: 0.60}     # TODO: ROM study
+    positive_rotation: "ear tip rotates toward +Y (outward), then up"
+    purpose: "Ear twitch -- expressive only, no balance role. Locked at 0 until the fixed-mass model is validated."
+  - name: l_ear_servo_mount
+    type: fixed
+    parent: head
+    child: l_ear_servo
+    origin_expr: [ear_servo_offset_x, ear_servo_offset_y, ear_servo_offset_z]
+
 dynamics:
   links:
     torso:
@@ -192,3 +233,19 @@ dynamics:
         method: uniform_rod_z
         length: arm_length
         radius: arm_radius
+
+    l_ear:                             # mirror -> r_ear (same mass expr -> symmetric).
+      is_physical: true
+      mass: ear_mass                   # single source of truth: upper_body.ear.mass
+      com:  [0.0, 0.0, 0.0]            # lumped at the ear joint
+      inertia:
+        method: solid_box
+        box:  [ear_size, ear_size, ear_size]
+
+    l_ear_servo:                       # mirror -> r_ear_servo.
+      is_physical: true
+      mass: ear_servo_mass             # single source of truth: upper_body.ear.servo_mass
+      com:  [0.0, 0.0, 0.0]
+      inertia:
+        method: solid_box
+        box:  [ear_servo_box_x, ear_servo_box_y, ear_servo_box_z]

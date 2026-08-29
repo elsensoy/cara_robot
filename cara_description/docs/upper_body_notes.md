@@ -14,7 +14,7 @@ to stand and weight-shift with the existing joint PD, no new controllers).
 
 ```
 lower body ✅  →  U1 torso ✅  →  U2 head/neck ✅  →  U3 Jetson+battery ✅  →
-U4 passive arms ✅  →  U5 ears + head inertia  →  U6 full regression  ──┼── boundary
+U4 passive arms ✅  →  U5 ears + head inertia ✅  →  U6 full regression  ──┼── boundary
                                               U7 unload a foot  →  U8 lift a foot  → …
 ```
 
@@ -26,7 +26,7 @@ U4 passive arms ✅  →  U5 ears + head inertia  →  U6 full regression  ─�
 config/
 ├── left_leg.yaml          SSOT: one leg + pelvis, fixed base
 ├── cara_lower_body.yaml    extends left_leg + mirror l→r + floating pelvis + standing/shift poses
-├── cara_upper_body.yaml    FRAGMENT (not runnable alone): torso (U1) + head/neck (U2) + electronics (U3) [+ arms/ears later]
+├── cara_upper_body.yaml    FRAGMENT (not runnable alone): torso (U1) + head/neck (U2) + electronics (U3) + arms (U4) + ears (U5)
 │                           -- links + joints + dynamics + `upper_body:` / `electronics:` param blocks
 └── cara_full_body.yaml     extends cara_lower_body + include cara_upper_body
 ```
@@ -64,11 +64,12 @@ margin, peak/RMS actuator torque (standing); loaded/unloaded foot force, COM
 margin, pelvis roll, foot slip, and the quasi-static shift limit (weight-shift).
 Nothing in the baseline is dropped. `--json` writes a fresh snapshot.
 
-Through U4 the single-leg and lower-body generated URDF/MJCF stay
-byte-identical (`git status` shows only `cara_full_body.*` changed) and the
-single-leg and lower-body suites (`validate_description` 201 / 331,
-`fk_sanity`, `validate_mjcf`, `dynamic_check`, both generators `--check`) must
-stay **byte-identical** through every phase — that is the hard gate.
+Through U5 the single-leg and lower-body generated URDF/MJCF stay
+byte-identical (`git status` shows only `cara_full_body.*` changed). The
+single-leg and lower-body validators (`validate_description` 201 / 340 —
+U5 added an `l_*`↔`r_*` physical-link mass/COM symmetry check —
+`fk_sanity`, `validate_mjcf`, `dynamic_check`, both generators `--check`) all
+still pass unchanged — that is the hard gate.
 
 ---
 
@@ -359,9 +360,88 @@ symmetric. No articulation was added.
 
 ---
 
-## Open TODOs (U1–U4)
+## Phase U5 — ears and head asymmetry study
+
+One plush-ear lump **and** a micro ear-twitch servo per side, both **welded to
+the head** (`l_ear_joint` is `revolute` + `locked: true` — the 1-DoF ear twitch
+of the 20-DoF design, held at 0; `l_ear_servo_mount` is `type: fixed`). `l_*`
+authored, `mirror` → `r_*`. No ear motion yet — the fixed-mass inertia is the
+thing to understand first.
+
+| param (`upper_body.ear.*`) | provisional | `TODO` |
+|---|---|---|
+| `mass` | 0.020 kg/side | measured/CAD (plush ear shell) |
+| `servo_mass` | 0.010 kg/side | measured (micro servo + horn) |
+| `offset_x / offset_y / offset_z` | (0.005, **±0.090**… default 0.055, 0.050) m in the head frame | measured/CAD |
+| `size` | 0.035 m cube (inertia approx) | measured/CAD |
+| `servo_offset_x/y/z`, `servo_box_x/y/z` | (0.005, 0.030, 0.045) m / 0.020×0.012×0.023 m | measured |
+
+Offsets are in the **head link frame**, whose origin **is** the coincident neck
+yaw/roll/pitch axes — so `offset_y` is literally the ear's lateral moment arm
+about the neck-yaw servo.
+
+### The I ~ m r² study — `ear_inertia_study.py`
+
+`leg_model.whole_body_inertia(spec, q, about=<frame>, links=<subset>)` (U5:
+gained the `links` subset filter and an arbitrary reference frame) computes the
+**head-subsystem** tensor — `{head, l_ear, r_ear, l_ear_servo, r_ear_servo}` —
+about the neck axes (`about="head"`).
+
+**Ears vs no ears**, about the neck axis, at `stand_nominal`:
+
+| | Ixx (roll) | Iyy (nod) | Izz (yaw) | mass |
+|---|---|---|---|---|
+| head only | 0.001379 | 0.001414 | 0.000539 | 0.350 kg |
+| head + ears (nominal) | 0.001668 | 0.001566 | 0.000689 | 0.410 kg |
+| **ears add** | **+21 %** | +11 % | **+28 %** | +0.060 kg (+17 %) |
+
+The ears are 17 % of the head *mass* but add **28 % of the yaw inertia** the
+neck-yaw servo has to accelerate — the headline U5 result.
+
+**Lateral-offset sweep** (`upper_body.ear.offset_y`, 20 → 90 mm):
+
+| offset_y | Izz (yaw) | measured ΔIzz | m·r² prediction | roll Ixx |
+|---|---|---|---|---|
+| 0.020 m | 0.000584 | — | — | 0.001563 |
+| 0.055 m (nominal) | 0.000689 | +0.000105 | +0.000105 | 0.001668 |
+| 0.090 m | 0.000892 | +0.000308 | +0.000308 | 0.001871 |
+
+The measured change tracks the point-mass parallel-axis prediction
+`ΔIzz = 2·m_ear·(y² − y₀²)` **exactly** (ear COM is lumped at the joint, own-box
+inertia is ~4 µkg·m² and constant). Moving a 20 g ear from 20 mm to 90 mm off
+the axis **quintuples** its yaw-inertia contribution. Nod inertia (Iyy) is
+unaffected by lateral offset, as expected (it depends on x² + z²).
+
+Mass sweeps: `ear.mass` 10 → 60 g/side raises head yaw inertia +0.00033; the
+servo (kept nearer the skull at 30 mm) matters ~3× less per gram than the ear.
+
+### Whole-body effect (vs the frozen lower-body baseline)
+
+Full upper body + arms **+ ears** = **2.06 → 4.43 kg** (+0.06 kg for the ears);
+whole-body COM −72 mm → **+24 mm** (pelvis frame). Whole-body inertia about the
+COM barely moves — the ears are near the yaw axis of the *whole body*
+(Izz@COM +0.00001), high but light.
+
+- **Standing** (`stand_check.py --baseline`): all 3 poses PASS — tilt +0.01°,
+  margin −0.1 mm, peak torque +0.02 N·m vs U4. Ears are a rounding error for
+  standing.
+- **Weight shift**: quasi-static envelope **unchanged at ~0.020 m** — the ears
+  add no measurable balance cost.
+
+**U5 acceptance criterion met:** we now know the ear design *does* materially
+affect head/neck rotational inertia (yaw +28 % at nominal, growing with the
+square of the lateral offset — a real neck-yaw-servo sizing input) but does
+**not** affect whole-body standing or weight-shift balance. No ear geometry is
+chosen. Ear *motion* is the sanctioned next step once this fixed-mass model is
+accepted.
+
+---
+
+## Open TODOs (U1–U5)
 
 - [ ] Replace every `upper_body.*` / `electronics.*` / `dynamics.links.*` value with CAD / measured.
 - [ ] Mount offsets are guesses — `pelvis_low` at −30 mm assumes there is room below the pelvis frame.
 - [ ] Arm mass/length/COM/radius and the shoulder position are all provisional single-lump guesses.
-- [ ] U5: ears + a proper head inertia study (I ~ m r², thin shell vs solid).
+- [ ] Ear mass / servo mass / offsets are provisional — the neck-yaw servo spec depends on them.
+- [ ] U5 follow-on: add simple locked→driven ear motion now that the fixed-mass inertia is understood.
+- [ ] U6: full-body regression + a per-subsystem summary table (torso → head → electronics → arms → ears).

@@ -737,19 +737,39 @@ def center_of_mass(spec: dict, q: Dict[str, float] | None = None,
 
 
 def whole_body_inertia(spec: dict, q: Dict[str, float] | None = None,
-                       about: str = "com") -> Mat3:
-    """3x3 inertia tensor of all physical links, in the WORLD frame, about
-    either the whole-body COM (`about="com"`) or the base-frame origin
-    (`about="base"`).  Parallel-axis:  I = sum_i [ R_i I_i R_iᵀ
-                                              + m_i (|d|² E3 - d dᵀ) ]  with
+                       about: str = "com",
+                       links: Sequence[str] | None = None) -> Mat3:
+    """3x3 inertia tensor, in the WORLD frame, of the physical links (or the
+    subset named in `links`), about a reference point selected by `about`:
+
+        "com"   -> the COM of the selected links
+        "base"  -> the base-frame origin
+        <name>  -> the world origin of that link frame or frame-of-interest
+                   (e.g. about="head" = the coincident neck axes point)
+
+    Parallel-axis:  I = sum_i [ R_i I_i R_iᵀ + m_i (|d|² E3 - d dᵀ) ]  with
     d = com_i - reference.  `I_i` is the per-link diagonal about its own COM.
     """
     tf = forward_kinematics(spec, q)
     inertials = link_inertials(spec)
+    if links is not None:
+        want = set(links)
+        inertials = {n: li for n, li in inertials.items() if n in want}
+
     if about == "com":
-        _, ref, _ = center_of_mass(spec, q)
-    else:
+        num = (0.0, 0.0, 0.0)
+        den = 0.0
+        for n, li in inertials.items():
+            r, p = tf[n]
+            num = vec_add(num, vec_scale(vec_add(mat_vec(r, li.com), p), li.mass))
+            den += li.mass
+        ref = vec_scale(num, 1.0 / den) if den > 0.0 else (0.0, 0.0, 0.0)
+    elif about == "base":
         ref = tf[spec["frame_conventions"]["base_frame"]][1]
+    elif about in tf:
+        ref = tf[about][1]
+    else:
+        ref = frame_world_position(spec, tf, about)
 
     total = [[0.0] * 3 for _ in range(3)]
     for name, li in inertials.items():

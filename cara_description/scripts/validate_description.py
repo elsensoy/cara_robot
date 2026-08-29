@@ -319,6 +319,28 @@ def validate(path: str | None) -> int:
         rep.check("l_foot_sole_center" in soles and "r_foot_sole_center" in soles,
                   "both foot sole frames present", detail=str(soles))
 
+        # every physical l_* link has an r_* twin with equal mass + y-mirrored COM
+        # (catches a desymmetrised sweep of dynamics.links.l_<part>.mass -- see U4)
+        try:
+            inr = lm.link_inertials(spec)
+        except Exception:  # noqa: BLE001
+            inr = {}
+        for name, li in inr.items():
+            if not name.startswith("l_"):
+                continue
+            twin = inr.get("r_" + name[2:])
+            rep.check(twin is not None, f"physical link {name!r} has an r_ twin")
+            if twin is None:
+                continue
+            rep.check(abs(li.mass - twin.mass) < 1e-9,
+                      f"{name} / r_{name[2:]} masses match",
+                      detail=f"{li.mass} vs {twin.mass} kg")
+            rep.check(abs(li.com[0] - twin.com[0]) < 1e-9
+                      and abs(li.com[1] + twin.com[1]) < 1e-9
+                      and abs(li.com[2] - twin.com[2]) < 1e-9,
+                      f"{name} / r_{name[2:]} COMs are sagittally mirrored",
+                      detail=f"{li.com} vs {twin.com}")
+
     ub = spec.get("upper_body", {}) or {}
     if ub:
         print("\n== 13b. upper_body block ==")

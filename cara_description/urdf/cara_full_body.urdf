@@ -186,6 +186,40 @@
     </collision>
   </link>
 
+  <link name="l_ear">
+    <!-- role: segment. Mass/COM/inertia PROVISIONAL (method: solid_box). TODO: replace with CAD. -->
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.02"/>
+      <inertia ixx="4.08333333e-06" ixy="0" ixz="0" iyy="4.08333333e-06" iyz="0" izz="4.08333333e-06"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.035 0.035 0.035"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.035 0.035 0.035"/></geometry>
+    </collision>
+  </link>
+
+  <link name="l_ear_servo">
+    <!-- role: segment. Mass/COM/inertia PROVISIONAL (method: solid_box). TODO: replace with CAD. -->
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.01"/>
+      <inertia ixx="5.60833333e-07" ixy="0" ixz="0" iyy="7.74166667e-07" iyz="0" izz="4.53333333e-07"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.02 0.012 0.023"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.02 0.012 0.023"/></geometry>
+    </collision>
+  </link>
+
   <link name="r_hip_yaw_link">
     <!-- role: virtual_coupling. Virtual coincident-axis coupling link: massless abstraction, intentionally no inertial/visual/collision. -->
   </link>
@@ -263,6 +297,40 @@
     <collision>
       <origin xyz="0 0 -0.095" rpy="0 0 0"/>
       <geometry><cylinder radius="0.022" length="0.19"/></geometry>
+    </collision>
+  </link>
+
+  <link name="r_ear">
+    <!-- role: segment. Mass/COM/inertia PROVISIONAL (method: solid_box). TODO: replace with CAD. -->
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.02"/>
+      <inertia ixx="4.08333333e-06" ixy="0" ixz="0" iyy="4.08333333e-06" iyz="0" izz="4.08333333e-06"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.035 0.035 0.035"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.035 0.035 0.035"/></geometry>
+    </collision>
+  </link>
+
+  <link name="r_ear_servo">
+    <!-- role: segment. Mass/COM/inertia PROVISIONAL (method: solid_box). TODO: replace with CAD. -->
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.01"/>
+      <inertia ixx="5.60833333e-07" ixy="0" ixz="0" iyy="7.74166667e-07" iyz="0" izz="4.53333333e-07"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.02 0.012 0.023"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><box size="0.02 0.012 0.023"/></geometry>
     </collision>
   </link>
 
@@ -381,6 +449,20 @@
     <origin xyz="0 0.09 0.12" rpy="0 0 0"/>
   </joint>
 
+  <joint name="l_ear_joint" type="fixed">
+    <!-- declared type: revolute (locked at 0) -->
+    <parent link="head"/>
+    <child link="l_ear"/>
+    <origin xyz="0.005 0.055 0.05" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="l_ear_servo_mount" type="fixed">
+    <!-- declared type: fixed -->
+    <parent link="head"/>
+    <child link="l_ear_servo"/>
+    <origin xyz="0.005 0.03 0.045" rpy="0 0 0"/>
+  </joint>
+
   <joint name="r_hip_yaw" type="revolute">
     <!-- purpose: Rotation of the whole leg about the vertical. Sets foot heading for turning and for directional foot placement. -->
     <!-- +angle: toe yaws toward -Y (toe-out / outward heading) -->
@@ -452,6 +534,20 @@
     <parent link="torso"/>
     <child link="r_arm"/>
     <origin xyz="0 -0.09 0.12" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="r_ear_joint" type="fixed">
+    <!-- declared type: revolute (locked at 0) -->
+    <parent link="head"/>
+    <child link="r_ear"/>
+    <origin xyz="0.005 -0.055 0.05" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="r_ear_servo_mount" type="fixed">
+    <!-- declared type: fixed -->
+    <parent link="head"/>
+    <child link="r_ear_servo"/>
+    <origin xyz="0.005 -0.03 0.045" rpy="0 0 0"/>
   </joint>
 
 </robot>

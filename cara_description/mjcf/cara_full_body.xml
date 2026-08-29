@@ -67,6 +67,30 @@
           <inertial pos="0.01 0 0.05" mass="0.35" diaginertia="0.000504 0.000504 0.000504"/>
           <geom type="sphere" size="0.06" pos="0.01 0 0.05" rgba="0.75 0.78 0.82 1"/>
           <site name="head_frame" pos="0 0 0" rgba="0.9 0.5 0.2 1"/>
+          <body name="l_ear" pos="0.005 0.055 0.05">
+            <!-- l_ear_joint: revolute (locked), welded -->
+            <inertial pos="0 0 0" mass="0.02" diaginertia="4.08333333e-06 4.08333333e-06 4.08333333e-06"/>
+            <geom type="box" size="0.0175 0.0175 0.0175" pos="0 0 0" rgba="0.75 0.78 0.82 1"/>
+            <site name="l_ear_frame" pos="0 0 0" rgba="0.9 0.5 0.2 1"/>
+          </body>
+          <body name="l_ear_servo" pos="0.005 0.03 0.045">
+            <!-- l_ear_servo_mount: fixed, welded -->
+            <inertial pos="0 0 0" mass="0.01" diaginertia="5.60833333e-07 7.74166667e-07 4.53333333e-07"/>
+            <geom type="box" size="0.01 0.006 0.0115" pos="0 0 0" rgba="0.75 0.78 0.82 1"/>
+            <site name="l_ear_servo_frame" pos="0 0 0" rgba="0.9 0.5 0.2 1"/>
+          </body>
+          <body name="r_ear" pos="0.005 -0.055 0.05">
+            <!-- r_ear_joint: revolute (locked), welded -->
+            <inertial pos="0 0 0" mass="0.02" diaginertia="4.08333333e-06 4.08333333e-06 4.08333333e-06"/>
+            <geom type="box" size="0.0175 0.0175 0.0175" pos="0 0 0" rgba="0.75 0.78 0.82 1"/>
+            <site name="r_ear_frame" pos="0 0 0" rgba="0.9 0.5 0.2 1"/>
+          </body>
+          <body name="r_ear_servo" pos="0.005 -0.03 0.045">
+            <!-- r_ear_servo_mount: fixed, welded -->
+            <inertial pos="0 0 0" mass="0.01" diaginertia="5.60833333e-07 7.74166667e-07 4.53333333e-07"/>
+            <geom type="box" size="0.01 0.006 0.0115" pos="0 0 0" rgba="0.75 0.78 0.82 1"/>
+            <site name="r_ear_servo_frame" pos="0 0 0" rgba="0.9 0.5 0.2 1"/>
+          </body>
         </body>
         <body name="l_arm" pos="0 0.09 0.12">
           <!-- l_shoulder: fixed, welded -->
