@@ -25,7 +25,7 @@ a full robot, not CAD, not a policy, and has no upper body yet.
 | 🔶 | dynamics — mass / COM / inertia / actuator limits / PD gains **provisional**; U7–U11 feedback gains hand-picked |
 | ❌ | waist joints, articulated neck / shoulders / ears (all present structurally, locked at 0 for now) |
 | ❌ | CAD geometry, servo brackets, wiring, shells |
-| ❌ | a dynamic walking gait (continuous, uses momentum), turning / slopes, a sideways step, sagittal balance feedback, RL |
+| ❌ | **a continuous / dynamic walking gait** (U12 hit the foot-size CoP wall — needs a ZMP/capture-point controller or wider feet), turning / slopes, a sideways step, sagittal balance feedback, RL |
 
 Design constraint being followed: **kinematics, dynamics, and manufacturing
 are kept separate.** The YAML is layered accordingly. No servo is selected;
@@ -61,6 +61,7 @@ cara_description/
 │   ├── balance_margin.py        # U9 diagnostic: why the balance envelope is small -- CoP budget + capture point + foot-size sweep
 │   ├── step_once.py             # U10: one deliberate forward step -- shift/lift/swing/place/transfer -> stable staggered stance  (--view)
 │   ├── gait.py                  # U11: chain the U10 step, alternating legs -> a short quasi-static walk  (--view)
+│   ├── walk.py                  # U12: continuous-walk attempt -- precomputed periodic cycle; DOCUMENTS the dynamic-walk limit  (--view)
 │   ├── view_mujoco.py           # load a generated MJCF and open mujoco.viewer
 │   ├── center_of_mass.py        # whole-model COM for any joint configuration
 │   ├── gravity_torques.py       # gravitational joint torques for reference poses
@@ -478,6 +479,11 @@ Balance / control (the boundary — new controllers start here):
 - **U11 a short walk** ✅ (`gait.py`; chains the U10 step, alternating legs — 4
   quasi-static steps forward, 110 mm, periodic cycle, ends standing; `stride`
   ≲ 25 mm, forward / straight / flat)
-- **U12+** a dynamic walking gait (continuous, momentum) → RL / learned policy
+- **U12 continuous walk** ❌ **documented limit** (`walk.py`; precomputed periodic
+  cycle + gated roll trim — fast: topples at the double-support transfer (the U9
+  CoP wall); slow: upright but no forward drive. Needs a dynamic gait controller
+  / wider feet. U11 stepping stays Cara's locomotion)
+- **U13+** a dynamic gait controller (ZMP / capture-point + push-off) or a
+  hardware revision (wider feet) → RL / learned policy
 
 CAD/measured values replace every `TODO` before single-support locomotion.

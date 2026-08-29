@@ -263,3 +263,45 @@ analysis:
       min_stance_corners: 3
       min_advance_frac: 0.6     # per-step COM advance >= this * stride
       final_hold_drift: 0.008   # m, COM drift over the final hold
+
+  # --- U12: CONTINUOUS-WALK ATTEMPT (scripts/walk.py) -- a DOCUMENTED LIMIT
+  # Remove U11's stop-between-steps: ONE step (lead l_, r_ stance) is precomputed
+  # as a dense joint trajectory by IK -- sagittal joints track each foot's world
+  # path, the four roll joints track a lateral COM sway (weight_shift's inverted
+  # table) -- then played back on a loop, mirroring l_<->r_ on alternate steps.
+  # The step trajectory is periodic (p=1 == the l/r swap of p=0).  A gated roll
+  # trim (U9's, faded in only over the single-support swing) rides on top.
+  #
+  # RESULT: this is NOT enough for a continuous walk (see docs/single_support_notes).
+  #   * fast (t_step <~ 4 s): she completes the single-support swing but topples
+  #     at the double-support transfer -- the lateral COM momentum from the sway
+  #     exceeds the 22.5 mm foot's CoP authority (the U9 balance_margin wall).
+  #   * slow (t_step ~ 8 s): she stays upright but barely advances -- kinematic
+  #     pose-playback induces no forward translation without push-off / momentum.
+  # A continuous walk needs a dynamic gait controller (ZMP / capture-point +
+  # push-off) and/or a wider foot.  Quasi-static stepping (U11) stays Cara's
+  # locomotion.  The values below reproduce the fast / topple-at-transfer case.
+  # All timings / lengths / gains PROVISIONAL.
+  walk:
+    base_pose: stand_nominal
+    n_cycles: 4                 # L+R pairs (walk runs 2*n_cycles steps)
+    stride: 0.020               # m, forward foothold advance per step (as U11; swing travels 2*stride)
+    t_step: 3.5                 # s per step -> forward speed = stride / t_step
+    double_support_frac: 0.30   # fraction of the step spent in double support before the swing
+    lift_height: 0.009          # m, swing-foot peak ground clearance
+    sway: 0.030                 # m, lateral COM sway amplitude toward the stance foot
+    cycle_samples: 121          # IK samples across one step (precompute resolution)
+    lead_in_seconds: 2.5        # ramp stand_nominal -> the first step's phase 0
+    settle_seconds: 1.5
+    tail_seconds: 3.0           # stop and stand at the end
+    balance:                    # gated lateral (COM-y) roll trim -- gentler than U9's
+      kp_ankle_roll:  40.0       # (U9's kp 50 destabilises a *moving* reference)
+      kd_ankle_roll:   0.0       # a /dt D-term on a moving signal blows up here -- off
+      kp_hip_roll:    12.0
+    accept:
+      max_pelvis_tilt_deg: 10.0
+      min_support_margin: -0.010   # m, dynamic -- the COM may leave the polygon briefly
+      max_torque_frac: 1.0
+      speed_consistency: 0.35      # std/mean of the per-step forward speed (start-stop stepping ~1)
+      min_speed_frac: 0.5         # mean forward speed >= this * commanded
+      tail_hold_drift: 0.012      # m, COM drift over the stop-and-stand

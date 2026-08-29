@@ -1,0 +1,18 @@
+{
+  "model": "cara_full_body",
+  "n_cycles": 4,
+  "stride_m": 0.02,
+  "t_step": 3.5,
+  "v_cmd_mps": 0.005714285714285714,
+  "v_mean_mps": 0.04214398389033402,
+  "consistency": 0.0,
+  "total_advance_m": 0.21808104615281845,
+  "peak_tilt_deg": 45.17049201078021,
+  "min_margin_m": -1000000000.0,
+  "sway_m": 0.07701561075730688,
+  "peak_torque_frac": 1.0,
+  "fell": true,
+  "fell_t": 2.936,
+  "failure_mode": "toppled_at_transfer",
+  "milestone_met": false
+}

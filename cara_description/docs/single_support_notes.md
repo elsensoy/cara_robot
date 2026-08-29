@@ -1,4 +1,4 @@
-# Cara — Toward single support, the first step, and a short walk (U7 → U11)
+# Cara — Single support, the first step, a short walk, and the dynamic-walk wall (U7 → U12)
 
 Companion to [`weight_shift_notes.md`](weight_shift_notes.md). This is the first
 work **past the morphology boundary** — U1–U6 validated the whole-body mass model
@@ -7,7 +7,8 @@ work **past the morphology boundary** — U1–U6 validated the whole-body mass 
 ```
 … static standing ✅ → weight shifting ✅ → morphology U1–U6 ✅  ──┼── boundary
     U7 unload one foot ✅ → U8 lift one foot ✅ → U9 single-support balance ✅
-      → U10 one forward step ✅ → U11 a short walk ✅ (this doc) → dynamic gait / RL → …
+      → U10 one forward step ✅ → U11 a short quasi-static walk ✅
+      → U12 continuous walk ❌ (design limit — this doc) → dynamic gait controller / wider feet → …
 ```
 
 Still transparent — the same frontal-plane IK from `weight_shift.py`, plus a
@@ -333,3 +334,57 @@ a **periodic cycle** (verified out to 6 steps). Every step keeps the same
 - **Lower body fails it** — full-body-tuned roll gains, as in U9/U10. Reported.
 - Same open items as U9/U10: foot size, sagittal balance feedback, servo
   headroom, lower-body gains.
+
+---
+
+## Phase U12 — continuous walk: a **documented limit**, not a milestone
+
+Script: `scripts/walk.py` (`--view`). Question:
+
+> **Can Cara walk continuously** (no stop between steps), the COM advancing at a
+> roughly steady speed, staying upright — then stop and stand?
+
+### Approach (still no ZMP, no RL)
+
+One step (lead `l_`, `r_` stance) is precomputed as a dense joint trajectory:
+the **sagittal** joints track each foot's world path (foot forward `stride`,
+pelvis forward `stride`); the four **roll** joints track a lateral COM sway from
+`weight_shift`'s inverted table. The step is translation-periodic (`p=1` equals
+the `l↔r` swap of `p=0`), so it's played back on a loop, mirroring on alternate
+steps. A **gated** roll trim (U9's, faded in only over the single-support swing —
+U9's `kp 50` destabilises a *moving* reference, and a `/dt` D-term on a moving
+signal blows up, so the D-term is off) rides on top.
+
+### Result — **MILESTONE NOT MET**
+
+| cadence | what happens |
+|---|---|
+| **fast** (`t_step` ≲ 4 s) | completes the single-support swing, then **topples at the double-support transfer** to the next stance foot — ~0.8 steps in (`baselines/full_body_walk.json`) |
+| **slow** (`t_step` ≈ 8 s) | **stays upright** (tilt < 6°, ends standing) but **barely advances** (~0 mm/step of a 20 mm stride) |
+
+Two distinct walls, both structural:
+
+1. **Lateral capture (fast).** The half-sine COM sway gives the COM real lateral
+   velocity toward the stance foot. To hand off to the *other* foot the COM must
+   cross the midline and be arrested — but the 22.5 mm foot can make only
+   ≈ 1 N·m of ankle-roll CoP moment (the U9 `balance_margin` wall, ~6.5 mm
+   single-support margin). The momentum carries her past the new foot and she
+   topples. This is the same limit U9 measured; continuous walking is the first
+   phase that actually spends it.
+2. **Forward drive (slow).** Kinematic pose-playback induces **no net forward
+   translation** without push-off or momentum — commanding the stance foot
+   "backward in the pelvis frame" makes the *foot slide back*, not the pelvis
+   advance. U11 got around this by ramping to a world-anchored staggered pose
+   each step and stopping; a continuous gait can't.
+
+### What a continuous walk needs
+
+- a **dynamic gait controller** — a ZMP or capture-point pattern generator that
+  plans the CoP trajectory and includes ankle **push-off**, not just kinematic
+  playback; and/or
+- a **wider foot** (the recurring U9/U10/U11 finding — `balance_margin.py`'s
+  sweep: 22.5 → 45 mm roughly quadruples the lateral tolerance).
+
+**Quasi-static stepping (U11) remains Cara's locomotion** until one of those
+lands. `walk.py` stays in the tree as the generator + the honest failure
+characterisation (it prints which wall it hit and ties it to the U9 numbers).
