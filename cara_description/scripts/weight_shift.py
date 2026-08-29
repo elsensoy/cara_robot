@@ -32,9 +32,11 @@ not hidden.
 Requires `mujoco` (brings numpy). Prints SKIPPED / exits 0 without it.
 
 Usage:
-    python3 weight_shift.py                       # demo run + sweep
+    python3 weight_shift.py                       # demo run + sweep (headless, logs)
     python3 weight_shift.py --amplitude 0.04 --csv shift.csv
     python3 weight_shift.py --no-sweep
+    python3 weight_shift.py --view               # watch the COM-shift loop in the viewer
+    python3 weight_shift.py --view --amplitude 0.05   # watch it topple at the limit
 """
 
 from __future__ import annotations
@@ -135,7 +137,7 @@ def table_lookup(table, com_des):
 
 
 # --------------------------------------------------------------------------- #
-def run(config, amplitude, do_sweep, csv_path, verbose):
+def run(config, amplitude, do_sweep, csv_path, verbose, view=False):
     try:
         import mujoco
         import numpy as np
@@ -283,7 +285,7 @@ def run(config, amplitude, do_sweep, csv_path, verbose):
         return float((np.min if kind == "min" else np.max)(log[key][m]))
 
     # ================================================================== #
-    # 1. demonstration run
+    # 0. optional: watch the trajectory in the MuJoCo viewer
     # ================================================================== #
     print(f"Quasi-static weight shift  (base '{base_pose}', COM target ±{A:.3f} m, "
           f"ramp {ramp:.0f}s / hold {hold:.0f}s)")
@@ -291,6 +293,48 @@ def run(config, amplitude, do_sweep, csv_path, verbose):
           f"(frontal-plane, feet flat + planted)")
 
     traj, total, windows = make_trajectory(A, ramp, hold, extra_centre=1.0)
+
+    if view:
+        import time
+        try:
+            import mujoco.viewer
+        except ImportError:
+            print("error: mujoco.viewer unavailable (needs a display)", file=sys.stderr)
+            return 2
+        floor_z = float(model.geom_pos[floor_gid][2])
+        mujoco.mj_resetDataKeyframe(model, data,
+                                    mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_KEY, base_pose))
+        print(f"\nviewer: green dot = desired COM (ground), orange dot = measured COM. "
+              f"±{A:.3f} m loop; Ctrl-C or close the window to stop.")
+        with mujoco.viewer.launch_passive(model, data) as v:
+            for _ in range(int(settle / dt)):
+                data.ctrl[:] = nominal_ctrl
+                mujoco.mj_step(model, data)
+            nsteps = int(total / dt)
+            while v.is_running():
+                wall0 = time.time()
+                for step in range(nsteps):
+                    cy = traj(step * dt)
+                    _, qt = table_lookup(table, cy)
+                    data.ctrl[:] = qt
+                    mujoco.mj_step(model, data)
+                    com = data.subtree_com[0]
+                    v.user_scn.ngeom = 0
+                    for pos, rgba in (((float(com[0]), cy, floor_z + 0.001), (0.2, 0.8, 0.3, 1)),
+                                      ((float(com[0]), float(com[1]), floor_z + 0.002), (0.95, 0.55, 0.15, 1))):
+                        g = v.user_scn.geoms[v.user_scn.ngeom]
+                        mujoco.mjv_initGeom(g, mujoco.mjtGeom.mjGEOM_SPHERE, [0.012, 0, 0],
+                                            list(pos), np.eye(3).flatten(), list(rgba))
+                        v.user_scn.ngeom += 1
+                    v.sync()
+                    if not v.is_running():
+                        break
+                    dtw = time.time() - wall0
+                    target = (step + 1) * dt
+                    if target > dtw:
+                        time.sleep(target - dtw)
+        return 0
+
     log = episode(traj, total)
 
     base_t = (0.0, min(0.8, windows["+A"][0]))
@@ -423,8 +467,11 @@ def run(config, amplitude, do_sweep, csv_path, verbose):
           f"Cara {'can' if answer else 'cannot yet'} deliberately transfer weight "
           f"L<->R in controlled double support.")
     if answer:
-        print(f"  demonstrated at ±{A:.3f} m COM target; quasi-static limit "
-              f"~{sweep_limit:.3f} m before support/contact/tilt/torque criteria fail.")
+        line = f"  demonstrated at ±{A:.3f} m COM target"
+        if do_sweep:
+            line += (f"; quasi-static limit ~{sweep_limit:.3f} m before "
+                     "support/contact/tilt/torque criteria fail")
+        print(line + ".")
     print("  (provisional masses / PD gains / friction; no foot lifting, no RL)")
     return 0 if answer else 1
 
@@ -453,8 +500,10 @@ def main(argv=None) -> int:
     ap.add_argument("--no-sweep", action="store_true")
     ap.add_argument("--csv", default=None, help="write the demo-run timeseries here")
     ap.add_argument("--verbose", action="store_true")
+    ap.add_argument("--view", action="store_true",
+                    help="watch the COM-shift trajectory loop in the MuJoCo viewer (needs a display)")
     args = ap.parse_args(argv)
-    return run(args.config, args.amplitude, not args.no_sweep, args.csv, args.verbose)
+    return run(args.config, args.amplitude, not args.no_sweep, args.csv, args.verbose, args.view)
 
 
 if __name__ == "__main__":

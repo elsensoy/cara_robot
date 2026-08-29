@@ -132,6 +132,8 @@ python3 scripts/validate_mjcf.py --dynamic $LB                   # MuJoCo poses 
 python3 scripts/stand_check.py                                   # HOLD 3 poses 10 s each  (needs mujoco)
 python3 scripts/weight_shift.py                                  # quasi-static lateral COM shift + sweep  (needs mujoco)
 python3 scripts/weight_shift.py --amplitude 0.04 --csv shift.csv --verbose
+python3 scripts/weight_shift.py --view                           # watch the shift loop (green dot = target COM, orange = measured)
+python3 scripts/weight_shift.py --view --amplitude 0.05          # watch it topple at the limit
 python3 scripts/view_mujoco.py --dynamic --config $LB --regen --pose semi_squat
 
 # --- single leg: kinematics + dynamics foundation ---------------------

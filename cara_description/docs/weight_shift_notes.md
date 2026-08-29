@@ -11,7 +11,9 @@ Roadmap position:
 WEIGHT SHIFTING ✅ (this doc) → single-support → balance → locomotion → RL
 ```
 
-Script: `scripts/weight_shift.py`. Milestone question:
+Script: `scripts/weight_shift.py` (headless logs + sweep; `--view` opens the
+MuJoCo viewer and loops the shift with a green dot at the desired COM and an
+orange dot at the measured COM). Milestone question:
 
 > **Can Cara deliberately transfer her weight from one leg to the other while
 > remaining in controlled double support?**
