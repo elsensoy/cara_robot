@@ -18,11 +18,12 @@ a full robot, not CAD, not a policy, and has no upper body yet.
 | ✅ | **static standing** + **quasi-static weight shifting** — both milestones met (lower body & full body) |
 | ✅ | **Phases U1–U6** — welded torso + head/neck + Jetson/battery placement study + symmetric passive arms + ears/ear-servos (`I ~ m r²` study), then a full-body regression with a per-subsystem summary table; every metric compared to a frozen lower-body baseline |
 | ✅ | **full body (4.43 kg): standing MET, weight-shift MET at ±0.020 m** — morphology-validation phase (U1–U6) closed |
-| ✅ | validation + FK + plausibility + standing + weight-shift scripts, and COM / whole-body-inertia / gravity-torque / Jacobian / sweep analysis |
+| ✅ | **U7 — controlled single-foot unloading MET** — the other foot reaches 0 N with the COM inside the *stance* foot polygon (+8.5 mm), swing foot only 3.9 mm off the ground |
+| ✅ | validation + FK + plausibility + standing + weight-shift + foot-unload scripts, and COM / whole-body-inertia / gravity-torque / Jacobian / sweep analysis |
 | 🔶 | dynamics — mass / COM / inertia / actuator limits / PD gains are **provisional placeholders** |
-| ❌ | waist joints, articulated neck / shoulders / ears (all present structurally, locked at 0 for now) — post-U6 |
+| ❌ | waist joints, articulated neck / shoulders / ears (all present structurally, locked at 0 for now) |
 | ❌ | CAD geometry, servo brackets, wiring, shells |
-| ❌ | single-support, dynamic balance, RL / locomotion policy — U7+ (balance/control) |
+| ❌ | actually lifting a foot (U8), single-support balance (U9), stepping, RL / locomotion |
 
 Design constraint being followed: **kinematics, dynamics, and manufacturing
 are kept separate.** The YAML is layered accordingly. No servo is selected;
@@ -52,6 +53,7 @@ cara_description/
 │   ├── dynamic_check.py         # single leg: gravity + PD plausibility over scripted poses
 │   ├── stand_check.py           # lower/full body: hold standing poses 10 s + COM/polygon  (--baseline)
 │   ├── weight_shift.py          # lower/full body: quasi-static lateral COM shift via task-space IK  (--baseline)
+│   ├── unload_foot.py           # U7: shift + unweight one foot to ~0 N with the COM over the stance foot  (--view)
 │   ├── view_mujoco.py           # load a generated MJCF and open mujoco.viewer
 │   ├── center_of_mass.py        # whole-model COM for any joint configuration
 │   ├── gravity_torques.py       # gravitational joint torques for reference poses
@@ -66,6 +68,7 @@ cara_description/
 │   ├── dynamics_notes.md        # provisional dynamics layer + single-leg analysis
 │   ├── standing_notes.md        # mirroring the 2nd leg + the standing milestone
 │   ├── weight_shift_notes.md    # task-space IK + the weight-shift milestone
+│   ├── single_support_notes.md  # U7→U9: unloading a foot → lifting → single-support balance
 │   ├── upper_body_notes.md      # config hierarchy + staged upper-body mass/inertia analysis (U1–U6)
 │   └── subsystem_summary.md     # GENERATED (subsystem_summary.py) — the U6 per-subsystem table
 └── README.md
@@ -300,6 +303,20 @@ electronics mounts, the two shoulders, the two ears + two ear-servo mounts)
 carry 0 DOF and no servo. The single-leg and lower-body regression outputs stay
 **byte-identical** through every U-phase.
 
+**Phase U7 — controlled single-foot unloading** (the first balance/control
+phase). `unload_foot.py` runs two transparent quasi-static phases on the full
+body: (1) the `weight_shift` frontal-plane IK shifts the COM toward the stance
+foot, then (2) the swing leg is shortened in the sagittal plane a fraction of a
+mm at a time until its `Fz` crosses 5 % of body weight, then frozen. **Milestone
+MET** at a COM target of 0.030 m, both feet: the unloaded foot reaches **0 N**
+with the swing foot only **3.9 mm** off the ground (not a deliberate lift), the
+whole-body COM **inside the stance foot's own polygon with +8.5 mm margin**,
+pelvis tilt 3.8°, no saturation. The valid window is narrow (~0.030 m only) —
+pre-single-support sits right at the edge of the ±0.020 m double-support
+envelope, which is what "about to enter single support" means. `baselines/
+full_body_unload.json` freezes the result. Details in
+[`docs/single_support_notes.md`](docs/single_support_notes.md).
+
 ## The question this layer answers
 
 > *Given Cara's current kinematics, how do geometry and mass distribution
@@ -387,7 +404,9 @@ Morphology / design validation (each measured vs the frozen baseline):
 
 Balance / control (the boundary — new controllers start here):
 
-- **U7** unload one foot toward `Fz → 0` in valid double support
+- **U7 unload one foot toward `Fz → 0`** ✅ (`unload_foot.py`; the other foot hits
+  0 N with the whole-body COM inside the stance foot polygon, +8.5 mm margin,
+  swing foot 3.9 mm off the ground — a valid pre-single-support state, both sides)
 - **U8** lift the unloaded foot 5–10 mm, hold, return
 - **U9+** single-support balance → stepping → locomotion → learned policy
 

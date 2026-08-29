@@ -1,0 +1,27 @@
+{
+  "model": "cara_full_body",
+  "total_mass_kg": 4.43,
+  "total_weight_N": 43.4583,
+  "unloaded_frac_target": 0.05,
+  "left_stance": {
+    "com_target": 0.03,
+    "Fz_unloaded_N": 0.0,
+    "unloaded_frac": 0.0,
+    "swing_rise_mm": 3.934710098836679,
+    "stance_margin_mm": 8.468689678342438,
+    "pelvis_tilt_deg": 3.7930433108225303,
+    "slip_mm": 3.9125376681463715,
+    "stance_corners": 4
+  },
+  "right_stance": {
+    "com_target": 0.03,
+    "Fz_unloaded_N": 0.0,
+    "unloaded_frac": 0.0,
+    "swing_rise_mm": 3.9347100988346533,
+    "stance_margin_mm": 8.468689678344129,
+    "pelvis_tilt_deg": 3.7930433108187342,
+    "slip_mm": 3.9125376681503847,
+    "stance_corners": 4
+  },
+  "milestone_met": true
+}

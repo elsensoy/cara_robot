@@ -95,3 +95,30 @@ analysis:
       max_pelvis_tilt_deg: 6.0      # |roll| or |pitch| of the pelvis
       max_foot_slip: 0.003         # m, horizontal drift of either foot
       max_torque_frac: 1.0         # actuator torque must stay within +-this * effort limit
+
+  # --- U7: controlled single-foot UNLOADING (scripts/unload_foot.py)
+  # Two transparent quasi-static phases, no gain tuning, no RL:
+  #   A) the frontal-plane IK from weight_shift shifts the lateral COM target
+  #      toward the stance foot (both feet planted);
+  #   B) the swing leg is gently shortened (6-DoF foot IK, target raised) until
+  #      its vertical load crosses `unloaded_frac_target` -- then the clearance
+  #      is FROZEN there (not lifted further).
+  # Pre-single-support question: at that point, is the whole-body COM inside the
+  # STANCE foot's own polygon (with margin), pelvis near level, feet not slipping,
+  # no actuator saturated, and did Fz reach ~0 before the swing foot rose more
+  # than `not_lifted_rise`?  All values PROVISIONAL.
+  unload_foot:
+    base_pose: stand_nominal
+    com_sweep: [0.024, 0.027, 0.030, 0.033]   # m, lateral COM target toward the stance foot
+    max_unweight_clearance: 0.006  # m, cap on how far phase B may raise the swing-foot target
+    ramp_seconds: 4.0
+    hold_seconds: 2.0
+    settle_seconds: 1.5
+    accept:
+      unloaded_frac_target: 0.05   # "approaches zero" = unloaded foot Fz <= this fraction of body weight
+      not_lifted_rise: 0.005       # m, swing-foot z rise at the Fz crossing -- below the U8 5-10 mm deliberate lift
+      min_stance_margin: 0.005     # m, whole-body COM must stay this far inside the STANCE foot's own polygon
+      max_pelvis_tilt_deg: 6.0
+      max_foot_slip: 0.006         # m, horizontal drift of either foot over the maneuver
+      max_torque_frac: 1.0
+      min_stance_corners: 3        # stance sole must keep >= this many ground-contact corners
