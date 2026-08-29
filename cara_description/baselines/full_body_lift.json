@@ -1,0 +1,36 @@
+{
+  "model": "cara_full_body",
+  "total_mass_kg": 4.43,
+  "total_weight_N": 43.4583,
+  "ankle_effort_Nm": 2.0,
+  "roll_trim_kp": [
+    1.6,
+    0.8
+  ],
+  "com_target_m": 0.028,
+  "left_stance": {
+    "lift_height_m": 0.005,
+    "clearance_mm": 4.794860797419042,
+    "swing_Fz_N": 0.0,
+    "stance_Fz_pct": 99.97869372999754,
+    "stance_margin_mm": 10.66289660884489,
+    "pelvis_tilt_deg": 4.012309437433763,
+    "stance_slip_mm": 1.8707626362825698,
+    "peak_torque_pct": 83.66252227707068,
+    "worst_actuator": "l_hip_roll",
+    "return_corners": 4
+  },
+  "right_stance": {
+    "lift_height_m": 0.005,
+    "clearance_mm": 4.794860797419708,
+    "swing_Fz_N": 0.0,
+    "stance_Fz_pct": 99.97869372999712,
+    "stance_margin_mm": 10.66289660884592,
+    "pelvis_tilt_deg": 4.012309437434898,
+    "stance_slip_mm": 1.8707626362887657,
+    "peak_torque_pct": 83.66252227702337,
+    "worst_actuator": "r_hip_roll",
+    "return_corners": 4
+  },
+  "milestone_met": true
+}

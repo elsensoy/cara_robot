@@ -110,15 +110,52 @@ analysis:
   unload_foot:
     base_pose: stand_nominal
     com_sweep: [0.024, 0.027, 0.030, 0.033]   # m, lateral COM target toward the stance foot
-    max_unweight_clearance: 0.006  # m, cap on how far phase B may raise the swing-foot target
+    max_unweight_clearance: 0.024  # m, cap on the pelvis-frame swing-foot target rise in phase B
     ramp_seconds: 4.0
     hold_seconds: 2.0
     settle_seconds: 1.5
+    # same minimal stance-roll trim as lift_foot (U8) -- unweighting the free foot to
+    # ~0 N is itself a near-single-support state and needs it, or Cara topples.
+    roll_trim_kp_ankle: 1.6
+    roll_trim_kp_hip:   0.8
+    roll_trim_kd_ankle: 0.10
     accept:
       unloaded_frac_target: 0.05   # "approaches zero" = unloaded foot Fz <= this fraction of body weight
-      not_lifted_rise: 0.005       # m, swing-foot z rise at the Fz crossing -- below the U8 5-10 mm deliberate lift
+      not_lifted_rise: 0.005       # m, swing-foot WORLD z rise at the Fz crossing -- below the U8 5-10 mm deliberate lift
       min_stance_margin: 0.005     # m, whole-body COM must stay this far inside the STANCE foot's own polygon
       max_pelvis_tilt_deg: 6.0
       max_foot_slip: 0.006         # m, horizontal drift of either foot over the maneuver
       max_torque_frac: 1.0
       min_stance_corners: 3        # stance sole must keep >= this many ground-contact corners
+
+  # --- U8: first SINGLE-SUPPORT milestone (scripts/lift_foot.py)
+  # Reuse U7's shift + unweight, then actually LIFT the free foot a few mm clear
+  # of the ground, HOLD briefly in single support, and RETURN to double support.
+  # No stepping, no RL.  All values PROVISIONAL.
+  lift_foot:
+    base_pose: stand_nominal
+    com_target: 0.028             # m, lateral COM shift onto the stance foot
+    lift_heights: [0.005, 0.007, 0.010]   # m, swing-foot ground clearance to test (roadmap: 5-10 mm)
+    ramp_seconds: 4.0
+    hold_seconds: 1.5             # single-support dwell ("hold briefly")
+    settle_seconds: 1.5
+    # a MINIMAL stance-side balance trim on top of the position PD -- without it Cara
+    # rolls ~10 deg in single support and catches the swing-foot edge.  PD on the
+    # pelvis roll, split between the stance ankle_roll and hip_roll targets (the D
+    # term damps the roll oscillation that would otherwise walk the stance foot).
+    # A full disturbance-rejecting balance controller is U9; this is just enough to
+    # hold still.  With this split the stance ankle stays within +-2.0 N*m; the hard-
+    # working joint is the SWING hip_roll (~2.6 of +-3.0 N*m, holding the lifted leg).
+    roll_trim_kp_ankle: 1.6       # rad of stance ankle_roll target per rad of pelvis roll
+    roll_trim_kp_hip:   0.8       # rad of stance hip_roll target per rad of pelvis roll
+    roll_trim_kd_ankle: 0.10     # + per (rad/s) of pelvis roll rate -- damps the roll oscillation that walks the foot
+    clearance_gain:     0.012     # closed-loop: d(pelvis-frame clearance cmd) per step per m of world-clearance error
+    accept:
+      min_lift_clearance: 0.004      # m, the swing foot must actually clear the ground by >= this in the hold
+      max_swing_load_frac: 0.03     # swing foot Fz must stay <= this fraction of body weight during the hold
+      min_stance_margin: 0.005      # m, whole-body COM inside the STANCE foot's own polygon
+      max_pelvis_tilt_deg: 6.0
+      max_foot_slip: 0.006          # m, stance-foot horizontal drift DURING the single-support hold
+      max_torque_frac: 1.0
+      min_stance_corners: 3         # stance sole ground-contact corners during single support
+      min_return_corners: 3        # each sole's corners after returning to double support

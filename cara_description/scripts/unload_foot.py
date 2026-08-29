@@ -90,6 +90,9 @@ def run(config, view, view_stance, json_path, baseline_path):
     ramp = float(uf.get("ramp_seconds", 3.0))
     hold = float(uf.get("hold_seconds", 2.0))
     settle = float(uf.get("settle_seconds", 1.5))
+    KA = float(uf.get("roll_trim_kp_ankle", 1.6))
+    KH = float(uf.get("roll_trim_kp_hip", 0.8))
+    KD = float(uf.get("roll_trim_kd_ankle", 0.10))
     acc = uf.get("accept", {}) or {}
     UNL_FRAC = float(acc.get("unloaded_frac_target", 0.05))
     NOT_LIFTED_RISE = float(acc.get("not_lifted_rise", 0.0015))
@@ -148,18 +151,23 @@ def run(config, view, view_stance, json_path, baseline_path):
     j_index = {n: i for i, n in enumerate(jn)}
     sagittal = {s: [s + "hip_pitch", s + "knee_pitch", s + "ankle_pitch"] for s in ("l_", "r_")}
 
-    def build_swing_table(unld, com_cfg, n=11):
-        """clearance -> swing-leg SAGITTAL joint angles that shorten the leg so
-        its foot lifts straight up, seeded from the COM-shifted config so the
-        frontal-plane balance is untouched.  Built offline, interpolated per step."""
-        sole0, rot0, _ = nfp[unld]
+    def build_swing_table(unld, com_cfg, n=13):
+        """clearance -> swing-leg SAGITTAL joint angles that raise the foot while
+        keeping it level, measured from the foot's ACTUAL position in the
+        COM-shifted config (task = {foot z, foot pitch}).  The frontal-plane
+        balance (hip_roll / ankle_roll) is left at the COM-shift solution.
+        Built offline, interpolated per sim step."""
         free = sagittal[unld]
-        rows, q = [], {**base_cfg, **com_cfg}
+        q0 = {**base_cfg, **com_cfg}
+        tf0 = lm.forward_kinematics(spec, q0)
+        sw = lm.frame_world_position(spec, tf0, unld + "foot_sole_center")
+        rot = tf0[unld + "foot"][0]
+        rows, q = [], dict(q0)
         for i in range(n):
             c = C_MAX * i / (n - 1)
             sol, _r = lm.leg_ik(spec, unld, unld + "foot_sole_center",
-                                (sole0[0], sole0[1], sole0[2] + c), rot0, q,
-                                free_joints=free, task_rows=[0, 1, 2], iters=150)
+                                (sw[0], sw[1], sw[2] + c), rot, q,
+                                free_joints=free, task_rows=[2, 4], iters=200)
             q = {**q, **sol}
             rows.append((c, [sol[j] for j in free]))
         return rows
@@ -200,8 +208,11 @@ def run(config, view, view_stance, json_path, baseline_path):
             mujoco.mj_step(model, data)
 
         cmd = dict(com_cfg)
+        a_roll, h_roll = stance + "ankle_roll", stance + "hip_roll"
+        prev_roll = wsh.quat_rpy(data.qpos[3:7])[0]
 
-        # ---- Phase B: shorten the swing leg until its Fz crosses, then freeze
+        # ---- Phase B: shorten the swing leg until its Fz crosses, then freeze.
+        #      A minimal stance-roll trim (same as lift_foot / U8) keeps her upright.
         clearance = 0.0
         frozen = None                      # measurement at the Fz crossing
         nB = int((ramp + hold) / dt)
@@ -213,7 +224,13 @@ def run(config, view, view_stance, json_path, baseline_path):
                 clearance = C_MAX * (step / ramp_steps)
             for n, v in zip(sagittal[unld], swing_lookup(swing_rows, clearance)):
                 cmd[n] = v
-            data.ctrl[:] = [cmd[n] for n in jn]
+            roll_now, _p, _y = wsh.quat_rpy(data.qpos[3:7])
+            roll_rate = (roll_now - prev_roll) / dt
+            prev_roll = roll_now
+            c2 = dict(cmd)
+            c2[a_roll] = com_cfg[a_roll] + SIDE[stance] * (KA * roll_now + KD * roll_rate)
+            c2[h_roll] = com_cfg[h_roll] - SIDE[stance] * KH * roll_now
+            data.ctrl[:] = [c2[n] for n in jn]
             mujoco.mj_step(model, data)
 
             fz = {"l_": foot_normal_force(foot_gid["l_"]), "r_": foot_normal_force(foot_gid["r_"])}
