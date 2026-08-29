@@ -21,7 +21,8 @@ a full robot, not CAD, not a policy, and has no upper body yet.
 | 🔶 | dynamics — mass / COM / inertia / actuator limits / PD gains are **provisional placeholders** |
 | ❌ | head, ears, arms, waist |
 | ❌ | CAD geometry, servo brackets, wiring, shells |
-| ❌ | dynamic balance, weight shifting, RL / locomotion policy |
+| ✅ | **quasi-static weight shifting** — transfers load L↔R in controlled double support (limit ~0.04 m COM) |
+| ❌ | single-support, dynamic balance, RL / locomotion policy |
 
 Design constraint being followed: **kinematics, dynamics, and manufacturing
 are kept separate.** The YAML is layered accordingly. No servo is selected;
@@ -46,6 +47,7 @@ cara_description/
 │   ├── validate_mjcf.py         # MuJoCo body/site positions vs leg_model FK  (--dynamic)
 │   ├── dynamic_check.py         # single leg: gravity + PD plausibility over scripted poses
 │   ├── stand_check.py           # lower body: hold standing poses 10 s + COM/support-polygon
+│   ├── weight_shift.py          # lower body: quasi-static lateral COM shift via task-space IK
 │   ├── view_mujoco.py           # load a generated MJCF and open mujoco.viewer
 │   ├── center_of_mass.py        # whole-model COM for any joint configuration
 │   ├── gravity_torques.py       # gravitational joint torques for reference poses
@@ -54,7 +56,8 @@ cara_description/
 ├── docs/
 │   ├── frames_and_joints.md     # frame conventions + per-joint math + foot frame hierarchy
 │   ├── dynamics_notes.md        # provisional dynamics layer + single-leg analysis
-│   └── standing_notes.md        # mirroring the 2nd leg + the standing milestone
+│   ├── standing_notes.md        # mirroring the 2nd leg + the standing milestone
+│   └── weight_shift_notes.md    # task-space IK + the weight-shift milestone
 └── README.md
 ```
 
@@ -127,7 +130,8 @@ python3 scripts/generate_mjcf.py $LB           && python3 scripts/generate_mjcf.
 python3 scripts/generate_mjcf.py --dynamic $LB && python3 scripts/generate_mjcf.py --dynamic $LB --check
 python3 scripts/validate_mjcf.py --dynamic $LB                   # MuJoCo poses vs FK  (needs mujoco)
 python3 scripts/stand_check.py                                   # HOLD 3 poses 10 s each  (needs mujoco)
-python3 scripts/stand_check.py --verbose --hold 15
+python3 scripts/weight_shift.py                                  # quasi-static lateral COM shift + sweep  (needs mujoco)
+python3 scripts/weight_shift.py --amplitude 0.04 --csv shift.csv --verbose
 python3 scripts/view_mujoco.py --dynamic --config $LB --regen --pose semi_squat
 
 # --- single leg: kinematics + dynamics foundation ---------------------
@@ -166,6 +170,21 @@ saturation, feet planted, and MuJoCo-vs-FK agreement. **Current result —
 milestone met:** tilt ≤ 0.3°, 0 mm drift, COM margin 33–43 mm, peak torque
 ≤ 0.4 N·m (limit ±3 N·m), FK error < 1e-15 m. Details in
 [`docs/standing_notes.md`](docs/standing_notes.md).
+
+### Weight shifting
+
+`weight_shift.py` moves a smooth lateral **COM target** centre → foot → centre →
+other foot → centre, holding at each. A transparent **frontal-plane IK**
+(`leg_model.leg_ik`, restricted to `hip_roll` + `ankle_roll` vs. foot-y +
+foot-roll) turns the desired COM into joint targets — no hard-coded hip-roll
+trajectory, no gain tuning, feet never lift. It logs desired/measured COM, COM
+margin vs the full and each individual foot polygon, pelvis roll/pitch,
+left/right vertical contact force, foot slip, `q`/`qdot`/torque and saturation,
+then sweeps the target magnitude to find the limit and prints failure cases.
+**Milestone met:** at ±0.03 m the load shifts 14 N / 6 N between feet with both
+planted, pelvis level (0.35°), < 15 % torque; the quasi-static double-support
+limit is ~0.04 m (the opposite foot fully unloads beyond that and she topples).
+Details in [`docs/weight_shift_notes.md`](docs/weight_shift_notes.md).
 
 ## The question this layer answers
 
@@ -223,6 +242,10 @@ the file header and the script docstring):
 - **`stand_check.py`** (lower body) — the standing milestone: holds each
   standing pose 10 s and checks upright / no-drift / COM-in-support-polygon /
   no-saturation / feet-planted / FK. See `docs/standing_notes.md`.
+- **`weight_shift.py`** (lower body) — the weight-shift milestone: task-space
+  IK drives a lateral COM trajectory; logs force transfer / margins / slip /
+  torque; sweeps the amplitude to the double-support limit. See
+  `docs/weight_shift_notes.md`.
 
 ## Editing the model
 
@@ -236,16 +259,18 @@ the file header and the script docstring):
 ## Roadmap
 
 Done: 1-leg kinematics → 1-leg dynamics → 1-leg PD tests → 2 legs + pelvis →
-**static standing** → COM / support-polygon checks.
+**static standing** → COM / support-polygon checks → **quasi-static weight
+shifting** (limit ~0.04 m COM).
 
 Next:
 
-1. **Weight shifting** — command the COM laterally toward one foot and back,
-   hold at each side; then single-support (lift one foot).
-2. **Balance** — an ankle/hip strategy on top of joint PD; disturbance recovery.
+1. **Single-support** — from a full weight shift, unload the light foot to zero
+   and lift it. Needs an actual ankle/hip balance strategy, not joint PD.
+2. **Balance** — disturbance recovery; a closed-loop pelvis-orientation term.
 3. **Upper-body masses, deliberately** — add head → ears → waist → arms one at
-   a time; re-run `stand_check.py` and record the change in COM height, tilt
-   and hold torque. Then a `cara_full.yaml` (`extends` the lower body).
+   a time; re-run `stand_check.py` / `weight_shift.py` and record the change in
+   COM height, tilt, hold torque and shift limit. Then a `cara_full.yaml`
+   (`extends` the lower body).
 4. CAD/measured values replace every `TODO` (geometry, mass, inertia, servo
    `effort`, PD gains); real inter-axis offsets replace the coincident
    approximation (both generators already emit `<joint pos>` anchors).

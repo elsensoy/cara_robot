@@ -77,3 +77,21 @@ analysis:
       "*_ankle_pitch": -0.10
       "*_hip_roll":     0.15
       "*_ankle_roll":  -0.15
+
+  # --- quasi-static bilateral weight-shift experiment (scripts/weight_shift.py)
+  # A transparent frontal-plane IK turns a desired lateral COM target into
+  # (hip_roll, ankle_roll) joint targets per leg (feet stay flat + planted, no
+  # foot lifting); the existing PD servos track them. All PROVISIONAL.
+  weight_shift:
+    base_pose: stand_nominal
+    amplitude: 0.03            # m, lateral COM target for the demonstration run
+    sweep: [0.010, 0.020, 0.030, 0.040, 0.050, 0.060]   # m, sweep of COM target magnitude
+    ramp_seconds: 3.0         # smoothstep ramp between COM targets (quasi-static)
+    hold_seconds: 3.0         # dwell at each target
+    settle_seconds: 1.5       # initial settle before the trajectory starts
+    accept:                   # sweep acceptance criteria (a value fails if it breaks any)
+      min_support_margin: 0.005     # m, COM must stay this far inside the FULL support polygon
+      min_opposite_load_frac: 0.05  # unloaded foot must keep >= this fraction of total weight
+      max_pelvis_tilt_deg: 6.0      # |roll| or |pitch| of the pelvis
+      max_foot_slip: 0.003         # m, horizontal drift of either foot
+      max_torque_frac: 1.0         # actuator torque must stay within +-this * effort limit

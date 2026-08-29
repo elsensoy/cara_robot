@@ -288,6 +288,41 @@ def mat_vec(A: Mat3, v: Vec3) -> Vec3:
     return tuple(sum(A[i][k] * v[k] for k in range(3)) for i in range(3))  # type: ignore[return-value]
 
 
+def mat_transpose(A: Mat3) -> Mat3:
+    return tuple(tuple(A[j][i] for j in range(3)) for i in range(3))  # type: ignore[return-value]
+
+
+def so3_log(R: Mat3) -> Vec3:
+    """Rotation matrix -> rotation vector (axis * angle).  Valid for the small
+    orientation errors this codebase produces; not hardened for angle ~ pi."""
+    tr = R[0][0] + R[1][1] + R[2][2]
+    c = max(-1.0, min(1.0, (tr - 1.0) / 2.0))
+    angle = math.acos(c)
+    if angle < 1e-12:
+        return (0.0, 0.0, 0.0)
+    s = 2.0 * math.sin(angle)
+    return ((R[2][1] - R[1][2]) / s * angle,
+            (R[0][2] - R[2][0]) / s * angle,
+            (R[1][0] - R[0][1]) / s * angle)
+
+
+def solve_linear(A: Sequence[Sequence[float]], b: Sequence[float]) -> List[float]:
+    """Solve A x = b for a square matrix via Gaussian elimination + partial pivot."""
+    n = len(b)
+    M = [list(row) + [b[i]] for i, row in enumerate(A)]
+    for col in range(n):
+        piv = max(range(col, n), key=lambda r: abs(M[r][col]))
+        M[col], M[piv] = M[piv], M[col]
+        pv = M[col][col] or 1e-15
+        for r in range(n):
+            if r == col:
+                continue
+            f = M[r][col] / pv
+            for k in range(col, n + 1):
+                M[r][k] -= f * M[col][k]
+    return [M[i][n] / (M[i][i] or 1e-15) for i in range(n)]
+
+
 def rot_axis_angle(axis: Vec3, theta: float) -> Mat3:
     """Rodrigues rotation matrix for a rotation of `theta` rad about `axis`."""
     x, y, z = normalize(axis)
@@ -716,4 +751,141 @@ def gravity_joint_torques_fd(spec: dict, q: Dict[str, float] | None = None,
         up = potential_energy(spec, qp, g, extra_masses)
         um = potential_energy(spec, qm, g, extra_masses)
         out[n] = (up - um) / (2.0 * eps)
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# Task-space / inverse kinematics for one leg
+# --------------------------------------------------------------------------- #
+# Used by scripts/weight_shift.py to turn a desired pelvis/COM displacement into
+# joint targets, instead of hard-coding a hip-roll trajectory.  It is a plain
+# damped-least-squares Newton loop over the already-validated forward_kinematics
+# and a spatial Jacobian -- no learned model, no gain tuning.
+
+def leg_joint_names(spec: dict, prefix: str) -> List[str]:
+    return [jm.name for jm in build_chain(spec) if jm.name.startswith(prefix)]
+
+
+def foot_spatial_jacobian(spec: dict, q: Dict[str, float], prefix: str, point: str
+                          ) -> Tuple[List[str], List[Tuple[float, ...]]]:
+    """6xN spatial Jacobian of `point` w.r.t. one leg's joints.
+
+    Returns (joint_names, columns) where each column is the 6-vector
+    [linear-velocity-of-point (3); angular-velocity-of-foot (3)].
+    Column j (revolute):  [ a_j x (p - o_j) ; a_j ]  with a_j, o_j in world.
+    """
+    tf = forward_kinematics(spec, q)
+    p = frame_world_position(spec, tf, point)
+    names, cols = [], []
+    for jm in build_chain(spec):
+        if not jm.name.startswith(prefix):
+            continue
+        r_child, p_child = tf[jm.child]
+        a = normalize(mat_vec(r_child, jm.axis))
+        lin = cross(a, vec_sub(p, p_child))
+        names.append(jm.name)
+        cols.append((lin[0], lin[1], lin[2], a[0], a[1], a[2]))
+    return names, cols
+
+
+def leg_ik(spec: dict, prefix: str, point: str,
+           target_pos: Vec3, target_rot: Mat3,
+           q_seed: Dict[str, float],
+           free_joints: Sequence[str] | None = None,
+           task_rows: Sequence[int] | None = None,
+           iters: int = 120, tol: float = 1e-8,
+           damping: float = 1e-6, max_step: float = 0.25
+           ) -> Tuple[Dict[str, float], float]:
+    """Damped-least-squares IK for one leg.
+
+    Drives the selected components of the foot error to zero by moving the
+    selected joints.  The 6-D foot error is
+        [ target_pos - point ; so3_log(target_rot * R_footᵀ) ]   (pelvis frame)
+    `task_rows` picks which of those 6 to constrain (default all 6);
+    `free_joints` picks which joints move (default all 6 of this leg).
+    For a pure lateral shift: free = [<prefix>hip_roll, <prefix>ankle_roll],
+    task_rows = [1, 3]  (foot y-position, foot roll).
+
+    Joint limits are respected. Returns ({joint: angle}, max |constrained error|).
+    """
+    q = {n: float(q_seed.get(n, 0.0)) for n in joint_names(spec)}
+    all_leg = leg_joint_names(spec, prefix)
+    free = list(free_joints) if free_joints is not None else all_leg
+    rows = list(task_rows) if task_rows is not None else [0, 1, 2, 3, 4, 5]
+    lims = joint_limits(spec)
+    foot_link = prefix + "foot"
+    residual = 1e9
+    for _ in range(iters):
+        tf = forward_kinematics(spec, q)
+        p = frame_world_position(spec, tf, point)
+        r = tf[foot_link][0]
+        full_err = list(vec_sub(target_pos, p)) + list(so3_log(mat_mul(target_rot, mat_transpose(r))))
+        err = [full_err[i] for i in rows]
+        residual = max(abs(x) for x in err)
+        if residual < tol:
+            break
+        names, cols = foot_spatial_jacobian(spec, q, prefix, point)
+        idx = [names.index(n) for n in free]
+        m, k = len(rows), len(free)
+        # reduced Jacobian  Jr[m][k];  dq = Jrᵀ (Jr Jrᵀ + λI)⁻¹ err
+        jr = [[cols[idx[j]][rows[i]] for j in range(k)] for i in range(m)]
+        jjt = [[sum(jr[i][c] * jr[l][c] for c in range(k)) + (damping if i == l else 0.0)
+                for l in range(m)] for i in range(m)]
+        y = solve_linear(jjt, err)
+        dq = [sum(jr[i][c] * y[i] for i in range(m)) for c in range(k)]
+        for n, d in zip(free, dq):
+            d = max(-max_step, min(max_step, d))
+            q[n] = min(lims[n][1], max(lims[n][0], q[n] + d))
+    return ({n: q[n] for n in all_leg}, residual)
+
+
+def convex_hull_2d(points: Sequence[Sequence[float]]) -> List[Tuple[float, float]]:
+    """CCW convex hull (Andrew's monotone chain) of 2-D points."""
+    pts = sorted(set((round(p[0], 9), round(p[1], 9)) for p in points))
+    if len(pts) <= 2:
+        return pts
+
+    def crs(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower: List = []
+    for p in pts:
+        while len(lower) >= 2 and crs(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+    upper: List = []
+    for p in reversed(pts):
+        while len(upper) >= 2 and crs(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+    return lower[:-1] + upper[:-1]
+
+
+def polygon_signed_margin(poly: Sequence[Sequence[float]], q: Sequence[float]) -> float:
+    """Signed distance from q to the polygon boundary: + inside, - outside."""
+    if len(poly) < 3:
+        return -1e9
+    inside, mind, n = True, 1e18, len(poly)
+    for i in range(n):
+        a, b = poly[i], poly[(i + 1) % n]
+        ex, ey = b[0] - a[0], b[1] - a[1]
+        nx, ny = ey, -ex                       # outward normal for a CCW polygon
+        L = math.hypot(nx, ny) or 1.0
+        d = ((q[0] - a[0]) * nx + (q[1] - a[1]) * ny) / L
+        if d > 1e-12:
+            inside = False
+        mind = min(mind, abs(d))
+    return mind if inside else -mind
+
+
+def nominal_foot_poses(spec: dict, cfg: Dict[str, float]
+                       ) -> Dict[str, Tuple[Vec3, Mat3, Vec3]]:
+    """For a reference pose, the pelvis-frame (sole position, foot rotation,
+    ankle-centre position) of every foot -- the IK targets for zero shift."""
+    tf = forward_kinematics(spec, cfg)
+    out = {}
+    for foi in spec.get("frames_of_interest", []) or []:
+        prefix = foi["link"][:foi["link"].index("foot")]
+        sole = frame_world_position(spec, tf, foi["name"])
+        out[prefix] = (sole, tf[foi["link"]][0], tf[foi["link"]][1])
     return out

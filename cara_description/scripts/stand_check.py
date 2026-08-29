@@ -45,47 +45,8 @@ FK_TOL = 1e-4            # m
 SETTLE_SKIP = 2.0        # s ignored at the start before scoring
 
 
-# --------------------------------------------------------------------------- #
-# 2-D geometry: convex hull + signed distance to a polygon
-# --------------------------------------------------------------------------- #
-def convex_hull(points):
-    pts = sorted(set((round(x, 6), round(y, 6)) for x, y in points))
-    if len(pts) <= 2:
-        return pts
-
-    def cross(o, a, b):
-        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
-
-    lower = []
-    for p in pts:
-        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
-            lower.pop()
-        lower.append(p)
-    upper = []
-    for p in reversed(pts):
-        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
-            upper.pop()
-        upper.append(p)
-    return lower[:-1] + upper[:-1]   # CCW
-
-
-def polygon_margin(poly, q):
-    """Signed distance from point q to polygon boundary. + inside, - outside."""
-    if len(poly) < 3:
-        return -1e9
-    inside = True
-    mind = 1e9
-    n = len(poly)
-    for i in range(n):
-        a, b = poly[i], poly[(i + 1) % n]
-        ex, ey = b[0] - a[0], b[1] - a[1]
-        nx, ny = ey, -ex                       # outward normal for CCW poly
-        L = math.hypot(nx, ny) or 1.0
-        d = ((q[0] - a[0]) * nx + (q[1] - a[1]) * ny) / L
-        if d > 1e-12:
-            inside = False
-        mind = min(mind, abs(d))
-    return mind if inside else -mind
+convex_hull = lm.convex_hull_2d
+polygon_margin = lm.polygon_signed_margin
 
 
 # --------------------------------------------------------------------------- #

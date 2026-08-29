@@ -9,7 +9,8 @@ Roadmap position:
 ```
 1-leg kinematics ✅ → 1-leg dynamics ✅ → 1-leg PD tests ✅ →
 2 legs + pelvis ✅ → STATIC STANDING ✅ (this doc) →
-COM / support-polygon checks ✅ → weight shifting → balance → locomotion → RL
+COM / support-polygon checks ✅ → weight shifting ✅ (see weight_shift_notes.md) →
+single-support → balance → locomotion → RL
 ```
 
 Deliberately **not** added yet: head, ears, arms, waist, Jetson, battery. The
@@ -133,7 +134,8 @@ stays in the polygon during *motion*. Those are the next steps
 ## 5. Open TODOs
 
 - [ ] Replace provisional masses / inertia / PD gains with CAD / measured / tuned values.
-- [ ] Weight-shifting: shift COM laterally between the feet and back, hold at each side.
+- [x] Weight-shifting: shift COM laterally between the feet and back — done, see
+      [`weight_shift_notes.md`](weight_shift_notes.md) (quasi-static limit ~0.04 m).
 - [ ] Single-support: lift one foot, hold on the other (needs an ankle/hip balance strategy, not just joint PD).
 - [ ] Add head → ears → waist → arms masses one at a time; re-run `stand_check` and record the change in COM height, tilt and hold torque.
 - [ ] Disturbance test: push the pelvis, measure recovery.

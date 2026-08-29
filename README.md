@@ -379,20 +379,27 @@ morphology can never hide inside a half-trained policy:
 | **2 legs + pelvis** | right leg = mirror of left (no hand-writing); floating base | ✅ 12 DoF |
 | **Static standing** | hold 3 poses (`stand_nominal`, `semi_squat`, `stand_wide`) 10 s each under joint PD | ✅ **milestone met** |
 | **COM / support-polygon checks** | COM stays inside the convex hull of the foot contacts, with margin | ✅ 33–43 mm margin |
-| Weight shifting → balance | shift COM between feet; single-support; disturbance recovery | ⬜ next |
+| **Quasi-static weight shifting** | move a lateral COM target between the feet via task-space IK, no foot lift | ✅ **milestone met** — limit ~0.04 m COM |
+| Single-support → balance | unload + lift one foot; disturbance recovery | ⬜ next |
 | Head / ears / waist / arms masses | add deliberately, one at a time, re-measure balance + torque | ⬜ |
 | RL locomotion policy | the section below | ⬜ deferred until the model is trusted |
 
-`stand_check.py` reports for each pose: pelvis tilt & drift, COM support
-margin, peak / RMS actuator torque + saturation, foot contact, and
-MuJoCo-vs-FK error. Current stand: tilt ≤ 0.3°, zero drift, peak torque
-≤ 0.4 N·m (of a ±3 N·m provisional limit).
+`stand_check.py` reports pelvis tilt & drift, COM support margin, torque +
+saturation, contact, FK error (stand: tilt ≤ 0.3°, zero drift, peak torque
+≤ 0.4 N·m of ±3 N·m). `weight_shift.py` drives a lateral COM trajectory
+through a transparent frontal-plane IK (no hard-coded hip-roll, no gain
+tuning) and logs desired/measured COM, per-foot support margin, left/right
+contact force, slip, `q`/`qdot`/torque; at ±0.03 m the load shifts 14 N / 6 N
+between feet with both planted and < 15 % torque, and a sweep puts the
+double-support limit at ~0.04 m (beyond that the opposite foot unloads and she
+topples — reported, not hidden).
 
 Other validation scripts in `cara_description/scripts/`:
 `validate_description.py`, `fk_sanity_check.py`, `validate_mjcf.py`,
 `dynamic_check.py`, plus COM / gravity-torque / Jacobian / morphology-sweep
-analysis. See [`cara_description/README.md`](cara_description/README.md) and
-[`cara_description/docs/standing_notes.md`](cara_description/docs/standing_notes.md).
+analysis. See [`cara_description/README.md`](cara_description/README.md),
+[`.../standing_notes.md`](cara_description/docs/standing_notes.md) and
+[`.../weight_shift_notes.md`](cara_description/docs/weight_shift_notes.md).
 
 ### Walking as a Learned Stability Problem
 
@@ -758,6 +765,7 @@ Cara has built-in safeguards that are mirrored in both simulation and on hardwar
 - **[`cara_description/docs/frames_and_joints.md`](cara_description/docs/frames_and_joints.md)** : coordinate conventions, per-joint math, the foot frame hierarchy
 - **[`cara_description/docs/dynamics_notes.md`](cara_description/docs/dynamics_notes.md)** : provisional mass/COM/inertia, gravity-torque and Jacobian analysis, single-leg dynamic-plausibility results
 - **[`cara_description/docs/standing_notes.md`](cara_description/docs/standing_notes.md)** : mirroring the second leg, the floating-base standing rig, and the "hold 3 poses for 10 s" milestone
+- **[`cara_description/docs/weight_shift_notes.md`](cara_description/docs/weight_shift_notes.md)** : the task-space IK layer and the quasi-static weight-shift milestone (+ sweep to the double-support limit)
 - **`docs/emotion.md`** : ViT architecture, self-attention, the teach-Cara workflow, calibration techniques
 - **`docs/understanding.md`** : Why agency precedes intelligence; the homeostatic loop in detail
 - **`docs/mbom.md`** : Full mechanical bill of materials and print guidance

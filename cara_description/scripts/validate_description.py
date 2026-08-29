@@ -248,6 +248,21 @@ def validate(path: str | None) -> int:
                   "analysis.ground.friction is 3 non-negative numbers", detail=str(fr))
         rep.check(_num(grd.get("z_offset", 0.0)), "analysis.ground.z_offset is numeric")
 
+    ws = ana.get("weight_shift", {}) or {}
+    if ws:
+        rep.check(ws.get("base_pose") in exp_poses,
+                  "weight_shift.base_pose names a reference pose", detail=str(ws.get("base_pose")))
+        rep.check(_num(ws.get("amplitude")) and ws["amplitude"] > 0,
+                  "weight_shift.amplitude > 0", detail=f"{ws.get('amplitude')} m")
+        sw = ws.get("sweep")
+        rep.check(isinstance(sw, list) and sw and all(_num(x) and x > 0 for x in sw)
+                  and sw == sorted(sw),
+                  "weight_shift.sweep is a sorted list of positive magnitudes", detail=str(sw))
+        for k in ("ramp_seconds", "hold_seconds", "settle_seconds"):
+            rep.check(_num(ws.get(k)) and ws[k] > 0, f"weight_shift.{k} > 0")
+        for k, v in (ws.get("accept", {}) or {}).items():
+            rep.check(_num(v) and v > 0, f"weight_shift.accept.{k} > 0", detail=f"{v}")
+
     print("\n== 12. dynamics.actuators.control (PD gains) ==")
     ctrl = act.get("control", {}) or {}
     if not ctrl:
