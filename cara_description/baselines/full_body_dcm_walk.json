@@ -1,0 +1,17 @@
+{
+  "model": "cara_full_body",
+  "n_steps": 8,
+  "steps_completed": 1,
+  "t_step": 0.4,
+  "stride": 0.024,
+  "v_cmd": 0.06,
+  "v_mean": -0.12497768474349549,
+  "total_advance_m": -0.3263172140966363,
+  "peak_dcm_error_m": 0.37786445106464955,
+  "peak_tilt_deg": 45.166190091280384,
+  "peak_torque_frac": 1.0,
+  "fell": true,
+  "milestone_met": false,
+  "peak_dcm_error_mm": 377.86445106464953,
+  "xi_ini0_y_mm": -40.84434352681343
+}

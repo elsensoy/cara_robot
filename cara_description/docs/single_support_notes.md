@@ -1,4 +1,4 @@
-# Cara — Single support → stepping → the reduced-order walking model (U7 → U13)
+# Cara — Single support → stepping → the dynamic-walk model and controller (U7 → U14)
 
 Companion to [`weight_shift_notes.md`](weight_shift_notes.md). This is the first
 work **past the morphology boundary** — U1–U6 validated the whole-body mass model
@@ -9,7 +9,8 @@ work **past the morphology boundary** — U1–U6 validated the whole-body mass 
     U7 unload one foot ✅ → U8 lift one foot ✅ → U9 single-support balance ✅
       → U10 one forward step ✅ → U11 a short quasi-static walk ✅
       → U12 continuous *kinematic* walk ❌ (formulation wall) → U13 reduced-order
-        model ✅ (a dynamic walk IS feasible — this doc) → U14 DCM-tracking walk → …
+        model ✅ (a dynamic walk IS feasible) → U14 DCM-tracking controller 🔶
+        (built; blocked on ankle torque control — this doc) → …
 ```
 
 Still transparent — the same frontal-plane IK from `weight_shift.py`, plus a
@@ -479,3 +480,53 @@ but Cara **already lands in the feasible region** at sensible step times.
   error from leg compliance).
 - CoP fixed at the foot centre in the limit-cycle solve — the real ±`a_y` CoP
   range is margin against disturbance, not yet spent here.
+
+---
+
+## Phase U14 — the DCM-tracking controller  🔶 **built, blocked on ankle torque control**
+
+Script: `scripts/dcm_walk.py` (`--view`). The controller U13 called for:
+
+1. **Plan** (offline, from `walk_model.LIPM`): a footstep sequence, the CoP held
+   at each foot centre through single support, and the DCM reference by backward
+   recursion `ξ_ini[i] = p[i] + (ξ_ini[i+1] − p[i])·e^{−ω₀T}`.
+2. **Feed-forward** (per step): the swing leg tracks a trajectory to the planned
+   foothold (`gait.py`'s per-step IK table); the roll joints track the LIPM
+   **COM-y arc** rolled forward from the *measured* state each step (a
+   hand-picked half-sine was U12's mistake).
+3. **DCM feedback** (per sim step): `ξ_meas = COM + COṀ/ω₀`;
+   `p_cmd = p_ref + (1 + k/ω₀)(ξ_meas − ξ_ref)`, clamped into the stance foot,
+   realised as stance `ankle_roll` / `ankle_pitch` trims.
+4. **Step adjustment** (per footfall): shift the next foothold to null the DCM
+   error predicted at end of step — the capture point *is* a foothold target.
+
+### Result — the planner is right, realisation is blocked
+
+`dcm_walk.py` **does not produce a stable walk** on the position-PD model — she
+topples in step 0 (`baselines/full_body_dcm_walk.json`). Two concrete blockers,
+both about *realising* the plan rather than the plan itself:
+
+1. **From-rest start.** The plan's first DCM sits at `ξ_ini[0]_y ≈ −41 mm`, well
+   past the **~20 mm double-support weight-shift envelope**. A LIPM walk is
+   entered *with lateral momentum* (the limit cycle crosses the midline moving
+   toward the stance foot); from a standing rest Cara has none, and a lead-in
+   that shifts the COM out that far topples her before step 1.
+2. **CoP authority.** Placing the LIPM CoP is an **ankle-torque** action. The
+   position servos (`kp` 30) move the CoP only ≈ `1.5·d` per radian of trim and
+   lag a 0.4 s step — the U9/U12 realisation problem, now precisely located.
+
+### The gap, precisely
+
+The **theory (U13) and the controller structure (U14) are in place**; what's
+missing is:
+
+- **torque-controlled ankles** (a `<motor>` actuator on `ankle_roll` /
+  `ankle_pitch` instead of the position `<position>` servo) so the CoP command
+  is realised directly, and
+- a **limit-cycle warm-start** — a few rocking half-steps that build the lateral
+  momentum before the forward walk begins (or a ZMP-preview controller that
+  plans the CoP over a horizon rather than step-by-step).
+
+Both are follow-on work. `dcm_walk.py` stays in the tree as the planner +
+feedback law + step-adjustment implementation, and prints exactly which blocker
+it hit. **Quasi-static stepping (U11) remains Cara's locomotion.**

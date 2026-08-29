@@ -320,3 +320,37 @@ analysis:
     fwd_step_times: [0.30, 0.40, 0.50, 0.70, 1.00, 1.50]         # s, forward-cycle table
     foot_half_widths: [0.015, 0.0225, 0.030, 0.040, 0.050]      # m, feasibility-map rows
     map_step_times:  [0.12, 0.15, 0.18, 0.22, 0.28, 0.35, 0.50] # s, feasibility-map cols
+
+  # --- U14: DCM-TRACKING WALK (scripts/dcm_walk.py)
+  # The controller U13 called for: plan the CoP + footholds + divergent-component
+  # (DCM / capture point) reference from the LIPM, then TRACK it -- no fixed pose
+  # cycle.  omega0 / foot geometry come from the model (walk_model.LIPM).
+  #   * plan: CoP at each foot centre through single support; DCM ref by backward
+  #     recursion  xi_ini[i] = p[i] + (xi_ini[i+1]-p[i]) e^{-w0 T}
+  #   * feed-forward: swing leg -> planned foothold; roll joints -> lateral sway
+  #   * DCM feedback: p_cmd = p_ref + (1 + k/w0)(xi_meas - xi_ref), clamped into
+  #     the stance foot, realised as stance ankle_roll / ankle_pitch trims
+  #   * step adjustment: shift the next foothold to null the predicted DCM error
+  # All timings / gains PROVISIONAL.  t_step must be >= the U13 lateral T_min.
+  dcm_walk:
+    base_pose: stand_nominal
+    n_steps: 8
+    t_step: 0.40                # s per step (U13 lateral T_min ~ 0.22 s)
+    stride: 0.024               # m, nominal forward foothold advance per step
+    double_support_frac: 0.20   # opening/closing DS fraction of the step
+    lift_height: 0.010          # m, swing-foot peak clearance
+    sway: 0.030                 # m, feed-forward lateral COM sway amplitude
+    clearance_gain: 0.015       # closed-loop swing-foot clearance
+    k_dcm: 3.0                  # DCM feedback gain (p_cmd = p_ref + (1+k/w0) e)
+    realize_gain_roll: 1.8     # stance ankle_roll trim per m of CoP-y command
+    realize_gain_pitch: 1.8    # stance ankle_pitch trim per m of CoP-x command
+    step_adjust_gain: 1.0       # 1 = full capture-point foothold adjustment
+    lead_in_seconds: 2.0
+    settle_seconds: 1.5
+    tail_seconds: 3.0
+    accept:
+      max_pelvis_tilt_deg: 10.0
+      max_dcm_error: 0.020      # m, peak |xi_meas - xi_ref| over the walk
+      min_speed_frac: 0.5      # mean forward speed >= this * commanded
+      max_torque_frac: 1.0
+      tail_hold_drift: 0.012

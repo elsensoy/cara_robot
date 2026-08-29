@@ -25,8 +25,8 @@ a full robot, not CAD, not a policy, and has no upper body yet.
 | 🔶 | dynamics — mass / COM / inertia / actuator limits / PD gains **provisional**; U7–U11 feedback gains hand-picked |
 | ❌ | waist joints, articulated neck / shoulders / ears (all present structurally, locked at 0 for now) |
 | ❌ | CAD geometry, servo brackets, wiring, shells |
-| 🔶 | **a dynamic walking gait** — U12's *kinematic* attempt failed, but U13's LIPM/capture-point model shows a dynamic walk IS feasible (`T_min ≈ 0.22 s`); U14 = a DCM-tracking controller |
-| ❌ | turning / slopes, a sideways step, sagittal balance feedback, RL |
+| 🔶 | **a dynamic walking gait** — U13's LIPM/capture-point model shows it's feasible (`T_min ≈ 0.22 s`); U14's DCM-tracking controller is built but blocked on **ankle torque control** (the position servos can't place the CoP) + a limit-cycle warm-start |
+| ❌ | torque-controlled ankles, turning / slopes, a sideways step, sagittal balance feedback, RL |
 
 Design constraint being followed: **kinematics, dynamics, and manufacturing
 are kept separate.** The YAML is layered accordingly. No servo is selected;
@@ -64,6 +64,7 @@ cara_description/
 │   ├── gait.py                  # U11: chain the U10 step, alternating legs -> a short quasi-static walk  (--view)
 │   ├── walk.py                  # U12: continuous-walk attempt -- precomputed periodic cycle; DOCUMENTS the dynamic-walk limit  (--view)
 │   ├── walk_model.py            # U13: reduced-order LIPM / DCM model -- predicts the feasible dynamic gait; pure Python (--check adds a MuJoCo omega0 cross-check)
+│   ├── dcm_walk.py              # U14: DCM-tracking walk controller (plan + feedback + step adjustment) -- built; blocked on ankle torque control  (--view)
 │   ├── view_mujoco.py           # load a generated MJCF and open mujoco.viewer
 │   ├── center_of_mass.py        # whole-model COM for any joint configuration
 │   ├── gravity_torques.py       # gravitational joint torques for reference poses
@@ -488,7 +489,11 @@ Balance / control (the boundary — new controllers start here):
   pure Python. **A dynamic walk IS within Cara's morphology** — lateral
   `T_min ≈ 0.22 s`, forward roomier; ω₀ = 5.7 /s cross-checks against MuJoCo. The
   U12 wall was the formulation, not the feet)
-- **U14+** a DCM-tracking walk (plan CoP + footholds from U13, track the DCM) →
-  RL / learned policy
+- **U14 DCM-tracking controller** 🔶 **built, blocked** (`dcm_walk.py`; plan +
+  `p_cmd = p_ref + (1+k/ω₀)e` feedback + capture-point step adjustment. Doesn't
+  yet walk — the from-rest DCM (−41 mm) exceeds the double-support envelope, and
+  the position servos can't realise the CoP fast enough. Needs torque-controlled
+  ankles + a limit-cycle warm-start)
+- **U15+** torque-controlled ankles + warm-start / ZMP-preview → RL / learned policy
 
 CAD/measured values replace every `TODO` before single-support locomotion.
