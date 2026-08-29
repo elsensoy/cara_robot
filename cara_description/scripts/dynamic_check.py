@@ -88,7 +88,7 @@ def run(config, settle_t, verbose):
     n_steps = int(settle_t / dt)
     n_jitter = int(1.0 / dt)
 
-    jnames = lm.joint_names(spec)
+    jnames = lm.actuated_joint_names(spec)
     physical = list(lm.link_inertials(spec))
     gid = lambda n: mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, n)
     foot_gid, floor_gid = gid("l_foot_collision"), gid("floor")

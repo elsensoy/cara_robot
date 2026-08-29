@@ -1,0 +1,53 @@
+# =============================================================================
+# Cara -- UPPER BODY fragment   (composed into cara_full_body.yaml via `include`)
+# =============================================================================
+# NOT runnable on its own.  Additive content only -- links, joints, dynamics,
+# and an `upper_body:` parameter block -- all attaching to `pelvis`.
+#
+# Phase U1: ONE rigid torso lump, WELDED above the pelvis.
+#   * no articulated waist yet   (base_to_torso is type: fixed)
+#   * no head / neck yet
+#   * no arms / ears yet
+# Those are later phases in this same file. Every value below is PROVISIONAL.
+#
+# The `upper_body.torso.*` numeric leaves become expression symbols
+# (upper_body.torso.com_z -> `torso_com_z`), so a sweep touches ONE place.
+# Torso MASS lives in dynamics.links.torso.mass (dotted-path sweepable, like the
+# leg links).
+# =============================================================================
+
+meta:
+  role: fragment
+  name: cara_upper_body
+  description: "Upper-body fragment. U1 = rigid torso lump welded to the pelvis."
+
+# --- provisional torso design knobs -----------------------------------------
+upper_body:
+  torso:
+    attach_z: 0.035      # TODO: measured/CAD -- pelvis frame origin -> weld point (up) [m]
+    com_x:    0.0        # TODO: measured/CAD -- weld -> torso COM, fore/aft [m]
+    com_z:    0.075      # TODO: measured/CAD -- weld -> torso COM, up [m]
+    box_x:    0.11       # TODO: measured/CAD -- torso bounding box, fore/aft [m]
+    box_y:    0.15       # TODO: measured/CAD -- torso bounding box, lateral [m]
+    box_z:    0.16       # TODO: measured/CAD -- torso bounding box, vertical [m]
+
+# --- structure ------------------------------------------------------------
+links:
+  - {name: torso, role: segment}
+
+joints:
+  - name: base_to_torso
+    type: fixed                       # U1: welded. Becomes the waist joint(s) in a later phase.
+    parent: pelvis
+    child: torso
+    origin_expr: [0, 0, torso_attach_z]
+
+dynamics:
+  links:
+    torso:
+      is_physical: true
+      mass: 1.20                       # TODO: measured/CAD -- shell + internal structure [kg]
+      com:  [torso_com_x, 0.0, torso_com_z]
+      inertia:
+        method: solid_box
+        box:  [torso_box_x, torso_box_y, torso_box_z]   # TODO -- provisional extents, inertia approx only

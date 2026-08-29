@@ -181,11 +181,43 @@ def _load_raw(path: str) -> dict:
         return yaml.safe_load(fh)
 
 
+_APPEND_KEYS = ("links", "joints", "frames_of_interest")
+
+
+def _merge_include(spec: dict, frag: dict, frag_name: str) -> dict:
+    """Compose an `include:` fragment into `spec` -- ADDITIVE, not a deep merge.
+
+    Lists (links / joints / frames_of_interest) are appended (name collisions
+    are an error); `dynamics.links` and the free-form `upper_body` / `electronics`
+    parameter blocks are dict-merged; `analysis` sub-dicts are deep-merged.
+    The fragment's `meta`, `base`, `mirror`, `extends` are ignored.
+    """
+    out = copy.deepcopy(spec)
+    for key in _APPEND_KEYS:
+        have = {e["name"] for e in out.get(key, []) or []}
+        for e in frag.get(key, []) or []:
+            if e.get("name") in have:
+                raise ValueError(f"include {frag_name!r}: {key} entry {e['name']!r} "
+                                 f"already exists in the base spec")
+            out.setdefault(key, []).append(copy.deepcopy(e))
+    fd = (frag.get("dynamics", {}) or {}).get("links", {}) or {}
+    for name, d in fd.items():
+        out.setdefault("dynamics", {}).setdefault("links", {})
+        if name in out["dynamics"]["links"]:
+            raise ValueError(f"include {frag_name!r}: dynamics.links[{name!r}] already exists")
+        out["dynamics"]["links"][name] = copy.deepcopy(d)
+    for blk in ("upper_body", "electronics", "analysis"):
+        if blk in frag:
+            out[blk] = _deep_merge(out.get(blk, {}) or {}, frag[blk])
+    return out
+
+
 def load_spec(path: str | None = None) -> dict:
-    """Load a YAML spec, applying `extends` (deep merge) then `mirror` expansion.
+    """Load a YAML spec: apply `extends` (deep merge) then `include` (additive
+    compose) then `mirror` expansion.
 
     The returned spec is fully flat: `links`, `joints`, `dynamics.links` and
-    `frames_of_interest` list every side explicitly.
+    `frames_of_interest` list every side / subsystem explicitly.
     """
     path = os.path.abspath(path or DEFAULT_CONFIG)
     src = os.path.basename(path)
@@ -196,8 +228,13 @@ def load_spec(path: str | None = None) -> dict:
         parent = _load_raw(parent_path)
         spec = _deep_merge(parent, spec)
         here = os.path.dirname(os.path.abspath(parent_path))
+    for inc in spec.pop("include", []) or []:
+        frag = _load_raw(os.path.join(here, inc))
+        spec = _merge_include(spec, frag, inc)
+    mirrored = bool(spec.get("mirror"))
     spec = _apply_mirror(spec)
     spec["_source"] = src
+    spec["_mirrored"] = mirrored
     return spec
 
 
@@ -211,11 +248,29 @@ def base_spec(spec: dict) -> dict:
     }
 
 
+def _flatten_scalars(node, prefix, out):
+    if isinstance(node, dict):
+        for k, v in node.items():
+            _flatten_scalars(v, f"{prefix}{k}_" if prefix else f"{k}_", out)
+    elif isinstance(node, (int, float)) and not isinstance(node, bool):
+        out[prefix[:-1]] = float(node)
+
+
 def resolve_symbols(spec: dict) -> Dict[str, float]:
-    """Flatten the scalar entries of provisional_geometry into a name->float map."""
+    """name -> float map that origin_expr / com / box expressions may reference.
+
+    Sources: the flat `provisional_geometry` symbols (kinematic geometry), plus
+    every numeric leaf of the `upper_body` and `electronics` blocks flattened
+    with underscores (e.g. upper_body.torso.com_z -> `torso_com_z`).
+    """
+    syms: Dict[str, float] = {}
     pg = spec.get("provisional_geometry", {}) or {}
-    return {k: float(v) for k, v in pg.items()
-            if isinstance(v, (int, float)) and not isinstance(v, bool)}
+    for k, v in pg.items():
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            syms[k] = float(v)
+    for blk in ("upper_body", "electronics"):
+        _flatten_scalars(spec.get(blk, {}) or {}, "", syms)
+    return syms
 
 
 def eval_expr(entry, syms: Dict[str, float]) -> float:
@@ -358,10 +413,15 @@ class JointModel:
     velocity: float
     purpose: str
     positive_rotation: str
+    fixed: bool = False          # weld (type: fixed) OR locked -- 0 DOF, no actuator
 
     @property
     def axis_norm(self) -> float:
         return vec_norm(self.axis)
+
+    @property
+    def actuated(self) -> bool:
+        return not self.fixed
 
     def clamp(self, angle: float) -> float:
         return max(self.lower, min(self.upper, angle))
@@ -379,10 +439,12 @@ def build_chain(spec: dict) -> List[JointModel]:
 
     chain: List[JointModel] = []
     for j in spec.get("joints", []):
-        missing = [k for k in REQUIRED_JOINT_KEYS if k not in j]
+        fixed = j["type"] == "fixed" or bool(j.get("locked", False))
+        required = ("name", "type", "parent", "child", "origin_expr") if fixed else REQUIRED_JOINT_KEYS
+        missing = [k for k in required if k not in j]
         if missing:
             raise KeyError(f"joint {j.get('name', '<unnamed>')} missing keys: {missing}")
-        lim = j["limits"]
+        lim = j.get("limits", {"lower": 0.0, "upper": 0.0})
         ov = overrides.get(j["name"], {}) or {}
         chain.append(JointModel(
             name=j["name"],
@@ -390,19 +452,26 @@ def build_chain(spec: dict) -> List[JointModel]:
             parent=j["parent"],
             child=j["child"],
             origin=resolve_vec3(j["origin_expr"], syms),
-            axis=tuple(float(a) for a in j["axis"]),  # type: ignore[arg-type]
+            axis=tuple(float(a) for a in j.get("axis", (0.0, 0.0, 1.0))),  # type: ignore[arg-type]
             lower=float(lim["lower"]),
             upper=float(lim["upper"]),
             effort=float(ov.get("effort", defaults.get("effort", 0.0))),
             velocity=float(ov.get("velocity", defaults.get("velocity", 0.0))),
-            purpose=" ".join(str(j["purpose"]).split()),
-            positive_rotation=" ".join(str(j["positive_rotation"]).split()),
+            purpose=" ".join(str(j.get("purpose", "")).split()),
+            positive_rotation=" ".join(str(j.get("positive_rotation", "")).split()),
+            fixed=fixed,
         ))
     return chain
 
 
 def joint_names(spec: dict) -> List[str]:
+    """Every joint in the tree, actuated or not."""
     return [jm.name for jm in build_chain(spec)]
+
+
+def actuated_joint_names(spec: dict) -> List[str]:
+    """Joints with a DOF -- the ones that get a PD servo and a qpos slot."""
+    return [jm.name for jm in build_chain(spec) if jm.actuated]
 
 
 def joint_limits(spec: dict) -> Dict[str, Tuple[float, float]]:
@@ -426,8 +495,9 @@ def forward_kinematics(spec: dict, q: Dict[str, float] | None = None) -> Dict[st
                 f"joint {jm.name!r}: parent {jm.parent!r} not placed yet "
                 f"(joints must be listed parent-before-child)"
             )
+        angle = 0.0 if jm.fixed else float(q.get(jm.name, 0.0))
         t_origin: Transform = (IDENTITY3, jm.origin)
-        t_joint: Transform = (rot_axis_angle(jm.axis, float(q.get(jm.name, 0.0))), (0.0, 0.0, 0.0))
+        t_joint: Transform = (rot_axis_angle(jm.axis, angle), (0.0, 0.0, 0.0))
         transforms[jm.child] = tf_compose(tf_compose(transforms[jm.parent], t_origin), t_joint)
 
     return transforms
@@ -547,8 +617,9 @@ def reference_poses(spec: dict) -> Dict[str, Dict[str, float]]:
 
 
 def pose_qpos(spec: dict, cfg: Dict[str, float]) -> list:
-    """A reference pose expanded to the full ordered joint vector (missing -> 0)."""
-    return [float(cfg.get(name, 0.0)) for name in joint_names(spec)]
+    """A reference pose as the ordered vector of ACTUATED joint angles (missing -> 0).
+    This is the MJCF hinge-qpos / ctrl order."""
+    return [float(cfg.get(name, 0.0)) for name in actuated_joint_names(spec)]
 
 
 def actuator_control(spec: dict) -> Dict[str, Dict[str, float]]:
@@ -563,7 +634,7 @@ def actuator_control(spec: dict) -> Dict[str, Dict[str, float]]:
     dr0 = float(ctrl.get("dampratio", 1.0))
     ov = ctrl.get("overrides", {}) or {}
     out: Dict[str, Dict[str, float]] = {}
-    for name in joint_names(spec):
+    for name in actuated_joint_names(spec):
         jov = ov.get(name, {}) or {}
         out[name] = {"kp": float(jov.get("kp", kp0)),
                      "dampratio": float(jov.get("dampratio", dr0))}
@@ -636,6 +707,8 @@ def _world_joint_axes_origins(spec: dict, q: Dict[str, float] | None = None
     tf = forward_kinematics(spec, q)
     rows = []
     for jm in build_chain(spec):
+        if jm.fixed:
+            continue
         r_child, p_child = tf[jm.child]
         axis_world = normalize(mat_vec(r_child, jm.axis))
         rows.append((jm.name, axis_world, p_child))
@@ -712,26 +785,37 @@ def gravity_joint_torques(spec: dict, q: Dict[str, float] | None = None,
     g = analysis_gravity(spec) if g is None else g
     tf = forward_kinematics(spec, q)
     chain = build_chain(spec)
-    child_index = {jm.child: i for i, jm in enumerate(chain)}
 
-    # (world position, mass, index of the deepest joint that moves this mass)
-    masses: List[Tuple[Vec3, float, int]] = []
+    # actuated-joint ancestors of each link (tree, not a single chain)
+    parent_link = {jm.child: jm.parent for jm in chain}
+    joint_to_child = {jm.child: jm for jm in chain}
+    base = spec["frame_conventions"]["base_frame"]
+
+    def ancestors(link: str) -> set:
+        anc, cur = set(), link
+        while cur in parent_link and cur != base:
+            jm = joint_to_child[cur]
+            if jm.actuated:
+                anc.add(jm.name)
+            cur = jm.parent
+        return anc
+
+    link_anc = {name: ancestors(name) for name in link_inertials(spec)}
+
+    masses: List[Tuple[Vec3, float, set]] = []
     for name, li in link_inertials(spec).items():
         r, p = tf[name]
         world_com = vec_add(mat_vec(r, li.com), p)
-        last = child_index.get(name, -1)   # -1 => root link, no joint moves it
-        masses.append((world_com, li.mass, last))
+        masses.append((world_com, li.mass, link_anc[name]))
     for m, frame in (extra_masses or []):
         foi = _find_foi(spec, frame)
-        last = child_index[foi["link"]]
-        masses.append((frame_world_position(spec, tf, frame), float(m), last))
+        masses.append((frame_world_position(spec, tf, frame), float(m), ancestors(foi["link"])))
 
-    axes_origins = _world_joint_axes_origins(spec, q)
     tau: Dict[str, float] = {}
-    for k, (name, axis_world, o_j) in enumerate(axes_origins):
+    for name, axis_world, o_j in _world_joint_axes_origins(spec, q):
         t = 0.0
-        for world_pos, m, last in masses:
-            if last >= k:  # this mass is distal to joint k
+        for world_pos, m, anc in masses:
+            if name in anc:   # this mass hangs off joint `name`
                 dz_dqk = cross(axis_world, vec_sub(world_pos, o_j))[2]
                 t += m * g * dz_dqk
         tau[name] = t

@@ -1,0 +1,115 @@
+<mujoco model="cara_full_body_dynamic">
+  <!-- ================================================================
+       GENERATED FILE. Do not edit by hand.
+       source : cara_description/config/cara_full_body.yaml
+       tool   : cara_description/scripts/generate_mjcf.py  --dynamic
+       regen  : python3 scripts/generate_mjcf.py --dynamic config/cara_full_body.yaml
+
+       mode: DYNAMIC.  Same source of truth as the URDF.
+       gravity ON; PD <position> actuators; feet <-> ground contact.
+       Pelvis is a FLOATING base (freejoint) -- standing is only
+       stable if the commanded posture keeps the COM over the feet.
+       Coincident hip/ankle joints are stacked on the physical body
+       downstream (see the script docstring).
+       Frame convention: +X forward, +Y left, +Z up, right-handed.
+       ============================================================= -->
+  <compiler angle="radian" autolimits="true"/>
+  <option gravity="0 0 -9.81" timestep="0.002" integrator="implicitfast"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.35 0.35 0.35" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="130" elevation="-20"/>
+  </visual>
+
+  <default>
+    <geom contype="0" conaffinity="0" group="2"/>   <!-- link geoms: visual only -->
+    <site type="sphere" size="0.006" group="3"/>
+  </default>
+
+  <worldbody>
+    <light pos="0 0 1.5" dir="0 0 -1" diffuse="0.5 0.5 0.5"/>
+    <geom name="floor" type="plane" size="1.0 1.0 0.02" pos="0 0 0" contype="1" conaffinity="1" condim="3" friction="1 0.005 0.0001" rgba="0.85 0.85 0.88 1" group="1"/>
+
+    <body name="pelvis" pos="0 0 0.276801">
+      <freejoint name="pelvis_free"/>
+      <inertial pos="0 0 -0.01" mass="1.1" diaginertia="0.00279583333 0.00176916667 0.00366666667"/>
+      <geom type="box" size="0.06 0.08 0.035" pos="0 0 -0.01" rgba="0.75 0.78 0.82 1"/>
+      <site name="pelvis_frame" pos="0 0 0" rgba="0.9 0.5 0.2 1"/>
+      <body name="l_thigh" pos="0 0.05 0">
+        <joint name="l_hip_yaw" type="hinge" pos="0 0 0" axis="0 0 1" range="-0.79 0.79"/>
+        <joint name="l_hip_roll" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.52 0.61"/>
+        <joint name="l_hip_pitch" type="hinge" pos="0 0 0" axis="0 1 0" range="-1.75 1.05"/>
+        <inertial pos="0 0 -0.066" mass="0.22" diaginertia="0.000264 0.000264 5.324e-05"/>
+        <geom type="cylinder" size="0.022 0.06" pos="0 0 -0.066" rgba="0.75 0.78 0.82 1"/>
+        <site name="l_thigh_frame" pos="0 0 0" rgba="0.9 0.5 0.2 1"/>
+        <body name="l_shin" pos="0 0 -0.12">
+          <joint name="l_knee_pitch" type="hinge" pos="0 0 0" axis="0 1 0" range="0 2.36"/>
+          <inertial pos="0 0 -0.0696" mass="0.18" diaginertia="0.000216 0.000216 2.916e-05"/>
+          <geom type="cylinder" size="0.018 0.06" pos="0 0 -0.0696" rgba="0.75 0.78 0.82 1"/>
+          <site name="l_shin_frame" pos="0 0 0" rgba="0.9 0.5 0.2 1"/>
+          <body name="l_foot" pos="0 0 -0.12">
+            <joint name="l_ankle_pitch" type="hinge" pos="0 0 0" axis="0 1 0" range="-0.87 0.61"/>
+            <joint name="l_ankle_roll" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.44 0.44"/>
+            <inertial pos="0.015 0 -0.0175" mass="0.08" diaginertia="2.16666667e-05 6.21666667e-05 6.75e-05"/>
+            <geom type="box" size="0.045 0.0225 0.0175" pos="0.015 0 -0.0175" rgba="0.75 0.78 0.82 1"/>
+            <geom name="l_foot_collision" type="box" size="0.045 0.0225 0.0175" pos="0.015 0 -0.0175" contype="1" conaffinity="1" condim="3" friction="1 0.005 0.0001" rgba="0.9 0.6 0.3 0.35" group="4"/>
+            <site name="l_foot_frame" pos="0 0 0" rgba="0.9 0.5 0.2 1"/>
+            <site name="l_foot_sole_center" pos="0.015 0 -0.035" rgba="0.2 0.7 0.4 1"/>
+          </body>
+        </body>
+      </body>
+      <body name="torso" pos="0 0 0.035">
+        <!-- base_to_torso: fixed, welded -->
+        <inertial pos="0 0 0.075" mass="1.2" diaginertia="0.00481 0.00377 0.00346"/>
+        <geom type="box" size="0.055 0.075 0.08" pos="0 0 0.075" rgba="0.75 0.78 0.82 1"/>
+        <site name="torso_frame" pos="0 0 0" rgba="0.9 0.5 0.2 1"/>
+      </body>
+      <body name="r_thigh" pos="0 -0.05 0">
+        <joint name="r_hip_yaw" type="hinge" pos="0 0 0" axis="0 0 -1" range="-0.79 0.79"/>
+        <joint name="r_hip_roll" type="hinge" pos="0 0 0" axis="-1 0 0" range="-0.52 0.61"/>
+        <joint name="r_hip_pitch" type="hinge" pos="0 0 0" axis="0 1 0" range="-1.75 1.05"/>
+        <inertial pos="0 0 -0.066" mass="0.22" diaginertia="0.000264 0.000264 5.324e-05"/>
+        <geom type="cylinder" size="0.022 0.06" pos="0 0 -0.066" rgba="0.75 0.78 0.82 1"/>
+        <site name="r_thigh_frame" pos="0 0 0" rgba="0.9 0.5 0.2 1"/>
+        <body name="r_shin" pos="0 0 -0.12">
+          <joint name="r_knee_pitch" type="hinge" pos="0 0 0" axis="0 1 0" range="0 2.36"/>
+          <inertial pos="0 0 -0.0696" mass="0.18" diaginertia="0.000216 0.000216 2.916e-05"/>
+          <geom type="cylinder" size="0.018 0.06" pos="0 0 -0.0696" rgba="0.75 0.78 0.82 1"/>
+          <site name="r_shin_frame" pos="0 0 0" rgba="0.9 0.5 0.2 1"/>
+          <body name="r_foot" pos="0 0 -0.12">
+            <joint name="r_ankle_pitch" type="hinge" pos="0 0 0" axis="0 1 0" range="-0.87 0.61"/>
+            <joint name="r_ankle_roll" type="hinge" pos="0 0 0" axis="-1 0 0" range="-0.44 0.44"/>
+            <inertial pos="0.015 0 -0.0175" mass="0.08" diaginertia="2.16666667e-05 6.21666667e-05 6.75e-05"/>
+            <geom type="box" size="0.045 0.0225 0.0175" pos="0.015 0 -0.0175" rgba="0.75 0.78 0.82 1"/>
+            <geom name="r_foot_collision" type="box" size="0.045 0.0225 0.0175" pos="0.015 0 -0.0175" contype="1" conaffinity="1" condim="3" friction="1 0.005 0.0001" rgba="0.9 0.6 0.3 0.35" group="4"/>
+            <site name="r_foot_frame" pos="0 0 0" rgba="0.9 0.5 0.2 1"/>
+            <site name="r_foot_sole_center" pos="0.015 0 -0.035" rgba="0.2 0.7 0.4 1"/>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <keyframe>
+    <key name="stand_nominal" qpos="0 0 0.276801 1 0 0 0 0 0 -0.1 0.2 -0.1 0 0 0 -0.1 0.2 -0.1 0" ctrl="0 0 -0.1 0.2 -0.1 0 0 0 -0.1 0.2 -0.1 0"/>
+    <key name="semi_squat" qpos="0 0 0.242605885 1 0 0 0 0 0 -0.55 1.1 -0.55 0 0 0 -0.55 1.1 -0.55 0" ctrl="0 0 -0.55 1.1 -0.55 0 0 0 -0.55 1.1 -0.55 0"/>
+    <key name="stand_wide" qpos="0 0 0.274119522 1 0 0 0 0 0.15 -0.1 0.2 -0.1 -0.15 0 0.15 -0.1 0.2 -0.1 -0.15" ctrl="0 0.15 -0.1 0.2 -0.1 -0.15 0 0.15 -0.1 0.2 -0.1 -0.15"/>
+  </keyframe>
+
+  <actuator>
+    <position name="l_hip_yaw" joint="l_hip_yaw" kp="30" dampratio="1" ctrlrange="-0.79 0.79" forcerange="-3 3"/>
+    <position name="l_hip_roll" joint="l_hip_roll" kp="30" dampratio="1" ctrlrange="-0.52 0.61" forcerange="-3 3"/>
+    <position name="l_hip_pitch" joint="l_hip_pitch" kp="45" dampratio="1" ctrlrange="-1.75 1.05" forcerange="-3 3"/>
+    <position name="l_knee_pitch" joint="l_knee_pitch" kp="45" dampratio="1" ctrlrange="0 2.36" forcerange="-3 3"/>
+    <position name="l_ankle_pitch" joint="l_ankle_pitch" kp="30" dampratio="1" ctrlrange="-0.87 0.61" forcerange="-2 2"/>
+    <position name="l_ankle_roll" joint="l_ankle_roll" kp="30" dampratio="1" ctrlrange="-0.44 0.44" forcerange="-2 2"/>
+    <position name="r_hip_yaw" joint="r_hip_yaw" kp="30" dampratio="1" ctrlrange="-0.79 0.79" forcerange="-3 3"/>
+    <position name="r_hip_roll" joint="r_hip_roll" kp="30" dampratio="1" ctrlrange="-0.52 0.61" forcerange="-3 3"/>
+    <position name="r_hip_pitch" joint="r_hip_pitch" kp="45" dampratio="1" ctrlrange="-1.75 1.05" forcerange="-3 3"/>
+    <position name="r_knee_pitch" joint="r_knee_pitch" kp="45" dampratio="1" ctrlrange="0 2.36" forcerange="-3 3"/>
+    <position name="r_ankle_pitch" joint="r_ankle_pitch" kp="30" dampratio="1" ctrlrange="-0.87 0.61" forcerange="-2 2"/>
+    <position name="r_ankle_roll" joint="r_ankle_roll" kp="30" dampratio="1" ctrlrange="-0.44 0.44" forcerange="-2 2"/>
+  </actuator>
+
+</mujoco>

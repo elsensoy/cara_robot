@@ -25,6 +25,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import os
 import sys
@@ -32,8 +33,8 @@ import sys
 import leg_model as lm
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
+_MJCF_DIR = os.path.normpath(os.path.join(_HERE, os.pardir, "mjcf"))
 DEFAULT_CONFIG = os.path.normpath(os.path.join(_HERE, os.pardir, "config", "cara_lower_body.yaml"))
-DYN_MJCF = os.path.normpath(os.path.join(_HERE, os.pardir, "mjcf", "cara_lower_body_dynamic.xml"))
 
 TILT_TOL_DEG = 8.0       # pelvis tilt from vertical
 HEIGHT_DROP_TOL = 0.10   # fraction of rest height the pelvis may sink
@@ -50,7 +51,7 @@ polygon_margin = lm.polygon_signed_margin
 
 
 # --------------------------------------------------------------------------- #
-def run(config, hold_override, verbose):
+def run(config, hold_override, verbose, json_path=None, baseline_path=None):
     try:
         import mujoco
         import numpy as np
@@ -61,13 +62,14 @@ def run(config, hold_override, verbose):
     import generate_mjcf
 
     spec = lm.load_spec(config)
+    model_name = spec["meta"]["name"]
     xml = generate_mjcf.build_mjcf(spec, dynamic=True)
-    if os.path.exists(DYN_MJCF):
-        with open(DYN_MJCF, encoding="utf-8") as fh:
+    on_disk = os.path.join(_MJCF_DIR, model_name + "_dynamic.xml")
+    if os.path.exists(on_disk):
+        with open(on_disk, encoding="utf-8") as fh:
             if fh.read() != xml:
-                print(f"WARNING: {DYN_MJCF} is stale -- run "
-                      "`generate_mjcf.py --dynamic config/cara_lower_body.yaml "
-                      "-o mjcf/cara_lower_body_dynamic.xml` (using a fresh render here)\n")
+                print(f"WARNING: {on_disk} is stale -- run "
+                      f"`generate_mjcf.py --dynamic {config or ''}` (fresh render used here)\n")
 
     model = mujoco.MjModel.from_xml_string(xml)
     data = mujoco.MjData(model)
@@ -79,7 +81,7 @@ def run(config, hold_override, verbose):
     n_steps = int(hold_t / dt)
     score_from = int(SETTLE_SKIP / dt)
 
-    jnames = lm.joint_names(spec)
+    jnames = lm.actuated_joint_names(spec)
     physical = list(lm.link_inertials(spec))
     bid = lambda n: mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, n)
     gid = lambda n: mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, n)
@@ -91,13 +93,14 @@ def run(config, hold_override, verbose):
     rest_h = float(model.key_qpos[0][2]) if model.nkey else 0.3
     total_mass = float(sum(model.body_mass))
 
-    print(f"Standing milestone check  ({model.nu} PD servos, "
-          f"{total_mass:.2f} kg lower body, hold {hold_t:.0f}s each)")
+    print(f"Standing milestone check  ({model_name}: {model.nu} PD servos, "
+          f"{total_mass:.2f} kg, hold {hold_t:.0f}s each)")
     hdr = (f"  {'pose':<15} {'verdict':<6} {'tilt°':>6} {'sink mm':>8} {'drift mm':>9} "
            f"{'COM margin mm':>14} {'peak|tau|':>12} {'RMS tau':>8} {'FKerr':>8}")
     print(hdr)
     print("  " + "-" * (len(hdr) - 2))
 
+    results = {"model": model_name, "total_mass": total_mass, "poses": {}}
     all_pass = True
     for pose_name in poses:
         kid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_KEY, pose_name)
@@ -181,6 +184,12 @@ def run(config, hold_override, verbose):
         if fk_err > FK_TOL:
             notes.append(f"FK {fk_err:.1e}"); ok = False
         all_pass &= ok
+        results["poses"][pose_name] = {
+            "verdict": "PASS" if ok else "FAIL", "tilt_deg": tilt, "sink_mm": sink * 1e3,
+            "drift_mm": drift * 1e3, "com_margin_mm": min_margin * 1e3,
+            "peak_torque_Nm": peak, "peak_joint": peak_j, "rms_torque_Nm": rms_tau,
+            "saturated": saturated, "fk_err_m": fk_err, "notes": notes,
+        }
 
         print(f"  {pose_name:<15} {'PASS' if ok else 'FAIL':<6} {tilt:>6.2f} {sink*1e3:>8.1f} "
               f"{drift*1e3:>9.1f} {min_margin*1e3:>14.1f} {peak:>8.3f}@{peak_j.split('_')[-1]:<3} "
@@ -191,12 +200,38 @@ def run(config, hold_override, verbose):
             print(f"      final  {[round(float(data.qpos[7 + i]), 2) for i in range(len(jnames))]}")
             print(f"      tau    {[round(float(data.actuator_force[aid(n)]), 3) for n in jnames]}")
 
+    results["all_pass"] = all_pass
+
+    if baseline_path:
+        _print_delta(results, json.load(open(baseline_path, encoding="utf-8")))
+
+    if json_path:
+        with open(json_path, "w", encoding="utf-8") as fh:
+            json.dump(results, fh, indent=2)
+        print(f"\nsummary -> {json_path}")
+
     print("\n" + "=" * 62)
     print(f"MILESTONE {'MET' if all_pass else 'NOT MET'}: "
           f"held {len(poses)} pose(s) for {hold_t:.0f}s "
           + ("with all checks green." if all_pass else "-- see failures above."))
-    print("(masses / PD gains are provisional; no head/arms/battery yet)")
+    print("(masses / PD gains provisional)")
     return 0 if all_pass else 1
+
+
+_DELTA_KEYS = [("tilt_deg", "tilt deg", 2), ("com_margin_mm", "COM margin mm", 1),
+               ("peak_torque_Nm", "peak torque Nm", 3), ("rms_torque_Nm", "RMS torque Nm", 3)]
+
+
+def _print_delta(cur, base):
+    print(f"\nDelta vs baseline '{base.get('model', '?')}' "
+          f"({base.get('total_mass', 0):.2f} kg -> {cur['total_mass']:.2f} kg):")
+    for pose, c in cur["poses"].items():
+        b = base.get("poses", {}).get(pose)
+        if not b:
+            continue
+        bits = "  ".join(
+            f"{lbl} {c[k]:.{p}f} ({c[k] - b[k]:+.{p}f})" for k, lbl, p in _DELTA_KEYS)
+        print(f"  {pose:<15} {bits}")
 
 
 def main(argv=None) -> int:
@@ -205,8 +240,10 @@ def main(argv=None) -> int:
     ap.add_argument("config", nargs="?", default=DEFAULT_CONFIG)
     ap.add_argument("--hold", type=float, default=None, help="override hold seconds")
     ap.add_argument("--verbose", action="store_true")
+    ap.add_argument("--json", default=None, help="write the summary here")
+    ap.add_argument("--baseline", default=None, help="print deltas vs this summary JSON")
     args = ap.parse_args(argv)
-    return run(args.config, args.hold, args.verbose)
+    return run(args.config, args.hold, args.verbose, args.json, args.baseline)
 
 
 if __name__ == "__main__":

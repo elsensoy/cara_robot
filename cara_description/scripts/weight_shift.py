@@ -42,6 +42,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import os
 import sys
@@ -49,8 +50,8 @@ import sys
 import leg_model as lm
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
+_MJCF_DIR = os.path.normpath(os.path.join(_HERE, os.pardir, "mjcf"))
 DEFAULT_CONFIG = os.path.normpath(os.path.join(_HERE, os.pardir, "config", "cara_lower_body.yaml"))
-DYN_MJCF = os.path.normpath(os.path.join(_HERE, os.pardir, "mjcf", "cara_lower_body_dynamic.xml"))
 
 
 def smoothstep(u):
@@ -102,7 +103,7 @@ def make_trajectory(A, ramp, hold, extra_centre):
 def build_ik_table(spec, base_cfg, py_max, n):
     """[(pelvis_shift, predicted world COM y, q_target[12], ik_residual)]."""
     nfp = lm.nominal_foot_poses(spec, base_cfg)
-    jn = lm.joint_names(spec)
+    jn = lm.actuated_joint_names(spec)
     rows = []
     for i in range(n):
         py = -py_max + 2 * py_max * i / (n - 1)
@@ -137,7 +138,8 @@ def table_lookup(table, com_des):
 
 
 # --------------------------------------------------------------------------- #
-def run(config, amplitude, do_sweep, csv_path, verbose, view=False):
+def run(config, amplitude, do_sweep, csv_path, verbose, view=False,
+        json_path=None, baseline_path=None):
     try:
         import mujoco
         import numpy as np
@@ -148,13 +150,14 @@ def run(config, amplitude, do_sweep, csv_path, verbose, view=False):
     import generate_mjcf
 
     spec = lm.load_spec(config)
+    model_name = spec["meta"]["name"]
     xml = generate_mjcf.build_mjcf(spec, dynamic=True)
-    if os.path.exists(DYN_MJCF):
-        with open(DYN_MJCF, encoding="utf-8") as fh:
+    on_disk = os.path.join(_MJCF_DIR, model_name + "_dynamic.xml")
+    if os.path.exists(on_disk):
+        with open(on_disk, encoding="utf-8") as fh:
             if fh.read() != xml:
-                print(f"WARNING: {DYN_MJCF} is stale -- run "
-                      "`generate_mjcf.py --dynamic config/cara_lower_body.yaml` "
-                      "(using a fresh render here)\n")
+                print(f"WARNING: {on_disk} is stale -- run "
+                      f"`generate_mjcf.py --dynamic {config or ''}` (fresh render used here)\n")
 
     model = mujoco.MjModel.from_xml_string(xml)
     data = mujoco.MjData(model)
@@ -174,7 +177,7 @@ def run(config, amplitude, do_sweep, csv_path, verbose, view=False):
     MAX_SLIP = float(acc.get("max_foot_slip", 0.003))
     MAX_TQ_FRAC = float(acc.get("max_torque_frac", 1.0))
 
-    jn = lm.joint_names(spec)
+    jn = lm.actuated_joint_names(spec)
     base_cfg = lm.reference_poses(spec)[base_pose]
     nominal_ctrl = [float(base_cfg.get(n, 0.0)) for n in jn]
 
@@ -402,6 +405,18 @@ def run(config, amplitude, do_sweep, csv_path, verbose, view=False):
         f"peak torque {100*peak_frac:.0f}% of limit")
     demo_ok = all(checks)
 
+    results = {
+        "model": model_name, "total_mass_kg": float(sum(model.body_mass)),
+        "total_weight_N": total_weight, "amplitude_m": A,
+        "centred_Fn_N": [Fn_l0, Fn_r0], "demo_checks_passed": [int(sum(checks)), len(checks)],
+        "plusA": {"com_y_des": A, "com_y_meas": window_mean(log, "com_y", *windows["+A"]),
+                  "Fn_left": Fn_l_plus, "Fn_right": Fn_r_plus,
+                  "m_full_mm": 1e3 * window_worst(log, "m_full", *windows["+A"]),
+                  "m_loaded_mm": 1e3 * window_mean(log, "m_left", *windows["+A"]),
+                  "pelvis_roll_deg": math.degrees(window_worst(log, "roll", *windows["+A"], "max")),
+                  "slip_mm": 1e3 * max_slip, "peak_torque_frac": peak_frac},
+    }
+
     if verbose:
         print("\nper-joint at the +A hold (mean over the last second):")
         m = (log["t"] >= windows["+A"][0]) & (log["t"] <= windows["+A"][1])
@@ -459,6 +474,26 @@ def run(config, amplitude, do_sweep, csv_path, verbose, view=False):
         print(f"\n  largest COM target that stays in controlled double support: "
               f"{sweep_limit:.3f} m"
               + (f"  (~{100*sweep_limit/0.05:.0f}% of the hip half-width)" if sweep_limit else ""))
+        results["sweep_limit_m"] = sweep_limit
+
+    if baseline_path:
+        base = json.load(open(baseline_path, encoding="utf-8"))
+        print(f"\nDelta vs baseline '{base.get('model', '?')}' "
+              f"({base.get('total_mass_kg', 0):.2f} kg -> {results['total_mass_kg']:.2f} kg):")
+        b, c = base.get("plusA", {}), results["plusA"]
+        for k, lbl, p in (("Fn_left", "Fn loaded", 2), ("Fn_right", "Fn unloaded", 2),
+                          ("m_full_mm", "COM margin mm", 1), ("pelvis_roll_deg", "pelvis roll deg", 2),
+                          ("slip_mm", "slip mm", 2)):
+            if k in b:
+                print(f"  {lbl:<16} {c[k]:.{p}f} ({c[k]-b[k]:+.{p}f})")
+        if "sweep_limit_m" in base and "sweep_limit_m" in results:
+            print(f"  {'shift limit m':<16} {results['sweep_limit_m']:.3f} "
+                  f"({results['sweep_limit_m']-base['sweep_limit_m']:+.3f})")
+
+    if json_path:
+        with open(json_path, "w", encoding="utf-8") as fh:
+            json.dump(results, fh, indent=2)
+        print(f"\nsummary -> {json_path}")
 
     # ================================================================== #
     print("\n" + "=" * 66)
@@ -502,8 +537,11 @@ def main(argv=None) -> int:
     ap.add_argument("--verbose", action="store_true")
     ap.add_argument("--view", action="store_true",
                     help="watch the COM-shift trajectory loop in the MuJoCo viewer (needs a display)")
+    ap.add_argument("--json", default=None, help="write the run summary here")
+    ap.add_argument("--baseline", default=None, help="print deltas vs this summary JSON")
     args = ap.parse_args(argv)
-    return run(args.config, args.amplitude, not args.no_sweep, args.csv, args.verbose, args.view)
+    return run(args.config, args.amplitude, not args.no_sweep, args.csv, args.verbose,
+               args.view, args.json, args.baseline)
 
 
 if __name__ == "__main__":

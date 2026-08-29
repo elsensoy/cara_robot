@@ -1,0 +1,46 @@
+{
+  "model": "cara_lower_body",
+  "total_mass": 2.06,
+  "poses": {
+    "stand_nominal": {
+      "verdict": "PASS",
+      "tilt_deg": 0.160374487179652,
+      "sink_mm": 3.536944338637882,
+      "drift_mm": 8.143682174330196e-05,
+      "com_margin_mm": 33.09324879477918,
+      "peak_torque_Nm": 0.07825361166750078,
+      "peak_joint": "l_knee_pitch",
+      "rms_torque_Nm": 0.07825205640614734,
+      "saturated": false,
+      "fk_err_m": 6.38378239159465e-16,
+      "notes": []
+    },
+    "semi_squat": {
+      "verdict": "PASS",
+      "tilt_deg": 0.29564151110374787,
+      "sink_mm": 4.064731783013614,
+      "drift_mm": 0.0001224846408963754,
+      "com_margin_mm": 43.14022463454563,
+      "peak_torque_Nm": 0.4024202449851373,
+      "peak_joint": "l_knee_pitch",
+      "rms_torque_Nm": 0.40241560353113687,
+      "saturated": false,
+      "fk_err_m": 4.718447854656915e-16,
+      "notes": []
+    },
+    "stand_wide": {
+      "verdict": "PASS",
+      "tilt_deg": 0.16236472558573842,
+      "sink_mm": 3.771757585832425,
+      "drift_mm": 0.002552730375284004,
+      "com_margin_mm": 33.09184544315356,
+      "peak_torque_Nm": 0.20176385464951707,
+      "peak_joint": "l_hip_roll",
+      "rms_torque_Nm": 0.20042387872232353,
+      "saturated": false,
+      "fk_err_m": 3.885780586188048e-16,
+      "notes": []
+    }
+  },
+  "all_pass": true
+}

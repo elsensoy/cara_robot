@@ -71,7 +71,7 @@ def workspace_scan(spec):
 
 
 def peak_torques(spec):
-    out = {j: 0.0 for j in lm.joint_names(spec)}
+    out = {j: 0.0 for j in lm.actuated_joint_names(spec)}
     for cfg in lm.reference_poses(spec).values():
         tau = lm.gravity_joint_torques(spec, cfg)
         for j, t in tau.items():
@@ -105,7 +105,7 @@ def main(argv=None) -> int:
 
     base = lm.load_spec(args.config)
     values = [float(v) for v in args.values.split(",")]
-    jnames = lm.joint_names(base)
+    jnames = [j for j in lm.actuated_joint_names(base) if j.startswith("l_")]
 
     print(f"Morphology sweep:  {args.param}  in  {values}")
     print("(all masses / lengths PROVISIONAL; +Z up, origin at pelvis)\n")

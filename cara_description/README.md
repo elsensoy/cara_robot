@@ -12,22 +12,22 @@ a full robot, not CAD, not a policy, and has no upper body yet.
 | | |
 |---|---|
 | ✅ | 12-DoF pelvis + both legs; right leg = mirror of left (not hand-written) |
-| ✅ | two parameterised configs: `left_leg.yaml` (SSOT for one leg) and `cara_lower_body.yaml` (`extends` + mirror + floating base) |
-| ✅ | generated, inspectable URDF **and** MJCF (kinematic + dynamic) for each |
+| ✅ | composed configs: `left_leg` → `cara_lower_body` (`extends` + mirror + float) → `cara_full_body` (`+ include` upper body) |
+| ✅ | generated, inspectable URDF **and** MJCF (kinematic + dynamic) for each model |
 | ✅ | MuJoCo verified to reproduce the pure-Python FK to machine precision |
-| ✅ | dynamic MJCF: gravity + PD servos + foot–ground contact |
-| ✅ | **static standing** — holds 3 poses 10 s each, COM inside the support polygon, low torque |
-| ✅ | validation + FK + single-leg-plausibility + standing scripts, and COM / gravity-torque / Jacobian / sweep analysis |
+| ✅ | **static standing** + **quasi-static weight shifting** — both milestones met (lower body & full body) |
+| ✅ | **Phase U1** — rigid torso lump; effect on COM / torque / shift-limit measured vs a frozen baseline |
+| ✅ | validation + FK + plausibility + standing + weight-shift scripts, and COM / gravity-torque / Jacobian / sweep analysis |
 | 🔶 | dynamics — mass / COM / inertia / actuator limits / PD gains are **provisional placeholders** |
-| ❌ | head, ears, arms, waist |
+| ❌ | head, ears, arms, waist joints, electronics (U2–U5) |
 | ❌ | CAD geometry, servo brackets, wiring, shells |
-| ✅ | **quasi-static weight shifting** — transfers load L↔R in controlled double support (limit ~0.04 m COM) |
 | ❌ | single-support, dynamic balance, RL / locomotion policy |
 
 Design constraint being followed: **kinematics, dynamics, and manufacturing
 are kept separate.** The YAML is layered accordingly. No servo is selected;
-every dynamic number is labelled `TODO` / `TBD`. The head/battery/Jetson
-masses are added *after* the lower body is stable, one at a time.
+every dynamic number is labelled `TODO` / `TBD`. Upper-body subsystems (torso →
+head → electronics → arms → ears) are added *one at a time*, each measured
+against the frozen lower-body baseline before the next.
 
 ## Layout
 
@@ -35,19 +35,22 @@ masses are added *after* the lower body is stable, one at a time.
 cara_description/
 ├── config/
 │   ├── left_leg.yaml            # SSOT for ONE leg + pelvis (fixed base)
-│   └── cara_lower_body.yaml     # extends left_leg + mirror l_→r_ + floating pelvis
-├── urdf/                        # GENERATED — cara_left_leg.urdf, cara_lower_body.urdf
+│   ├── cara_lower_body.yaml     # extends left_leg + mirror l_→r_ + floating pelvis + poses
+│   ├── cara_upper_body.yaml     # FRAGMENT (not standalone): torso (U1) [+ head/arms/ears later]
+│   └── cara_full_body.yaml      # extends cara_lower_body + include cara_upper_body
+├── baselines/                   # frozen lower-body results — the regression comparison target
+├── urdf/                        # GENERATED — <model>.urdf
 ├── mjcf/                        # GENERATED — <model>.xml (kinematic) + <model>_dynamic.xml
 ├── scripts/
-│   ├── leg_model.py             # shared loader (extends/mirror) + pure-Python kinematics & dynamics
+│   ├── leg_model.py             # shared loader (extends/include/mirror) + pure-Python kinematics & dynamics
 │   ├── generate_urdf.py         # YAML -> URDF
 │   ├── generate_mjcf.py         # YAML -> MJCF  (--dynamic for the physics model)
 │   ├── validate_description.py  # structural checks (kinematics + dynamics + base/mirror)
 │   ├── fk_sanity_check.py       # single-leg forward-kinematics behaviour checks
 │   ├── validate_mjcf.py         # MuJoCo body/site positions vs leg_model FK  (--dynamic)
 │   ├── dynamic_check.py         # single leg: gravity + PD plausibility over scripted poses
-│   ├── stand_check.py           # lower body: hold standing poses 10 s + COM/support-polygon
-│   ├── weight_shift.py          # lower body: quasi-static lateral COM shift via task-space IK
+│   ├── stand_check.py           # lower/full body: hold standing poses 10 s + COM/polygon  (--baseline)
+│   ├── weight_shift.py          # lower/full body: quasi-static lateral COM shift via task-space IK  (--baseline)
 │   ├── view_mujoco.py           # load a generated MJCF and open mujoco.viewer
 │   ├── center_of_mass.py        # whole-model COM for any joint configuration
 │   ├── gravity_torques.py       # gravitational joint torques for reference poses
@@ -57,7 +60,8 @@ cara_description/
 │   ├── frames_and_joints.md     # frame conventions + per-joint math + foot frame hierarchy
 │   ├── dynamics_notes.md        # provisional dynamics layer + single-leg analysis
 │   ├── standing_notes.md        # mirroring the 2nd leg + the standing milestone
-│   └── weight_shift_notes.md    # task-space IK + the weight-shift milestone
+│   ├── weight_shift_notes.md    # task-space IK + the weight-shift milestone
+│   └── upper_body_notes.md      # config hierarchy + staged upper-body mass analysis (U1: torso)
 └── README.md
 ```
 
@@ -188,6 +192,30 @@ planted, pelvis level (0.35°), < 15 % torque; the quasi-static double-support
 limit is ~0.04 m (the opposite foot fully unloads beyond that and she topples).
 Details in [`docs/weight_shift_notes.md`](docs/weight_shift_notes.md).
 
+## Upper body (staged mass analysis)
+
+`cara_full_body.yaml` = `cara_lower_body.yaml` **`+ include cara_upper_body.yaml`**.
+The upper body is added as a *design-analysis tool* — each subsystem is added
+one at a time and its effect on COM / inertia / standing / weight-shifting /
+torque is measured against a **frozen lower-body baseline**:
+
+```bash
+python3 scripts/stand_check.py  config/cara_full_body.yaml --baseline baselines/lower_body_standing.json
+python3 scripts/weight_shift.py config/cara_full_body.yaml --baseline baselines/lower_body_weightshift.json
+```
+
+**Phase U1 — rigid torso lump** (`cara_upper_body.yaml`, welded to the pelvis,
+1.20 kg provisional). Effect vs lower-body-only: whole-body mass 2.06 → 3.26 kg,
+COM rises ~67 mm; pelvis tilt +0.2–0.6°, standing peak torque roughly doubled
+(still < 30 % of limit), and the **quasi-static weight-shift limit drops
+0.04 → 0.03 m** (~25 %). Sweeps (`morphology_sweep.py … dynamics.links.torso.mass`
+/ `upper_body.torso.com_z`) show COM moving monotonically with torso mass and
+height. Details in [`docs/upper_body_notes.md`](docs/upper_body_notes.md).
+
+`type: fixed` / `locked: true` joints (the torso weld, later a locked neck)
+carry 0 DOF and no servo. The single-leg and lower-body regression outputs stay
+**byte-identical** through every U-phase.
+
 ## The question this layer answers
 
 > *Given Cara's current kinematics, how do geometry and mass distribution
@@ -260,20 +288,22 @@ the file header and the script docstring):
 
 ## Roadmap
 
-Done: 1-leg kinematics → 1-leg dynamics → 1-leg PD tests → 2 legs + pelvis →
-**static standing** → COM / support-polygon checks → **quasi-static weight
-shifting** (limit ~0.04 m COM).
+Done: 1-leg kin/dyn/PD → 2 legs + pelvis → **static standing** →
+COM/support-polygon → **quasi-static weight shifting** → **U1 torso lump**.
 
-Next:
+Morphology / design validation (each measured vs the frozen baseline):
 
-1. **Single-support** — from a full weight shift, unload the light foot to zero
-   and lift it. Needs an actual ankle/hip balance strategy, not joint PD.
-2. **Balance** — disturbance recovery; a closed-loop pelvis-orientation term.
-3. **Upper-body masses, deliberately** — add head → ears → waist → arms one at
-   a time; re-run `stand_check.py` / `weight_shift.py` and record the change in
-   COM height, tilt, hold torque and shift limit. Then a `cara_full.yaml`
-   (`extends` the lower body).
-4. CAD/measured values replace every `TODO` (geometry, mass, inertia, servo
-   `effort`, PD gains); real inter-axis offsets replace the coincident
-   approximation (both generators already emit `<joint pos>` anchors).
-5. Only then: locomotion, then a learned policy.
+- **U1 torso lump** ✅
+- **U2** head + neck lump (neck joints structural but `locked` at 0)
+- **U3** Jetson + battery placement study (`battery_low_pelvis` vs `_mid_torso`, …)
+- **U4** passive arm masses (symmetric, no articulation)
+- **U5** ear + servo masses; head/neck rotational-inertia (`I ~ m r²`) study
+- **U6** full-body standing + weight-shift regression, per-subsystem summary table
+
+Balance / control (the boundary — new controllers start here):
+
+- **U7** unload one foot toward `Fz → 0` in valid double support
+- **U8** lift the unloaded foot 5–10 mm, hold, return
+- **U9+** single-support balance → stepping → locomotion → learned policy
+
+CAD/measured values replace every `TODO` before single-support locomotion.

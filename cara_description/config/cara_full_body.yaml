@@ -1,0 +1,26 @@
+# =============================================================================
+# Cara -- FULL BODY: lower body (pelvis + both legs, floating) + upper body
+# =============================================================================
+# Composes, never duplicates:
+#   extends: cara_lower_body.yaml   -> pelvis + 2 legs + floating base + the
+#                                      standing / weight-shift poses & thresholds
+#   include: [cara_upper_body.yaml] -> append torso (U1) [+ head/arms/ears later]
+#
+# The 12 leg PD servos are unchanged; the upper body (U1) adds mass only, welded
+# to the pelvis. Every upper-body value is PROVISIONAL -- see cara_upper_body.yaml.
+#
+# Regenerate:  python3 scripts/generate_urdf.py config/cara_full_body.yaml
+#              python3 scripts/generate_mjcf.py [--dynamic] config/cara_full_body.yaml
+# Validate  :  scripts/stand_check.py / weight_shift.py  with --config here
+#              (use --baseline baselines/lower_body_*.json to see the delta)
+# =============================================================================
+
+extends: cara_lower_body.yaml
+include: [cara_upper_body.yaml]
+
+meta:
+  name: cara_full_body
+  schema_version: 2
+  description: >-
+    cara_lower_body + cara_upper_body. Phase U1: rigid torso lump. No waist
+    joint, no head/arms/ears yet. All upper-body values provisional.

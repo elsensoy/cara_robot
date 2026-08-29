@@ -362,10 +362,13 @@ Everything downstream — simulation, control, hardware mapping — is generated
 from **one parameterised description**, `cara_description/`:
 
 ```
-config/left_leg.yaml ──────┐        ┌──> urdf/*.urdf                (ROS 2 / ros2_control)
- (one leg, SSOT)            ├─ each ─┼──> mjcf/*.xml                 (MuJoCo, kinematic)
-config/cara_lower_body.yaml ┘        └──> mjcf/*_dynamic.xml         (MuJoCo, gravity + PD + contact)
- (= left_leg  extends + mirror l_→r_ + floating pelvis)
+config/left_leg.yaml           SSOT: one leg + pelvis (fixed base)
+  └─ cara_lower_body.yaml       extends + mirror l_→r_ + floating pelvis + poses
+       └─ cara_full_body.yaml   + include cara_upper_body.yaml  (torso lump, U1; head/arms/ears later)
+                    │
+      each model  ──┼──> urdf/<model>.urdf            (ROS 2 / ros2_control)
+                    ├──> mjcf/<model>.xml             (MuJoCo, kinematic)
+                    └──> mjcf/<model>_dynamic.xml     (MuJoCo, gravity + PD + contact)
 ```
 
 The description is built and checked in **strict stages**, so a bug in the
@@ -380,8 +383,9 @@ morphology can never hide inside a half-trained policy:
 | **Static standing** | hold 3 poses (`stand_nominal`, `semi_squat`, `stand_wide`) 10 s each under joint PD | ✅ **milestone met** |
 | **COM / support-polygon checks** | COM stays inside the convex hull of the foot contacts, with margin | ✅ 33–43 mm margin |
 | **Quasi-static weight shifting** | move a lateral COM target between the feet via task-space IK, no foot lift | ✅ **milestone met** — limit ~0.04 m COM |
-| Single-support → balance | unload + lift one foot; disturbance recovery | ⬜ next |
-| Head / ears / waist / arms masses | add deliberately, one at a time, re-measure balance + torque | ⬜ |
+| **U1 — rigid torso lump** | welded torso mass; measure ΔCOM / Δtorque / Δshift-limit vs a frozen baseline | ✅ COM +67 mm, shift limit 0.04 → 0.03 m |
+| U2–U6 — head, electronics, arms, ears | add each deliberately, one at a time, re-measure vs baseline | ⬜ morphology validation |
+| U7–U8 — unload / lift one foot | the balance/control boundary — new controllers start here | ⬜ |
 | RL locomotion policy | the section below | ⬜ deferred until the model is trusted |
 
 `stand_check.py` reports pelvis tilt & drift, COM support margin, torque +
@@ -657,7 +661,7 @@ Full reasoning in [`docs/understanding.md`](docs/understanding.md).
 
 | Path | What it is |
 | ---- | ---------- |
-| `cara_description/` | **Robot description + simulation model.** `config/left_leg.yaml` (one leg, SSOT) and `config/cara_lower_body.yaml` (`extends` + mirror l_→r_ + floating pelvis) → generated URDF + MJCF (kinematic and dynamic). Validation + analysis scripts. Currently pelvis + both legs, **standing under PD control**; built in stages. |
+| `cara_description/` | **Robot description + simulation model.** Composed YAML: `left_leg` → `cara_lower_body` (mirror + floating pelvis) → `cara_full_body` (`+ include cara_upper_body`) → generated URDF + MJCF. Validation + analysis scripts; frozen `baselines/` for regression. Currently: pelvis + both legs **standing & weight-shifting under PD**, plus a welded torso lump (Phase U1). Built in stages. |
 | `isaac/` | Earlier NVIDIA Isaac Lab RL-environment exploration (locomotion env, PPO config). Superseded by the MuJoCo path for now; kept for possible large-scale parallel RL. |
 | `urdf/` | Pre-`cara_description` hand-written Xacro sketches — being superseded limb by limb. |
 | `ros2_ws/` | ROS 2 workspace: vision, gaze, emotion, behavior, health, and the `policy_node` that will run the trained locomotion policy. |
@@ -766,6 +770,7 @@ Cara has built-in safeguards that are mirrored in both simulation and on hardwar
 - **[`cara_description/docs/dynamics_notes.md`](cara_description/docs/dynamics_notes.md)** : provisional mass/COM/inertia, gravity-torque and Jacobian analysis, single-leg dynamic-plausibility results
 - **[`cara_description/docs/standing_notes.md`](cara_description/docs/standing_notes.md)** : mirroring the second leg, the floating-base standing rig, and the "hold 3 poses for 10 s" milestone
 - **[`cara_description/docs/weight_shift_notes.md`](cara_description/docs/weight_shift_notes.md)** : the task-space IK layer and the quasi-static weight-shift milestone (+ sweep to the double-support limit)
+- **[`cara_description/docs/upper_body_notes.md`](cara_description/docs/upper_body_notes.md)** : the composed config hierarchy and the staged upper-body mass/inertia analysis (U1: torso, measured vs a frozen baseline)
 - **`docs/emotion.md`** : ViT architecture, self-attention, the teach-Cara workflow, calibration techniques
 - **`docs/understanding.md`** : Why agency precedes intelligence; the homeostatic loop in detail
 - **`docs/mbom.md`** : Full mechanical bill of materials and print guidance

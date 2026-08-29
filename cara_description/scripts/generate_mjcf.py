@@ -236,6 +236,10 @@ def build_mjcf(spec: dict, dynamic: bool = False) -> str:
         if is_root and floating:
             w(f'{indent}  <freejoint name="{name}_free"/>')
         for jm, anchor in joints:
+            if jm.fixed:      # weld / locked joint: no <joint> element, no DOF
+                w(f'{indent}  <!-- {jm.name}: {jm.jtype}'
+                  f'{" (locked)" if jm.jtype != "fixed" else ""}, welded -->')
+                continue
             w(f'{indent}  <joint name="{jm.name}" type="hinge" pos="{_xyz(anchor)}" '
               f'axis="{_xyz(jm.axis)}" range="{_fmt(jm.lower)} {_fmt(jm.upper)}"/>')
         w(f'{indent}  <inertial pos="{_xyz(li.com)}" mass="{_fmt(li.mass)}" '
@@ -276,6 +280,8 @@ def build_mjcf(spec: dict, dynamic: bool = False) -> str:
     if dynamic:
         w("  <actuator>")
         for jm in chain:
+            if jm.fixed:
+                continue
             c = control[jm.name]
             w(f'    <position name="{jm.name}" joint="{jm.name}" '
               f'kp="{_fmt(c["kp"])}" dampratio="{_fmt(c["dampratio"])}" '

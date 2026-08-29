@@ -59,6 +59,14 @@ def _require_keys(rep: Report, section: str, obj: dict, keys) -> None:
         rep.check(k in obj, f"{section}: key '{k}' present")
 
 
+def _flat_num(node, prefix, out) -> None:
+    if isinstance(node, dict):
+        for k, v in node.items():
+            _flat_num(v, f"{prefix}{k}." if prefix else f"{k}.", out)
+    elif isinstance(node, (int, float)) and not isinstance(node, bool):
+        out[prefix[:-1]] = float(node)
+
+
 def _num(x) -> bool:
     return isinstance(x, (int, float)) and not isinstance(x, bool)
 
@@ -94,7 +102,10 @@ def validate(path: str | None) -> int:
     rep.check(len(link_names) == len(set(link_names)), "links: names are unique",
               detail=f"{len(link_names)} links")
     for j in joints:
-        _require_keys(rep, f"joint '{j.get('name', '?')}'", j, lm.REQUIRED_JOINT_KEYS)
+        fixed = j.get("type") == "fixed" or j.get("locked", False)
+        keys = (("name", "type", "parent", "child", "origin_expr")
+                if fixed else lm.REQUIRED_JOINT_KEYS)
+        _require_keys(rep, f"joint '{j.get('name', '?')}'", j, keys)
     for foi in spec.get("frames_of_interest", []) or []:
         _require_keys(rep, f"frame '{foi.get('name', '?')}'", foi, ["name", "link", "xyz_expr"])
 
@@ -126,8 +137,10 @@ def validate(path: str | None) -> int:
     if chain is None or inertials is None:
         return _summary(rep)
 
-    print("\n== 1. joint axes are unit vectors ==")
+    print("\n== 1. joint axes are unit vectors  (actuated joints only) ==")
     for jm in chain:
+        if jm.fixed:
+            continue
         n = jm.axis_norm
         rep.check(abs(n - 1.0) <= AXIS_UNIT_TOL,
                   f"joint '{jm.name}': |axis| == 1", detail=f"|axis|={n:.15g}")
@@ -138,10 +151,20 @@ def validate(path: str | None) -> int:
         rep.check(jm.parent in known, f"joint '{jm.name}': parent '{jm.parent}' is a known link")
         rep.check(jm.child in known, f"joint '{jm.name}': child '{jm.child}' is a known link")
 
-    print("\n== 3. lower limit < upper limit ==")
+    print("\n== 3. lower limit < upper limit  (actuated joints only) ==")
     for jm in chain:
+        if jm.fixed:
+            continue
         rep.check(jm.lower < jm.upper, f"joint '{jm.name}': lower < upper",
                   detail=f"[{jm.lower}, {jm.upper}] rad")
+
+    fixed_joints = [jm for jm in chain if jm.fixed]
+    if fixed_joints:
+        print("\n== 3b. fixed / locked joints ==")
+        for jm in fixed_joints:
+            rep.check(all(math.isfinite(c) for c in jm.origin),
+                      f"fixed joint '{jm.name}': origin finite",
+                      detail=f"{tuple(round(c, 5) for c in jm.origin)}")
 
     print("\n== 4 + 10. dynamics: physical vs virtual links ==")
     dyn_links = dyn.get("links", {}) or {}
@@ -286,13 +309,29 @@ def validate(path: str | None) -> int:
         rp = b.get("rest_pose")
         rep.check(rp is None or rp in raw_poses,
                   "base.rest_pose names a reference pose", detail=str(rp))
-    if "_source" in spec and spec.get("meta", {}).get("name", "").endswith("lower_body"):
+    if spec.get("_mirrored"):
         rep.check(any(l["name"].startswith("l_") for l in links)
                   and any(l["name"].startswith("r_") for l in links),
                   "mirror expanded both l_ and r_ links")
         soles = [f["name"] for f in spec.get("frames_of_interest", []) or []]
         rep.check("l_foot_sole_center" in soles and "r_foot_sole_center" in soles,
                   "both foot sole frames present", detail=str(soles))
+
+    ub = spec.get("upper_body", {}) or {}
+    if ub:
+        print("\n== 13b. upper_body block ==")
+        flat = {}
+        _flat_num(ub, "", flat)
+        rep.check(len(flat) > 0, "upper_body has numeric leaves", detail=f"{sorted(flat)}")
+        for k, v in flat.items():
+            rep.check(math.isfinite(v), f"upper_body.{k} is a finite number", detail=f"{v}")
+        # every symbol referenced by a joint origin / link com / inertia box resolves
+        try:
+            lm.build_chain(spec)
+            lm.link_inertials(spec)
+            rep.check(True, "upper_body symbols all resolve in joints + dynamics")
+        except Exception as exc:  # noqa: BLE001
+            rep.check(False, "upper_body symbols resolve", detail=repr(exc))
 
     print("\n== 9. forward kinematics at zero pose is finite ==")
     try:

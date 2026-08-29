@@ -121,6 +121,16 @@ def build_urdf(spec: dict) -> str:
 
     # ---- joints ----------------------------------------------------------
     for jm in chain:
+        if jm.fixed:
+            w(f'  <joint name="{jm.name}" type="fixed">')
+            w(_comment("    ", f"declared type: {jm.jtype}"
+                               f"{' (locked at 0)' if jm.jtype != 'fixed' else ''}"))
+            w(f'    <parent link="{jm.parent}"/>')
+            w(f'    <child link="{jm.child}"/>')
+            w(f'    <origin xyz="{_xyz(jm.origin)}" rpy="0 0 0"/>')
+            w("  </joint>")
+            w("")
+            continue
         w(f'  <joint name="{jm.name}" type="{jm.jtype}">')
         w(_comment("    ", f"purpose: {jm.purpose}"))
         w(_comment("    ", f"+angle: {jm.positive_rotation}"))

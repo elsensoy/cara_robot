@@ -1,0 +1,26 @@
+{
+  "model": "cara_lower_body",
+  "total_mass_kg": 2.06,
+  "total_weight_N": 20.2086,
+  "amplitude_m": 0.03,
+  "centred_Fn_N": [
+    10.104300178550515,
+    10.104300178550508
+  ],
+  "demo_checks_passed": [
+    8,
+    8
+  ],
+  "plusA": {
+    "com_y_des": 0.03,
+    "com_y_meas": 0.03252305370843752,
+    "Fn_left": 14.058788815383528,
+    "Fn_right": 6.149813094104903,
+    "m_full_mm": 33.04502962831342,
+    "m_loaded_mm": 5.929170181558274,
+    "pelvis_roll_deg": -0.3466687297351617,
+    "slip_mm": 1.3075926749217937,
+    "peak_torque_frac": 0.1070807187187004
+  },
+  "sweep_limit_m": 0.04
+}
