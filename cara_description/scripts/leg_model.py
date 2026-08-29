@@ -553,6 +553,11 @@ def _inertia_uniform_rod_z(m: float, length: float, radius: float) -> Vec3:
     return (transverse, transverse, axial)
 
 
+def _inertia_solid_sphere(m: float, radius: float) -> Vec3:
+    i = 0.4 * m * radius * radius
+    return (i, i, i)
+
+
 def link_inertials(spec: dict) -> Dict[str, LinkInertial]:
     """Provisional inertial properties for the PHYSICAL links only.
 
@@ -578,6 +583,10 @@ def link_inertials(spec: dict) -> Dict[str, LinkInertial]:
             radius = eval_expr(inr.get("radius", 0.0), syms)
             diag = _inertia_uniform_rod_z(m, length, radius)
             shape = ("cylinder", (radius, length))
+        elif method == "solid_sphere":
+            radius = eval_expr(inr["radius"], syms)
+            diag = _inertia_solid_sphere(m, radius)
+            shape = ("sphere", (radius,))
         else:
             raise ValueError(f"link {name!r}: unknown inertia method {method!r}")
         out[name] = LinkInertial(name, m, com, diag, method, shape)

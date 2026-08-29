@@ -81,6 +81,8 @@ def _visual_geom(shape: tuple, com) -> str:
         radius, length = dims
         return (f'<geom type="cylinder" size="{_fmt(radius)} {_fmt(length / 2.0)}" '
                 f'pos="{_xyz(com)}" rgba="{LINK_RGBA}"/>')
+    if kind == "sphere":
+        return f'<geom type="sphere" size="{_fmt(dims[0])}" pos="{_xyz(com)}" rgba="{LINK_RGBA}"/>'
     raise ValueError(f"unhandled shape {shape!r}")
 
 

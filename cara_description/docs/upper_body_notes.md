@@ -13,7 +13,7 @@ to stand and weight-shift with the existing joint PD, no new controllers).
 **U7 onward is balance / control.**
 
 ```
-lower body ✅  →  U1 torso ✅  →  U2 head/neck  →  U3 Jetson+battery  →
+lower body ✅  →  U1 torso ✅  →  U2 head/neck ✅  →  U3 Jetson+battery  →
 U4 passive arms  →  U5 ears + head inertia  →  U6 full regression  ──┼── boundary
                                               U7 unload a foot  →  U8 lift a foot  → …
 ```
@@ -26,7 +26,7 @@ U4 passive arms  →  U5 ears + head inertia  →  U6 full regression  ──┼
 config/
 ├── left_leg.yaml          SSOT: one leg + pelvis, fixed base
 ├── cara_lower_body.yaml    extends left_leg + mirror l→r + floating pelvis + standing/shift poses
-├── cara_upper_body.yaml    FRAGMENT (not runnable alone): torso (U1) [+ head/arms/ears later]
+├── cara_upper_body.yaml    FRAGMENT (not runnable alone): torso (U1) + head/neck (U2) [+ arms/ears later]
 │                           -- links + joints + dynamics + an `upper_body:` param block
 └── cara_full_body.yaml     extends cara_lower_body + include cara_upper_body
 ```
@@ -123,8 +123,71 @@ Both monotonic, no model-consistency breakage. **U1 acceptance criterion met.**
 
 ---
 
-## Open TODOs (U1)
+## Phase U2 — head + neck
 
-- [ ] Replace all `upper_body.torso.*` and `dynamics.links.torso.*` values with CAD / measured.
-- [ ] The weld height / COM are guesses — the real number changes both COM and the shift limit.
-- [ ] U2: neck link + head lump; add neck joints `locked: true` if they belong in the 20-DoF design.
+Added in the same fragment:
+
+| param | provisional value | `TODO` |
+|---|---|---|
+| head mass (`dynamics.links.head.mass`) | 0.35 kg | measured/CAD (plush + skull + eye mechanics) |
+| head COM (`head_com_x/z`) | (+0.010, 0, +0.050) m from the neck axes | measured/CAD |
+| head shape | `solid_sphere`, radius 0.060 m | measured/CAD |
+| neck base (`neck_base_z`) | 0.155 m up the torso frame | measured/CAD |
+| neck length (`neck_length`) | 0.040 m to the coincident yaw/roll/pitch axes | measured/CAD |
+
+**Neck joints** `neck_yaw` (+Z), `neck_roll` (+X), `neck_pitch` (+Y) exist
+structurally (3 DoF in the long-term 20-DoF design) but are **`locked: true`** —
+0 DoF, no servo, MJCF weld / URDF `type="fixed"` — until balance work needs
+them. `leg_model.actuated_joint_names` still returns the 12 leg joints.
+
+### Effect vs the lower-body-only baseline (torso + head)
+
+Whole-body mass **2.06 → 3.61 kg**. Whole-body COM (pelvis frame): −72 mm →
+**+22 mm** — now *above* the pelvis. The 0.35 kg head at ~0.28 m above the
+pelvis adds ≈ 28 mm to the COM height on top of the torso's 67 mm.
+
+`stand_check.py --baseline` (all poses still PASS):
+
+| pose | tilt | Δ | Δpeak torque |
+|------|------|---|--------------|
+| stand_nominal | 0.29° | +0.13 | +0.096 → 0.174 N·m |
+| semi_squat | 1.07° | +0.78 | +0.526 → 0.928 N·m |
+| stand_wide | 0.32° | +0.16 | +0.211 → 0.413 N·m |
+
+`weight_shift.py --baseline`: ±0.03 m still 8/8 PASS (loaded/unloaded foot
+25.4 / 10.0 N, pelvis roll 0.65°); **quasi-static shift limit still ~0.030 m**
+(the head keeps it there but more marginal — slip at 0.03 m is now 2.6 mm of
+the 3 mm budget).
+
+### Head-mass sweep — `subsystem_sweep.py` (light / nominal / heavy)
+
+```
+python3 scripts/subsystem_sweep.py config/cara_full_body.yaml \
+    --param dynamics.links.head.mass --values 0.20,0.35,0.60
+```
+
+| head mass | whole-body mass | COM height (floor) | COM vs pelvis | worst standing torque (hip / knee / ankle) | shift limit |
+|---|---|---|---|---|---|
+| 0.20 kg | 3.46 kg | 0.284 m | +11.3 mm | 0.386 / 0.894 / 0.166 N·m | 0.030 m |
+| 0.35 kg | 3.61 kg | 0.296 m | +22.5 mm | 0.407 / 0.971 / 0.174 N·m | 0.030 m |
+| 0.60 kg | 3.86 kg | 0.312 m | +39.2 mm | 0.443 / **1.079** / 0.192 N·m | 0.030 m |
+
+- **COM height rises +28 mm** across the sweep — linear in head mass.
+- **Knee torque (worst pose = `semi_squat`) rises +0.19 N·m** — a heavier head is
+  a real knee-servo-sizing concern in a squat; at 0.6 kg it's ~1.1 N·m
+  steady-state (of a ±3 N·m provisional limit; PD-transient peaks reach ~2.4).
+- Standing tilt and support margin barely move (COM stays centred at
+  `stand_nominal`); the weight-shift limit holds at ~0.03 m.
+- `upper_body.neck.length` 0 → 0.10 m: COM +10 mm, torque ±0.01 N·m — head
+  *height* matters far less than head *mass*.
+
+**U2 acceptance criterion met:** a heavier / higher head's effect on
+whole-body COM and actuator demand is quantified and monotonic.
+
+---
+
+## Open TODOs (U1–U2)
+
+- [ ] Replace every `upper_body.*` and `dynamics.links.{torso,head}.*` value with CAD / measured.
+- [ ] Weld height / neck base / head COM are guesses — they move both the COM and the shift limit.
+- [ ] U3: Jetson + battery as explicit lumped masses with candidate placement parameters.

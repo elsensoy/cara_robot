@@ -57,6 +57,8 @@ def _geometry_xml(shape: tuple) -> str:
     if kind == "cylinder":
         radius, length = dims
         return f'<cylinder radius="{_fmt(radius)}" length="{_fmt(length)}"/>'
+    if kind == "sphere":
+        return f'<sphere radius="{_fmt(dims[0])}"/>'
     raise ValueError(f"unhandled shape {shape!r}")
 
 

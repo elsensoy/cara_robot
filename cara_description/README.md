@@ -16,7 +16,7 @@ a full robot, not CAD, not a policy, and has no upper body yet.
 | ✅ | generated, inspectable URDF **and** MJCF (kinematic + dynamic) for each model |
 | ✅ | MuJoCo verified to reproduce the pure-Python FK to machine precision |
 | ✅ | **static standing** + **quasi-static weight shifting** — both milestones met (lower body & full body) |
-| ✅ | **Phase U1** — rigid torso lump; effect on COM / torque / shift-limit measured vs a frozen baseline |
+| ✅ | **Phases U1–U2** — welded torso + head/neck lump (neck `locked`); COM / torque / shift-limit measured vs a frozen baseline |
 | ✅ | validation + FK + plausibility + standing + weight-shift scripts, and COM / gravity-torque / Jacobian / sweep analysis |
 | 🔶 | dynamics — mass / COM / inertia / actuator limits / PD gains are **provisional placeholders** |
 | ❌ | head, ears, arms, waist joints, electronics (U2–U5) |
@@ -36,7 +36,7 @@ cara_description/
 ├── config/
 │   ├── left_leg.yaml            # SSOT for ONE leg + pelvis (fixed base)
 │   ├── cara_lower_body.yaml     # extends left_leg + mirror l_→r_ + floating pelvis + poses
-│   ├── cara_upper_body.yaml     # FRAGMENT (not standalone): torso (U1) [+ head/arms/ears later]
+│   ├── cara_upper_body.yaml     # FRAGMENT (not standalone): torso (U1) + head/neck (U2) [+ arms/ears later]
 │   └── cara_full_body.yaml      # extends cara_lower_body + include cara_upper_body
 ├── baselines/                   # frozen lower-body results — the regression comparison target
 ├── urdf/                        # GENERATED — <model>.urdf
@@ -55,7 +55,8 @@ cara_description/
 │   ├── center_of_mass.py        # whole-model COM for any joint configuration
 │   ├── gravity_torques.py       # gravitational joint torques for reference poses
 │   ├── jacobian.py              # foot-position Jacobian + finite-difference validation
-│   └── morphology_sweep.py      # effect of a parameter sweep on workspace / COM / torque
+│   ├── morphology_sweep.py      # pure-Python: param sweep → workspace / COM / analytic torque
+│   └── subsystem_sweep.py       # MuJoCo: param sweep → standing COM / tilt / torque + weight-shift limit
 ├── docs/
 │   ├── frames_and_joints.md     # frame conventions + per-joint math + foot frame hierarchy
 │   ├── dynamics_notes.md        # provisional dynamics layer + single-leg analysis
@@ -204,16 +205,27 @@ python3 scripts/stand_check.py  config/cara_full_body.yaml --baseline baselines/
 python3 scripts/weight_shift.py config/cara_full_body.yaml --baseline baselines/lower_body_weightshift.json
 ```
 
-**Phase U1 — rigid torso lump** (`cara_upper_body.yaml`, welded to the pelvis,
-1.20 kg provisional). Effect vs lower-body-only: whole-body mass 2.06 → 3.26 kg,
-COM rises ~67 mm; pelvis tilt +0.2–0.6°, standing peak torque roughly doubled
-(still < 30 % of limit), and the **quasi-static weight-shift limit drops
-0.04 → 0.03 m** (~25 %). Sweeps (`morphology_sweep.py … dynamics.links.torso.mass`
-/ `upper_body.torso.com_z`) show COM moving monotonically with torso mass and
-height. Details in [`docs/upper_body_notes.md`](docs/upper_body_notes.md).
+**Phase U1 — rigid torso lump** (welded, 1.20 kg): whole-body mass 2.06 → 3.26 kg,
+COM rises ~67 mm; standing peak torque ~doubled (< 30 % of limit), weight-shift
+limit **0.04 → 0.03 m**.
 
-`type: fixed` / `locked: true` joints (the torso weld, later a locked neck)
-carry 0 DOF and no servo. The single-leg and lower-body regression outputs stay
+**Phase U2 — head + neck lump** (head 0.35 kg on a `solid_sphere`; neck yaw/roll/
+pitch joints present but `locked: true`): whole-body mass → 3.61 kg, COM now
+**+22 mm *above* the pelvis** (−72 → +22). `subsystem_sweep.py` runs a
+head-mass sweep in MuJoCo:
+
+| head mass | COM height | worst knee torque | shift limit |
+|---|---|---|---|
+| 0.20 kg | 0.284 m | 0.89 N·m | 0.030 m |
+| 0.35 kg | 0.296 m | 0.97 N·m | 0.030 m |
+| 0.60 kg | 0.312 m | **1.08 N·m** | 0.030 m |
+
+COM height and knee-servo demand rise linearly with head mass; head *height*
+(`upper_body.neck.length`) matters ~3× less. Details in
+[`docs/upper_body_notes.md`](docs/upper_body_notes.md).
+
+`type: fixed` / `locked: true` joints (the torso weld, the neck joints) carry
+0 DOF and no servo. The single-leg and lower-body regression outputs stay
 **byte-identical** through every U-phase.
 
 ## The question this layer answers
@@ -294,7 +306,7 @@ COM/support-polygon → **quasi-static weight shifting** → **U1 torso lump**.
 Morphology / design validation (each measured vs the frozen baseline):
 
 - **U1 torso lump** ✅
-- **U2** head + neck lump (neck joints structural but `locked` at 0)
+- **U2 head + neck lump** ✅ (neck joints structural but `locked` at 0)
 - **U3** Jetson + battery placement study (`battery_low_pelvis` vs `_mid_torso`, …)
 - **U4** passive arm masses (symmetric, no articulation)
 - **U5** ear + servo masses; head/neck rotational-inertia (`I ~ m r²`) study

@@ -110,6 +110,31 @@
     </collision>
   </link>
 
+  <link name="neck_yaw_link">
+    <!-- role: virtual_coupling. Virtual coincident-axis coupling link: massless abstraction, intentionally no inertial/visual/collision. -->
+  </link>
+
+  <link name="neck_roll_link">
+    <!-- role: virtual_coupling. Virtual coincident-axis coupling link: massless abstraction, intentionally no inertial/visual/collision. -->
+  </link>
+
+  <link name="head">
+    <!-- role: segment. Mass/COM/inertia PROVISIONAL (method: solid_sphere). TODO: replace with CAD. -->
+    <inertial>
+      <origin xyz="0.01 0 0.05" rpy="0 0 0"/>
+      <mass value="0.35"/>
+      <inertia ixx="0.000504" ixy="0" ixz="0" iyy="0.000504" iyz="0" izz="0.000504"/>
+    </inertial>
+    <visual>
+      <origin xyz="0.01 0 0.05" rpy="0 0 0"/>
+      <geometry><sphere radius="0.06"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0.01 0 0.05" rpy="0 0 0"/>
+      <geometry><sphere radius="0.06"/></geometry>
+    </collision>
+  </link>
+
   <link name="r_hip_yaw_link">
     <!-- role: virtual_coupling. Virtual coincident-axis coupling link: massless abstraction, intentionally no inertial/visual/collision. -->
   </link>
@@ -244,6 +269,27 @@
     <parent link="pelvis"/>
     <child link="torso"/>
     <origin xyz="0 0 0.035" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="neck_yaw" type="fixed">
+    <!-- declared type: revolute (locked at 0) -->
+    <parent link="torso"/>
+    <child link="neck_yaw_link"/>
+    <origin xyz="0 0 0.195" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="neck_roll" type="fixed">
+    <!-- declared type: revolute (locked at 0) -->
+    <parent link="neck_yaw_link"/>
+    <child link="neck_roll_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="neck_pitch" type="fixed">
+    <!-- declared type: revolute (locked at 0) -->
+    <parent link="neck_roll_link"/>
+    <child link="head"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
   <joint name="r_hip_yaw" type="revolute">

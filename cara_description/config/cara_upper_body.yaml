@@ -4,43 +4,84 @@
 # NOT runnable on its own.  Additive content only -- links, joints, dynamics,
 # and an `upper_body:` parameter block -- all attaching to `pelvis`.
 #
-# Phase U1: ONE rigid torso lump, WELDED above the pelvis.
-#   * no articulated waist yet   (base_to_torso is type: fixed)
-#   * no head / neck yet
-#   * no arms / ears yet
-# Those are later phases in this same file. Every value below is PROVISIONAL.
+#   U1: rigid torso lump, WELDED above the pelvis (base_to_torso: fixed).
+#   U2: neck + rigid head lump.  Neck yaw/roll/pitch joints exist STRUCTURALLY
+#       (they belong in the long-term 20-DoF design) but are `locked: true`
+#       -- 0 DOF, no servo -- until balance work needs them.
+#   no arms / ears / electronics yet.
 #
-# The `upper_body.torso.*` numeric leaves become expression symbols
-# (upper_body.torso.com_z -> `torso_com_z`), so a sweep touches ONE place.
-# Torso MASS lives in dynamics.links.torso.mass (dotted-path sweepable, like the
-# leg links).
+# Every value below is PROVISIONAL.  `upper_body.<part>.<x>` numeric leaves
+# become expression symbols (upper_body.head.com_z -> `head_com_z`); MASSES live
+# in dynamics.links.<link>.mass (dotted-path sweepable, like the leg links).
 # =============================================================================
 
 meta:
   role: fragment
   name: cara_upper_body
-  description: "Upper-body fragment. U1 = rigid torso lump welded to the pelvis."
+  description: "Upper-body fragment. U1 torso lump + U2 neck (locked) & head lump."
 
-# --- provisional torso design knobs -----------------------------------------
+# --- provisional design knobs ---------------------------------------------
 upper_body:
   torso:
-    attach_z: 0.035      # TODO: measured/CAD -- pelvis frame origin -> weld point (up) [m]
-    com_x:    0.0        # TODO: measured/CAD -- weld -> torso COM, fore/aft [m]
-    com_z:    0.075      # TODO: measured/CAD -- weld -> torso COM, up [m]
-    box_x:    0.11       # TODO: measured/CAD -- torso bounding box, fore/aft [m]
-    box_y:    0.15       # TODO: measured/CAD -- torso bounding box, lateral [m]
-    box_z:    0.16       # TODO: measured/CAD -- torso bounding box, vertical [m]
+    attach_z: 0.035     # TODO: measured/CAD -- pelvis frame origin -> weld point (up) [m]
+    com_x:    0.0        # TODO -- weld -> torso COM, fore/aft [m]
+    com_z:    0.075      # TODO -- weld -> torso COM, up [m]
+    box_x:    0.11       # TODO -- torso bounding box, fore/aft [m]
+    box_y:    0.15       # TODO -- torso bounding box, lateral [m]
+    box_z:    0.16       # TODO -- torso bounding box, vertical [m]
+  neck:
+    base_z:   0.155      # TODO -- torso link frame -> neck base (top of torso) [m]
+    length:   0.040      # TODO -- neck base -> the coincident yaw/roll/pitch axes [m]
+  head:
+    com_x:    0.010      # TODO -- neck axes -> head COM, fore/aft (slight forward) [m]
+    com_z:    0.050      # TODO -- neck axes -> head COM, up [m]
+    radius:   0.060      # TODO -- head sphere radius for the inertia approx [m]
 
 # --- structure ------------------------------------------------------------
 links:
-  - {name: torso, role: segment}
+  - {name: torso,          role: segment}
+  - {name: neck_yaw_link,  role: virtual_coupling}   # 3 coincident neck axes,
+  - {name: neck_roll_link, role: virtual_coupling}   #   like the hip abstraction
+  - {name: head,           role: segment}
 
 joints:
   - name: base_to_torso
-    type: fixed                       # U1: welded. Becomes the waist joint(s) in a later phase.
+    type: fixed                       # U1: welded. Becomes the waist joint(s) later.
     parent: pelvis
     child: torso
     origin_expr: [0, 0, torso_attach_z]
+
+  # --- neck: 3 DoF in the 20-DoF design, LOCKED at 0 for U2 stability tests ---
+  - name: neck_yaw
+    type: revolute
+    locked: true
+    parent: torso
+    child: neck_yaw_link
+    origin_expr: [0, 0, "neck_base_z + neck_length"]
+    axis: [0, 0, 1]
+    limits: {lower: -0.79, upper: 0.79}     # TODO: ROM study
+    positive_rotation: "nose turns toward +Y (left)"
+    purpose: "Neck yaw -- gaze / head-tracking heading. Locked at 0 until balance work."
+  - name: neck_roll
+    type: revolute
+    locked: true
+    parent: neck_yaw_link
+    child: neck_roll_link
+    origin_expr: [0, 0, 0]
+    axis: [1, 0, 0]
+    limits: {lower: -0.44, upper: 0.44}     # TODO
+    positive_rotation: "head tilts so its right side drops"
+    purpose: "Neck roll -- head tilt. Locked at 0 until balance work."
+  - name: neck_pitch
+    type: revolute
+    locked: true
+    parent: neck_roll_link
+    child: head
+    origin_expr: [0, 0, 0]
+    axis: [0, 1, 0]
+    limits: {lower: -0.70, upper: 0.40}     # TODO -- heavy head must not topple forward
+    positive_rotation: "nose pitches down"
+    purpose: "Neck pitch -- nod / look down. Locked at 0 until balance work."
 
 dynamics:
   links:
@@ -50,4 +91,15 @@ dynamics:
       com:  [torso_com_x, 0.0, torso_com_z]
       inertia:
         method: solid_box
-        box:  [torso_box_x, torso_box_y, torso_box_z]   # TODO -- provisional extents, inertia approx only
+        box:  [torso_box_x, torso_box_y, torso_box_z]
+
+    neck_yaw_link:  {is_physical: false}   # virtual coupling link -- no dynamics
+    neck_roll_link: {is_physical: false}   # virtual coupling link -- no dynamics
+
+    head:
+      is_physical: true
+      mass: 0.35                       # TODO: measured/CAD -- plush head + skull + eye mechanics [kg]
+      com:  [head_com_x, 0.0, head_com_z]
+      inertia:
+        method: solid_sphere
+        radius: head_radius

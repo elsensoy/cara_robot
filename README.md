@@ -383,8 +383,9 @@ morphology can never hide inside a half-trained policy:
 | **Static standing** | hold 3 poses (`stand_nominal`, `semi_squat`, `stand_wide`) 10 s each under joint PD | ✅ **milestone met** |
 | **COM / support-polygon checks** | COM stays inside the convex hull of the foot contacts, with margin | ✅ 33–43 mm margin |
 | **Quasi-static weight shifting** | move a lateral COM target between the feet via task-space IK, no foot lift | ✅ **milestone met** — limit ~0.04 m COM |
-| **U1 — rigid torso lump** | welded torso mass; measure ΔCOM / Δtorque / Δshift-limit vs a frozen baseline | ✅ COM +67 mm, shift limit 0.04 → 0.03 m |
-| U2–U6 — head, electronics, arms, ears | add each deliberately, one at a time, re-measure vs baseline | ⬜ morphology validation |
+| **U1 — rigid torso lump** | welded torso mass; ΔCOM / Δtorque / Δshift-limit vs a frozen baseline | ✅ COM +67 mm, shift limit 0.04 → 0.03 m |
+| **U2 — head + neck lump** | head sphere + `locked` neck joints; head-mass sweep in MuJoCo | ✅ COM +22 mm *above* pelvis; knee torque +0.19 N·m per +0.4 kg head |
+| U3–U6 — electronics, arms, ears | add each deliberately, one at a time, re-measure vs baseline | ⬜ morphology validation |
 | U7–U8 — unload / lift one foot | the balance/control boundary — new controllers start here | ⬜ |
 | RL locomotion policy | the section below | ⬜ deferred until the model is trusted |
 
