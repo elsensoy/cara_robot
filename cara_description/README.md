@@ -16,10 +16,10 @@ a full robot, not CAD, not a policy, and has no upper body yet.
 | ✅ | generated, inspectable URDF **and** MJCF (kinematic + dynamic) for each model |
 | ✅ | MuJoCo verified to reproduce the pure-Python FK to machine precision |
 | ✅ | **static standing** + **quasi-static weight shifting** — both milestones met (lower body & full body) |
-| ✅ | **Phases U1–U3** — welded torso + head/neck lump + Jetson/battery placement study; COM / torque / shift-limit measured vs a frozen baseline |
-| ✅ | validation + FK + plausibility + standing + weight-shift scripts, and COM / gravity-torque / Jacobian / sweep analysis |
+| ✅ | **Phases U1–U4** — welded torso + head/neck lump + Jetson/battery placement study + symmetric passive arm masses; COM / inertia tensor / torque / shift-limit measured vs a frozen baseline |
+| ✅ | validation + FK + plausibility + standing + weight-shift scripts, and COM / whole-body-inertia / gravity-torque / Jacobian / sweep analysis |
 | 🔶 | dynamics — mass / COM / inertia / actuator limits / PD gains are **provisional placeholders** |
-| ❌ | head, ears, arms, waist joints, electronics (U2–U5) |
+| ❌ | ears, waist joints, articulated neck / shoulders (locked at 0 for now) — U5+ |
 | ❌ | CAD geometry, servo brackets, wiring, shells |
 | ❌ | single-support, dynamic balance, RL / locomotion policy |
 
@@ -36,7 +36,7 @@ cara_description/
 ├── config/
 │   ├── left_leg.yaml            # SSOT for ONE leg + pelvis (fixed base)
 │   ├── cara_lower_body.yaml     # extends left_leg + mirror l_→r_ + floating pelvis + poses
-│   ├── cara_upper_body.yaml     # FRAGMENT (not standalone): torso (U1) + head/neck (U2) [+ arms/ears later]
+│   ├── cara_upper_body.yaml     # FRAGMENT (not standalone): torso (U1) + head/neck (U2) + electronics (U3) + arms (U4) [+ ears later]
 │   └── cara_full_body.yaml      # extends cara_lower_body + include cara_upper_body
 ├── baselines/                   # frozen lower-body results — the regression comparison target
 ├── urdf/                        # GENERATED — <model>.urdf
@@ -63,7 +63,7 @@ cara_description/
 │   ├── dynamics_notes.md        # provisional dynamics layer + single-leg analysis
 │   ├── standing_notes.md        # mirroring the 2nd leg + the standing milestone
 │   ├── weight_shift_notes.md    # task-space IK + the weight-shift milestone
-│   └── upper_body_notes.md      # config hierarchy + staged upper-body mass analysis (U1: torso)
+│   └── upper_body_notes.md      # config hierarchy + staged upper-body mass/inertia analysis (U1–U4)
 └── README.md
 ```
 
@@ -235,13 +235,35 @@ mount point). `placement_study.py` compares the named `electronics.layouts`:
 
 Read-off: keep the 0.40 kg **low in the pelvis** — COM ~20 mm lower, shift
 envelope preserved; "everything high" costs a third of the envelope. It
-*reports*, it does not choose. Full upper body: **2.06 → 4.01 kg**, COM +17 mm
-above the pelvis, standing solid, weight-shift envelope tightened to ~0.025 m.
+*reports*, it does not choose.
+
+**Phase U4 — passive arm masses** (one 0.18 kg lump per side, welded at the
+shoulder in a neutral hang; `l_arm` authored, `r_arm` mirror-generated —
+identical by construction, whole-body COM y = 0). No shoulder joint, no swing.
+`subsystem_sweep.py` sweeps `upper_body.arm.mass` (both arms together):
+
+| arm mass /side | COM vs pelvis | Ixx (roll) | Izz (yaw) | worst knee τ | shift limit |
+|---|---|---|---|---|---|
+| 0.00 kg | +17.3 mm | 0.0781 | 0.0108 | 1.13 N·m | 0.030 m |
+| 0.18 kg | +20.8 mm | 0.0827 | 0.0138 | 1.28 N·m | 0.020 m |
+| 0.30 kg | +22.8 mm | 0.0858 | 0.0158 | 1.38 N·m | 0.020 m |
+
+The arms hang near pelvis height, so +0.6 kg lifts the COM only **+5.5 mm** —
+their effect is on the **inertia tensor**: roll +0.0076, yaw +0.0050 kg·m²
+(roughly linear in mass). This must be understood before the shoulder is
+articulated — arm swing will then modulate exactly that roll/yaw inertia.
+`leg_model.whole_body_inertia(spec, q, about="com")` computes the parallel-axis
+tensor; `center_of_mass.py` prints it.
+
+Full upper body **with arms**: **2.06 → 4.37 kg**, COM +21 mm above the pelvis,
+standing solid (all 3 poses PASS), weight-shift envelope now **~0.020 m** (lower
+body 0.040 → U2 0.030 → U3 0.025 → +arms 0.020 — each subsystem tightens the
+*dynamic* margin; standing is unaffected).
 Details in [`docs/upper_body_notes.md`](docs/upper_body_notes.md).
 
 `type: fixed` / `locked: true` joints (the torso weld, the neck joints, the two
-electronics mounts) carry 0 DOF and no servo. The single-leg and lower-body
-regression outputs stay **byte-identical** through every U-phase.
+electronics mounts, the two shoulders) carry 0 DOF and no servo. The single-leg
+and lower-body regression outputs stay **byte-identical** through every U-phase.
 
 ## The question this layer answers
 
@@ -316,14 +338,14 @@ the file header and the script docstring):
 ## Roadmap
 
 Done: 1-leg kin/dyn/PD → 2 legs + pelvis → **static standing** →
-COM/support-polygon → **quasi-static weight shifting** → **U1/U2/U3 upper body**.
+COM/support-polygon → **quasi-static weight shifting** → **U1–U4 upper body**.
 
 Morphology / design validation (each measured vs the frozen baseline):
 
 - **U1 torso lump** ✅
 - **U2 head + neck lump** ✅ (neck joints structural but `locked` at 0)
 - **U3 Jetson + battery placement study** ✅ (`placement_study.py` over `electronics.layouts`)
-- **U4** passive arm masses (symmetric, no articulation)
+- **U4 passive arm masses** ✅ (symmetric, welded shoulders, no articulation; effect is on the inertia tensor)
 - **U5** ear + servo masses; head/neck rotational-inertia (`I ~ m r²`) study
 - **U6** full-body standing + weight-shift regression, per-subsystem summary table
 

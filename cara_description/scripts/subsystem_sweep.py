@@ -174,10 +174,12 @@ def measure(spec, standing_poses=None, base_pose="stand_nominal", accept=None):
         else:
             break
 
+    Ic = lm.whole_body_inertia(spec, rp[base_pose], about="com")
     return {"m_total": float(sum(model.body_mass)), "com_h": com_h, "com_x": com_x,
             "com_z_pel": com_z_pel, "tilt": tilt, "margin": margin,
             "hip": grp["hip"], "knee": grp["knee"], "ankle": grp["ankle"],
-            "shift_limit": shift_limit}
+            "shift_limit": shift_limit,
+            "Ixx": Ic[0][0], "Iyy": Ic[1][1], "Izz": Ic[2][2]}
 
 
 def run(config, param, values, baseline_path):
@@ -195,7 +197,7 @@ def run(config, param, values, baseline_path):
     print(f"Subsystem sweep:  {param}  in  {values}   (model {base_spec['meta']['name']})")
     print(f"standing metrics at '{base_pose}'; peak torque = worst over {stand_poses}\n")
     hdr = (f"  {'value':>10} {'m_tot':>7} {'COM h':>7} {'COMz_pel':>9} {'tilt°':>6} "
-           f"{'margin':>7} {'hip τ':>7} {'knee τ':>7} {'ankle τ':>8} {'shift lim':>9}")
+           f"{'margin':>7} {'knee τ':>7} {'Ixx':>8} {'Izz':>8} {'shift lim':>9}")
     print(hdr)
     print("  " + "-" * (len(hdr) - 2))
 
@@ -213,8 +215,8 @@ def run(config, param, values, baseline_path):
         rows.append((val, r))
         vs = f"{val:>10.4f}" if isinstance(val, float) else f"{str(val):>10}"
         print(f"  {vs} {r['m_total']:>7.3f} {r['com_h']:>7.3f} {r['com_z_pel']:>+9.1f} "
-              f"{r['tilt']:>6.2f} {r['margin']:>7.1f} {r['hip']:>7.3f} {r['knee']:>7.3f} "
-              f"{r['ankle']:>8.3f} {r['shift_limit']:>9.3f}")
+              f"{r['tilt']:>6.2f} {r['margin']:>7.1f} {r['knee']:>7.3f} "
+              f"{r['Ixx']:>8.5f} {r['Izz']:>8.5f} {r['shift_limit']:>9.3f}")
 
     if len(rows) >= 2:
         (v0, a), (v1, b) = rows[0], rows[-1]
@@ -226,6 +228,8 @@ def run(config, param, values, baseline_path):
               f"support margin {b['margin'] - a['margin']:+.1f} mm")
         print(f"    peak hip/knee/ankle torque  "
               f"{b['hip']-a['hip']:+.3f} / {b['knee']-a['knee']:+.3f} / {b['ankle']-a['ankle']:+.3f} N*m")
+        print(f"    inertia about COM  Ixx {b['Ixx']-a['Ixx']:+.5f}  Iyy {b['Iyy']-a['Iyy']:+.5f}  "
+              f"Izz {b['Izz']-a['Izz']:+.5f} kg·m²")
         print(f"    weight-shift limit {b['shift_limit'] - a['shift_limit']:+.3f} m")
 
     if baseline_path and os.path.exists(baseline_path):

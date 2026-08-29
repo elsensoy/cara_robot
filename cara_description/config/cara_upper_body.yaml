@@ -38,6 +38,14 @@ upper_body:
     com_x:    0.010      # TODO -- neck axes -> head COM, fore/aft (slight forward) [m]
     com_z:    0.050      # TODO -- neck axes -> head COM, up [m]
     radius:   0.060      # TODO -- head sphere radius for the inertia approx [m]
+  arm:                   # U4: rigid passive lump per side (upper arm + forearm + hand + shoulder mechanics)
+    mass:       0.180    # TODO -- per arm [kg].  Symmetric: both l_arm and r_arm use this.
+    shoulder_x: 0.0      # TODO -- torso frame -> shoulder joint, fore/aft [m]
+    shoulder_y: 0.090    # TODO -- torso frame -> LEFT shoulder joint, lateral (mirror negates for right) [m]
+    shoulder_z: 0.120    # TODO -- torso frame -> shoulder joint, up [m]
+    length:     0.190    # TODO -- shoulder -> hand, along the hanging arm [m]
+    com_z:     -0.095    # TODO -- shoulder -> arm COM, down (neutral hang) [m]
+    radius:     0.022    # TODO -- arm rod radius for the inertia approx [m]
 
 # --- U3: electronics as explicit lumped masses with SWITCHABLE placement ----
 # `mount_from` joints below take their parent link + offset from the named
@@ -80,6 +88,7 @@ links:
   - {name: head,           role: segment}
   - {name: jetson,         role: segment}            # U3: lumped mass
   - {name: battery,        role: segment}            # U3: lumped mass
+  - {name: l_arm,          role: segment}            # U4: rigid passive lump (mirror makes r_arm)
 
 joints:
   - name: base_to_torso
@@ -130,6 +139,14 @@ joints:
     mount_from: electronics.battery.mount
     child: battery
 
+  # --- U4: arms as rigid passive masses, WELDED at the shoulder (no articulation).
+  #     The shoulder becomes 3 DoF in the 20-DoF design later. mirror -> r_arm.
+  - name: l_shoulder
+    type: fixed
+    parent: torso
+    child: l_arm
+    origin_expr: [arm_shoulder_x, arm_shoulder_y, arm_shoulder_z]
+
 dynamics:
   links:
     torso:
@@ -166,3 +183,12 @@ dynamics:
       inertia:
         method: solid_box
         box:  [battery_box_x, battery_box_y, battery_box_z]
+
+    l_arm:                             # mirror -> r_arm (same mass expr -> symmetric).
+      is_physical: true
+      mass: arm_mass                   # single source of truth: upper_body.arm.mass
+      com:  [0.0, 0.0, arm_com_z]      # neutral hang: COM below the shoulder
+      inertia:
+        method: uniform_rod_z
+        length: arm_length
+        radius: arm_radius

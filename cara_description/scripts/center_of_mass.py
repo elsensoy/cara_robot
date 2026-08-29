@@ -57,6 +57,9 @@ def show_one(spec, label, q, extra):
     print(f"  {'-'*22} {'-'*10}")
     print(f"  {'TOTAL':<22} {m_tot:>10.4f}   COM = {_fmt_vec(com)}")
     print(f"  COM height below pelvis: {-com[2]*1000:.1f} mm")
+    I = lm.whole_body_inertia(spec, q, about="com")
+    print(f"  whole-body inertia about COM [kg·m²]:  "
+          f"Ixx {I[0][0]:.5f} (roll)   Iyy {I[1][1]:.5f} (pitch)   Izz {I[2][2]:.5f} (yaw)")
 
 
 def main(argv=None) -> int:

@@ -169,6 +169,23 @@
     </collision>
   </link>
 
+  <link name="l_arm">
+    <!-- role: segment. Mass/COM/inertia PROVISIONAL (method: uniform_rod_z). TODO: replace with CAD. -->
+    <inertial>
+      <origin xyz="0 0 -0.095" rpy="0 0 0"/>
+      <mass value="0.18"/>
+      <inertia ixx="0.0005415" ixy="0" ixz="0" iyy="0.0005415" iyz="0" izz="4.356e-05"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.095" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.022" length="0.19"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.095" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.022" length="0.19"/></geometry>
+    </collision>
+  </link>
+
   <link name="r_hip_yaw_link">
     <!-- role: virtual_coupling. Virtual coincident-axis coupling link: massless abstraction, intentionally no inertial/visual/collision. -->
   </link>
@@ -229,6 +246,23 @@
     <collision>
       <origin xyz="0.015 0 -0.0175" rpy="0 0 0"/>
       <geometry><box size="0.09 0.045 0.035"/></geometry>
+    </collision>
+  </link>
+
+  <link name="r_arm">
+    <!-- role: segment. Mass/COM/inertia PROVISIONAL (method: uniform_rod_z). TODO: replace with CAD. -->
+    <inertial>
+      <origin xyz="0 0 -0.095" rpy="0 0 0"/>
+      <mass value="0.18"/>
+      <inertia ixx="0.0005415" ixy="0" ixz="0" iyy="0.0005415" iyz="0" izz="4.356e-05"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -0.095" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.022" length="0.19"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.095" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.022" length="0.19"/></geometry>
     </collision>
   </link>
 
@@ -340,6 +374,13 @@
     <origin xyz="0 0 -0.03" rpy="0 0 0"/>
   </joint>
 
+  <joint name="l_shoulder" type="fixed">
+    <!-- declared type: fixed -->
+    <parent link="torso"/>
+    <child link="l_arm"/>
+    <origin xyz="0 0.09 0.12" rpy="0 0 0"/>
+  </joint>
+
   <joint name="r_hip_yaw" type="revolute">
     <!-- purpose: Rotation of the whole leg about the vertical. Sets foot heading for turning and for directional foot placement. -->
     <!-- +angle: toe yaws toward -Y (toe-out / outward heading) -->
@@ -404,6 +445,13 @@
     <axis xyz="-1 0 0"/>
     <limit lower="-0.44" upper="0.44" effort="2" velocity="6"/>  <!-- effort/velocity: TBD placeholder -->
     <dynamics damping="0.0" friction="0.0"/>  <!-- TODO: measured -->
+  </joint>
+
+  <joint name="r_shoulder" type="fixed">
+    <!-- declared type: fixed -->
+    <parent link="torso"/>
+    <child link="r_arm"/>
+    <origin xyz="0 -0.09 0.12" rpy="0 0 0"/>
   </joint>
 
 </robot>

@@ -14,7 +14,7 @@ to stand and weight-shift with the existing joint PD, no new controllers).
 
 ```
 lower body ✅  →  U1 torso ✅  →  U2 head/neck ✅  →  U3 Jetson+battery ✅  →
-U4 passive arms  →  U5 ears + head inertia  →  U6 full regression  ──┼── boundary
+U4 passive arms ✅  →  U5 ears + head inertia  →  U6 full regression  ──┼── boundary
                                               U7 unload a foot  →  U8 lift a foot  → …
 ```
 
@@ -64,7 +64,9 @@ margin, peak/RMS actuator torque (standing); loaded/unloaded foot force, COM
 margin, pelvis roll, foot slip, and the quasi-static shift limit (weight-shift).
 Nothing in the baseline is dropped. `--json` writes a fresh snapshot.
 
-The single-leg and lower-body suites (`validate_description` 201 / 331,
+Through U4 the single-leg and lower-body generated URDF/MJCF stay
+byte-identical (`git status` shows only `cara_full_body.*` changed) and the
+single-leg and lower-body suites (`validate_description` 201 / 331,
 `fk_sanity`, `validate_mjcf`, `dynamic_check`, both generators `--check`) must
 stay **byte-identical** through every phase — that is the hard gate.
 
@@ -250,8 +252,116 @@ no placement is chosen automatically.
 
 ---
 
-## Open TODOs (U1–U3)
+## Phase U4 — arms as rigid passive masses
+
+One lumped mass per side, **welded at the shoulder** in a neutral hanging pose —
+no shoulder joint, no arm swing, no manipulation. The mass covers the upper arm
++ forearm + hand + shoulder mechanics. `l_arm` is authored; `mirror` generates
+`r_arm`, so the two are identical by construction.
+
+| param | provisional value | `TODO` |
+|---|---|---|
+| arm mass (`upper_body.arm.mass`) | 0.180 kg **per side** | measured/CAD |
+| shoulder (`arm_shoulder_x/y/z`) | (0, ±0.090, +0.120) m in the torso frame | measured/CAD |
+| arm length (`arm_length`, inertia rod) | 0.190 m | measured/CAD |
+| arm COM drop (`arm_com_z`) | −0.095 m below the shoulder (neutral hang) | measured/CAD |
+| arm shape | `uniform_rod_z`, radius 0.022 m | measured/CAD |
+
+Mass is a **single source of truth**: `dynamics.links.l_arm.mass: arm_mass`
+resolves to `upper_body.arm.mass`, so a sweep of `upper_body.arm.mass` moves
+*both* arms and the whole-body COM stays on the midline. (Sweeping
+`dynamics.links.l_arm.mass` alone would desymmetrise the model — don't.)
+
+**`l_shoulder`** (`type: fixed`, parent `torso`) — 0 DoF, welded, no servo. The
+shoulder becomes 3 DoF in the long-term 20-DoF design; `actuated_joint_names`
+still returns the 12 leg joints.
+
+### Symmetry check (the U4 acceptance gate)
+
+`l_arm` and `r_arm` resolve to identical mass (0.180 kg), COM (0, 0, −0.095) and
+inertia diag, mirrored to y = ±0.090. Whole-body COM y = **−0.0000 m at every
+standing pose** (`center_of_mass.py config/cara_full_body.yaml`) — the arms do
+not shift the COM off the sagittal plane.
+
+### Effect vs the frozen lower-body baseline (full upper body + arms)
+
+Whole-body mass **2.06 → 4.37 kg**; whole-body COM (pelvis frame) −72 mm →
+**+21 mm**. The arm COMs sit at z ≈ +60 mm (pelvis frame) — near pelvis height —
+so +0.36 kg of arms lifts the COM only ≈ 4 mm on top of U3.
+
+Whole-body inertia about the COM at `stand_nominal`
+(`center_of_mass.py --pose`): **Ixx 0.0827 (roll), Iyy 0.0756 (pitch),
+Izz 0.0138 (yaw) kg·m²**. The arms at ±0.09 m are the first subsystem that adds
+noticeably to **roll and yaw** inertia rather than just raising the COM.
+
+**Standing** (`stand_check.py --baseline`, all 3 poses PASS):
+
+| pose | tilt | ΔCOM margin | Δpeak torque |
+|------|------|-------------|--------------|
+| stand_nominal | 0.42° (+0.26) | −2.6 mm → +30.5 | +0.157 → 0.235 N·m |
+| semi_squat | 1.54° (+1.24) | −10.6 mm → +32.6 | +0.803 → 1.205 N·m |
+| stand_wide | 0.50° (+0.33) | −2.7 mm → +30.4 | +0.331 → 0.533 N·m |
+
+**Weight shift** (`weight_shift.py --baseline`): quasi-static envelope now
+**~0.020 m** (lower body 0.040 → U2 0.030 → U3 0.025 → +arms 0.020). The ±0.03 m
+demo fails on foot slip (3.7 mm of a 3 mm budget); ±0.020 m passes cleanly.
+Standing is unaffected — only the *dynamic* shift margin keeps tightening as
+upper-body mass accumulates.
+
+| metric | lower body | + full upper body + arms | Δ |
+|---|---|---|---|
+| ±A loaded / unloaded foot | 14.1 / 6.1 N | 31.3 / 11.6 N | +17.2 / +5.4 |
+| ±A pelvis roll | 0.35° | 0.90° | +0.55 |
+| foot slip at ±0.03 m | 1.3 mm | 3.7 mm | +2.4 |
+| **quasi-static shift limit** | **0.040 m** | **0.020 m** | **−0.020** |
+
+### Sweeps — `subsystem_sweep.py` (acceptance: effect measurable & monotonic)
+
+```
+python3 scripts/subsystem_sweep.py config/cara_full_body.yaml \
+    --param upper_body.arm.mass --values 0.0,0.10,0.18,0.30
+```
+
+| arm mass /side | whole-body mass | COM vs pelvis | worst knee τ | Ixx (roll) | Izz (yaw) | shift limit |
+|---|---|---|---|---|---|---|
+| 0.00 kg | 4.01 kg | +17.3 mm | 1.126 N·m | 0.0781 | 0.0108 | 0.030 m |
+| 0.10 kg | 4.21 kg | +19.3 mm | 1.218 N·m | 0.0807 | 0.0125 | 0.020 m |
+| 0.18 kg | 4.37 kg | +20.8 mm | 1.283 N·m | 0.0827 | 0.0138 | 0.020 m |
+| 0.30 kg | 4.61 kg | +22.8 mm | 1.382 N·m | 0.0858 | 0.0158 | 0.020 m |
+
+Arm mass 0 → 0.3 kg/side (+0.6 kg):
+
+- **COM height +5.5 mm only** — arms hang near pelvis height, the smallest
+  COM-per-kg of any U-subsystem so far.
+- **Whole-body inertia** Ixx (roll) **+0.0076**, Izz (yaw) **+0.0050 kg·m²** —
+  roughly linear (≈ +0.0017 Izz per 0.1 kg/side). This is the U4 headline: the
+  arms' contribution is to the **inertia tensor**, and it must be understood
+  before the shoulder is articulated (arm swing will then modulate exactly this
+  roll/yaw inertia dynamically).
+- **Worst-pose knee torque +0.26 N·m** (`semi_squat`) — arms loaded in a squat.
+- **Weight-shift envelope drops 0.030 → 0.020 m** as soon as *any* arm mass is
+  added, then holds — the step is the extra mass + roll inertia, not its size.
+
+```
+python3 scripts/subsystem_sweep.py config/cara_full_body.yaml \
+    --param upper_body.arm.com_z --values -0.14,-0.095,-0.05
+```
+
+Arm COM drop −0.14 → −0.05 m (same mass, arm hangs higher): COM height +7.4 mm,
+Ixx ±0.0025, **Izz unchanged**, torque ±0.01 N·m, shift limit unchanged — *how
+far the arm hangs* barely matters next to *how much it weighs* and *how far it
+is from the midline*.
+
+**U4 acceptance criterion met:** the effect of arm mass on whole-body COM
+(small, +5.5 mm across the sweep) and on the inertia tensor (roll +0.0076, yaw
++0.0050 kg·m²) is quantified and monotonic; the model stays sagittally
+symmetric. No articulation was added.
+
+---
+
+## Open TODOs (U1–U4)
 
 - [ ] Replace every `upper_body.*` / `electronics.*` / `dynamics.links.*` value with CAD / measured.
 - [ ] Mount offsets are guesses — `pelvis_low` at −30 mm assumes there is room below the pelvis frame.
-- [ ] U4: left/right arm masses in a neutral pose (mirror-generated), no articulation.
+- [ ] Arm mass/length/COM/radius and the shoulder position are all provisional single-lump guesses.
+- [ ] U5: ears + a proper head inertia study (I ~ m r², thin shell vs solid).

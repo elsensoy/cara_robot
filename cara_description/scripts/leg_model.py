@@ -140,9 +140,12 @@ def _apply_mirror(spec: dict) -> dict:
             mj["parent"] = rn(j["parent"])
             mj["child"] = rn(j["child"])
             mj["origin_expr"] = _mirror_position(j["origin_expr"])
-            mj["axis"] = _mirror_axis(j["axis"])
-            mj["positive_rotation"] = _mirror_text(j.get("positive_rotation", ""))
-            mj["purpose"] = _mirror_text(j.get("purpose", ""))
+            if "axis" in j:                       # fixed / locked joints may have none
+                mj["axis"] = _mirror_axis(j["axis"])
+            if "positive_rotation" in j:
+                mj["positive_rotation"] = _mirror_text(j["positive_rotation"])
+            if "purpose" in j:
+                mj["purpose"] = _mirror_text(j["purpose"])
             mirrored.append(mj)
     spec["joints"] = list(joints) + mirrored
 
@@ -731,6 +734,38 @@ def center_of_mass(spec: dict, q: Dict[str, float] | None = None,
     for _, m, pos in rows:
         acc = vec_add(acc, vec_scale(pos, m))
     return m_tot, vec_scale(acc, 1.0 / m_tot), rows
+
+
+def whole_body_inertia(spec: dict, q: Dict[str, float] | None = None,
+                       about: str = "com") -> Mat3:
+    """3x3 inertia tensor of all physical links, in the WORLD frame, about
+    either the whole-body COM (`about="com"`) or the base-frame origin
+    (`about="base"`).  Parallel-axis:  I = sum_i [ R_i I_i R_iᵀ
+                                              + m_i (|d|² E3 - d dᵀ) ]  with
+    d = com_i - reference.  `I_i` is the per-link diagonal about its own COM.
+    """
+    tf = forward_kinematics(spec, q)
+    inertials = link_inertials(spec)
+    if about == "com":
+        _, ref, _ = center_of_mass(spec, q)
+    else:
+        ref = tf[spec["frame_conventions"]["base_frame"]][1]
+
+    total = [[0.0] * 3 for _ in range(3)]
+    for name, li in inertials.items():
+        r, p = tf[name]
+        com_w = vec_add(mat_vec(r, li.com), p)
+        d = vec_sub(com_w, ref)
+        d2 = d[0] * d[0] + d[1] * d[1] + d[2] * d[2]
+        # R I_diag Rᵀ
+        idiag = li.inertia_diag
+        rot_i = [[sum(r[i][k] * idiag[k] * r[j][k] for k in range(3)) for j in range(3)]
+                 for i in range(3)]
+        for i in range(3):
+            for j in range(3):
+                pa = li.mass * ((d2 if i == j else 0.0) - d[i] * d[j])
+                total[i][j] += rot_i[i][j] + pa
+    return tuple(tuple(row) for row in total)  # type: ignore[return-value]
 
 
 def potential_energy(spec: dict, q: Dict[str, float] | None = None,
