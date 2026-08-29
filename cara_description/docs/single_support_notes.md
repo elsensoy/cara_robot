@@ -1,4 +1,4 @@
-# Cara — Toward single support (U7 → U9)
+# Cara — Toward single support and the first step (U7 → U10)
 
 Companion to [`weight_shift_notes.md`](weight_shift_notes.md). This is the first
 work **past the morphology boundary** — U1–U6 validated the whole-body mass model
@@ -6,7 +6,8 @@ work **past the morphology boundary** — U1–U6 validated the whole-body mass 
 
 ```
 … static standing ✅ → weight shifting ✅ → morphology U1–U6 ✅  ──┼── boundary
-    U7 unload one foot ✅ → U8 lift one foot ✅ → U9 single-support balance ✅ (this doc) → stepping → …
+    U7 unload one foot ✅ → U8 lift one foot ✅ → U9 single-support balance ✅
+      → U10 one forward step ✅ (this doc) → stepping / gait → …
 ```
 
 Still transparent — the same frontal-plane IK from `weight_shift.py`, plus a
@@ -164,28 +165,117 @@ force pulses on the pelvis, swept in magnitude, both directions.
 than U8's trim** (2.3 mm drift vs 17 mm) and is gentler on the joints (76 % vs
 88 %).
 
-### The disturbance envelope is small — and that's a design finding
+### The disturbance envelope is small — and *why*  (`scripts/balance_margin.py`)
 
-A 1 N × 100 ms impulse ≈ 0.1 kg·m/s ≈ a **0.02 m/s** lateral COM-velocity kick.
-Cara can't do much better with an ankle strategy because her **feet are tiny**:
-the roll-axis half-width is 22.5 mm, so the most CoP moment the stance ankle can
-make before the foot rolls onto its edge is ≈ `Fz · d` ≈ 43.5 × 0.0225 ≈
-**1 N·m**. The envelope is asymmetric (bigger toward the stance foot) because
-that direction pushes the COM *deeper* into the support polygon.
+`balance_margin.py` gets into the same held single-support state and measures the
+mechanism instead of asserting it. For the full body, stance `r_`:
 
-To reject a real disturbance Cara needs a **wider foot**, a **stronger hip /
-angular-momentum strategy**, or a **protective step** — which is U10. Adding a
-hip-*velocity* term here only made it oscillate (tested, reverted).
+| measured in the held pose | value |
+|---|---|
+| stance Fz | 43.5 N (100 % of body weight on one foot) |
+| COM height above the sole | 295 mm → inverted-pendulum ω = 5.8 rad/s (τ ≈ 173 ms) |
+| foot sole half-width (roll axis) | **22.5 mm** |
+| stance foot centre, off the body midline | −45.6 mm (toward stance) |
+| COM / CoP, off the **foot centre** | **+16.0 mm toward the swing side** |
+
+The COM only shifts ~30 mm off the midline (`com_target` 28 mm, and the lifted
+leg hangs inboard and pulls it back), but the stance foot centre is ~46 mm out —
+so the CoP sits **16 mm toward the inner edge of a 22.5 mm half-width foot**,
+with only **6.5 mm of lateral room left toward the swing foot** (38.5 mm toward
+stance).
+
+- **Static budget.** Max restoring moment = `Fz · half-width` ≈ 43.5 × 0.0225 ≈
+  **0.98 N·m**; **71 %** of it is already spent just holding the pose. Past the
+  edge the foot rolls onto its rim and no gain helps.
+- **Capture-point estimate.** `J_max ≈ margin · m · ω` → ~1.7 N × 100 ms toward
+  swing (first-order, ~1.5–2× high because it ignores the ankle pulling back
+  during the pulse), which the fine validation sweep confirms at **~1.0 N**.
+- **Asymmetry.** Toward stance she has ~38 mm of sole but still falls at ~3 N —
+  there the failure is the **recovery overshoot** swinging her back past the
+  inner edge and dropping the lifted foot, a controller limit rather than the
+  CoP wall. Either way the **6.5 mm swing-side gap is the binding constraint.**
+- **Foot half-width sensitivity** (analytic, first-order): 22.5 → 30 mm roughly
+  doubles the swing-side tolerance (~1.7 → ~3.6 N); 45 mm ≈ 4×.
+
+So the envelope is set by **foot geometry and where the swing leg parks the COM**,
+not by the gains. To reject a real disturbance Cara needs a **wider/longer
+foot**, the **lifted foot tucked toward the midline** (re-centres the CoP), an
+**arm / trunk angular-momentum strategy**, or a **protective step** — which is
+U10. Adding a hip-*velocity* term here only made it oscillate (tested, reverted).
 
 ### Open TODOs
 
 - [ ] Foot size (45 × 22.5 mm half-extents) is the single biggest limit on the
-      balance envelope — a design-level input, not a control problem.
+      balance envelope — `balance_margin.py` quantifies it: only 6.5 mm of
+      lateral CoP room toward the swing foot. A design-level input, not a
+      control problem.
+- [ ] The lifted-foot posture pulls the COM ~16 mm toward the inner edge —
+      tucking it inboard (or a larger `com_target` now that the foot is clear)
+      would re-centre the CoP. Worth a trajectory experiment.
 - [ ] Balance gains are hand-set provisional values, tuned for the **full body**
       (the milestone target); the lower-body model needs its own.
 - [ ] Sagittal (COM-x) balance is not yet controlled — the disturbances tested
       are lateral only.
 - [ ] Swing `hip_roll` torque headroom is thin (~2.6 of ±3.0 N·m) — a
       servo-sizing input.
-- [ ] U10: a protective / deliberate step, once the balance envelope is
-      exceeded.
+
+---
+
+## Phase U10 — one deliberate forward step
+
+Script: `scripts/step_once.py` (`--view` loops it). Milestone question:
+
+> **Can Cara take one full step** — shift onto one foot, lift the other, swing it
+> forward to a new foothold, place it, and transfer the weight — **and end in a
+> stable staggered stance with the pelvis advanced**, both legs leading?
+
+This is the answer to the U9 finding (past ~1 N toward the swing side she *has*
+to move a foot) and the first building block of a gait (U11).
+
+### Maneuver (`analysis.step`) — six quasi-static phases
+
+| | phase | how |
+|---|---|---|
+| A | shift the COM onto the stance foot | `weight_shift` frontal IK table, `com_target` 0.028 m |
+| B | lift the swing foot to `lift_height` (10 mm) | closed-loop world clearance (as U8/U9) |
+| C | **swing it forward** to the foothold | swing-leg IK table over the step progress `s ∈ [0,1]` (foot held level, {hip,knee,ankle}_pitch) |
+| D | place it | lower the clearance to the ground |
+| E | **transfer** | ramp both legs to the final staggered pose — lead foot forward `step_len`, **pelvis advanced `step_len/2`** — bringing the COM into the new, larger polygon |
+| F | hold the new stance `hold_seconds` | check stable |
+
+Only U9's **lateral (COM-y) roll trim** runs during B–D (same gains, 50/10/15).
+Sagittal (COM-x) feedback is deliberately left out — the quasi-static trajectory
+keeps COM-x safe, and a COM-x → `ankle_pitch` term fought the swing at every gain
+tried (the foot is 90 mm long, far more fore/aft CoP room than the roll trim
+needs). Ramps are **4 s** (3 s was too fast — the lift + trim went unstable).
+
+### Result — `step_once.py config/cara_full_body.yaml`
+
+| step | lead | placed | place err | COM margin (swing) | pelvis tilt (swing) | stance slip | peak τ | COM advance | final tilt | verdict |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 20 mm | l_ / r_ | ✅ | 5.4 mm | +5.8 mm | 2.4° | 4.2 mm | 76 % | **10.7 mm** | 0.4° | **PASS** |
+| 30 mm | l_ / r_ | ✅ | 5.9 mm | +5.8 mm | 2.3° | 4.1 mm | 76 % | **15.4 mm** | 0.4° | **PASS** |
+| 40 mm | l_ / r_ | ✅ | 6.6 mm | +5.8 mm | 2.2° | 4.1 mm | 76 % | **20.2 mm** | 0.3° | **PASS** |
+
+**MILESTONE MET**, both legs leading, every step length 20–40 mm: the swing foot
+lands within **7 mm** of the target foothold, the COM stays **inside the support
+polygon** throughout (the +5.8 mm swing-side margin during the single-support
+phase is the U9 CoP limit again), the pelvis stays under **2.5°**, the stance
+foot slips **< 4.2 mm**, no actuator saturates (swing `hip_roll` at 76 % is the
+worst, as in U8), and she settles into the new staggered stance **level (< 0.5°)
+with ~35 mm of COM margin**. The COM advances **~half the step**, as designed.
+`baselines/full_body_step.json` freezes it.
+
+### What's tight / deferred
+
+- **Forward only.** A sideways / widening step is past Cara's lateral balance
+  envelope with these provisional feet (the U9 CoP limit) — `step_once.py` does
+  not attempt one.
+- **One step, then stop.** Chaining steps into a gait (bring the trailing foot
+  through, alternate) is U11.
+- **Lower body fails it** — the roll-trim gains are full-body-tuned (as in U9);
+  the lower-body model's stance foot slides. Reported, not hidden.
+- **Sagittal COM-x feedback** is still unbuilt — the step gets away with a
+  quasi-static COM-x trajectory; a faster or disturbed step will need it.
+- Step length is capped at 40 mm by the swing IK (the knee reaches its extension
+  limit reaching further at constant foot height).

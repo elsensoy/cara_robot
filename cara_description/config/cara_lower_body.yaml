@@ -189,3 +189,43 @@ analysis:
       max_torque_frac: 1.0
       recover_tilt_deg: 25.0     # a push is "recovered" if tilt stays under this and the foot stays up
       recover_seconds: 2.5       # window to re-stabilize after a push
+
+  # --- U10: ONE DELIBERATE FORWARD STEP (scripts/step_once.py)
+  # From double support: shift onto the stance foot, lift the swing foot, swing it
+  # FORWARD to a new foothold, place it, and transfer the weight to a stable
+  # staggered stance with the pelvis advanced ~half the step.  Six quasi-static
+  # phases (A shift / B lift / C swing / D place / E transfer / F hold) + the SAME
+  # lateral COM-y roll trim as U9 while she is on one foot.  No gait, no RL.
+  #
+  # Sagittal (COM-x) feedback is deliberately NOT used: the quasi-static
+  # trajectory keeps COM-x safe on its own, and a COM-x -> ankle_pitch term on
+  # top of the swing was destabilising at every gain tried (the foot is 90 mm
+  # long -- far more fore/aft CoP room than the roll trim needs).  Left for later.
+  # A sideways / widening step is past the current lateral balance envelope with
+  # these provisional feet (the U9 finding) and is not attempted.
+  #
+  # All gains / lengths PROVISIONAL.
+  step:
+    base_pose: stand_nominal
+    com_target: 0.028            # m, lateral COM shift onto the stance foot (as U8/U9)
+    lift_height: 0.010           # m, swing-foot ground clearance mid-step
+    step_lengths: [0.020, 0.030, 0.040]   # m, forward foothold displacement to test
+    ramp_seconds: 4.0            # COM / place / transfer ramps (3.0 is too fast -- the lift + trim goes unstable)
+    swing_seconds: 4.0           # foot translation to the new foothold (quasi-static)
+    hold_seconds: 3.0            # dwell in the new staggered stance
+    settle_seconds: 1.5
+    clearance_gain: 0.012        # closed-loop world clearance (as U8/U9)
+    balance:                     # lateral (COM-y) roll trim on the position PD while on one foot -- as U9
+      kp_ankle_roll:  50.0       # rad of stance ankle_roll target per m of COM-y drift (SIDE-signed)
+      kd_ankle_roll:  10.0       # + per (m/s) of COM-y velocity
+      kp_hip_roll:    15.0       # rad of stance hip_roll target per m of COM-y drift
+    accept:
+      place_tol: 0.010           # m, |placed foot - target foothold| in world XY
+      min_support_margin: 0.005  # m, COM inside the CURRENT support polygon throughout
+      max_pelvis_tilt_deg: 8.0
+      max_foot_slip: 0.008       # m, planted-foot drift over the whole maneuver
+      max_torque_frac: 1.0
+      min_stance_corners: 3      # stance sole ground-contact corners during the swing
+      min_final_corners: 3       # each sole's corners in the final staggered stance
+      min_progress_frac: 0.6     # net COM travel >= this * (half the step)
+      final_hold_drift: 0.006    # m, COM drift over the final hold

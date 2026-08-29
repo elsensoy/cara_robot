@@ -21,11 +21,11 @@ a full robot, not CAD, not a policy, and has no upper body yet.
 | ✅ | **U7 — single-foot unloading MET** — the other foot reaches ~0 N with the COM +13 mm inside the *stance* foot polygon, free foot 1 mm off the ground |
 | ✅ | **U8 — first single-support milestone MET** — Cara stands on one foot (free foot 5–10 mm clear) ~1.5 s and returns to double support, both sides, with a minimal roll trim |
 | ✅ | **U9 — single-support balance MET** — a COM-feedback controller holds one-foot balance ≥ 5 s (COM drift 2.3 mm, tilt 2.8°) and rejects a small lateral push (~1 N·100 ms toward swing, ~3 N toward stance), both sides |
-| ✅ | validation + FK + plausibility + standing + weight-shift + unload + lift + balance scripts, and COM / whole-body-inertia / gravity-torque / Jacobian / sweep analysis |
-| 🔶 | dynamics — mass / COM / inertia / actuator limits / PD gains **provisional**; U7–U9 feedback gains hand-picked |
+| ✅ | validation + FK + plausibility + standing + weight-shift + unload + lift + balance + one-step scripts, and COM / whole-body-inertia / gravity-torque / Jacobian / sweep analysis |
+| 🔶 | dynamics — mass / COM / inertia / actuator limits / PD gains **provisional**; U7–U10 feedback gains hand-picked |
 | ❌ | waist joints, articulated neck / shoulders / ears (all present structurally, locked at 0 for now) |
 | ❌ | CAD geometry, servo brackets, wiring, shells |
-| ❌ | a protective / deliberate step once the balance envelope is exceeded (U10), stepping, RL / locomotion |
+| ❌ | chaining steps into a gait (U11), a sideways step, sagittal balance feedback, RL / locomotion |
 
 Design constraint being followed: **kinematics, dynamics, and manufacturing
 are kept separate.** The YAML is layered accordingly. No servo is selected;
@@ -58,6 +58,8 @@ cara_description/
 │   ├── unload_foot.py           # U7: shift + unweight one foot to ~0 N with the COM over the stance foot  (--view)
 │   ├── lift_foot.py             # U8: + lift the free foot 5-10 mm, hold ~1.5 s in single support, return  (--view)
 │   ├── single_support.py        # U9: COM-feedback one-foot balance -- 5 s hold + lateral-push rejection  (--view)
+│   ├── balance_margin.py        # U9 diagnostic: why the balance envelope is small -- CoP budget + capture point + foot-size sweep
+│   ├── step_once.py             # U10: one deliberate forward step -- shift/lift/swing/place/transfer -> stable staggered stance  (--view)
 │   ├── view_mujoco.py           # load a generated MJCF and open mujoco.viewer
 │   ├── center_of_mass.py        # whole-model COM for any joint configuration
 │   ├── gravity_torques.py       # gravitational joint torques for reference poses
@@ -336,7 +338,26 @@ to the stance foot → stance ankle_roll + hip_roll trims; ankle + hip strategy)
 toppling. That envelope is small *by design* — the roll-axis foot half-width is
 22.5 mm, so the stance ankle can make at most ≈ 1 N·m of CoP moment; a bigger
 disturbance needs a wider foot, a hip/angular-momentum strategy, or a protective
-step (U10). `baselines/full_body_single_support.json` freezes it. Details in
+step (U10). `baselines/full_body_single_support.json` freezes it.
+
+`balance_margin.py` is the **diagnostic** for that limit: from the same held
+pose it measures the CoP moment budget (0.98 N·m, **71 % spent** holding the
+pose), shows the lifted leg parks the CoP **16 mm toward the inner edge** of the
+22.5 mm foot (only **6.5 mm** of swing-side room), predicts the recoverable
+impulse with a capture-point estimate, validates it against a fine push sweep,
+and sweeps foot half-width (22.5 → 30 mm ≈ doubles the swing-side tolerance).
+
+**Phase U10 — one deliberate forward step.** `step_once.py` answers "she has to
+move a foot" with the move itself: six quasi-static phases (shift onto the stance
+foot · lift the swing foot · **swing it forward** to a new foothold · place ·
+**transfer** to the staggered stance with the pelvis advanced ~half the step ·
+hold), U9's lateral roll trim on the position PD while she is on one foot.
+**MET**, both legs leading, step lengths 20–40 mm: the foot lands within **7 mm**
+of the foothold, COM stays inside the support polygon throughout, pelvis < 2.5°,
+stance slip < 4.2 mm, and she settles level (< 0.5°) with ~35 mm of COM margin;
+the COM advances **~half the step**. Forward only — a sideways step is past the
+lateral balance envelope; chaining steps into a gait is U11.
+`baselines/full_body_step.json` freezes it. Details in
 [`docs/single_support_notes.md`](docs/single_support_notes.md).
 
 *(An IK fix during U8 — targeting the swing foot's shifted position, not its
@@ -437,7 +458,11 @@ Balance / control (the boundary — new controllers start here):
   sides, with a minimal disclosed roll trim on the position PD)
 - **U9 single-support balance** ✅ (`single_support.py`; COM-feedback controller —
   5 s one-foot hold, COM drift 2.3 mm, + rejects ~1–3 N·100 ms lateral pushes;
-  envelope bounded by the 22.5 mm foot half-width, both sides)
-- **U10+** protective / deliberate step → stepping → locomotion → learned policy
+  envelope bounded by the 22.5 mm foot half-width, both sides) ·
+  `balance_margin.py` diagnoses that limit
+- **U10 one deliberate forward step** ✅ (`step_once.py`; shift/lift/swing/place/
+  transfer → stable staggered stance, pelvis advances ~half the 20–40 mm step,
+  both legs leading; forward only)
+- **U11+** chain steps into a gait → locomotion → learned policy
 
 CAD/measured values replace every `TODO` before single-support locomotion.
