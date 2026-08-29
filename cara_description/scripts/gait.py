@@ -231,8 +231,12 @@ def run(config, n_steps, view, json_path, baseline_path):
         swing_z0 = float(data.geom_xpos[foot_gid[lead]][2])
         com_x0 = float(data.subtree_com[0][0])
 
+        lead_x_start = foot_world_x(lead)
+        stance_x_start = foot_world_x(stance)
+        px_start = pelvis_x()
+
         M = {"margin": 1e9, "tilt": 0.0, "slip": 0.0, "sat": 0, "tq": 0.0,
-             "stance_corners": 99, "swing_clear": 1e9}
+             "stance_corners": 99, "swing_clear": 1e9, "swing_lift": 0.0}
         cmd = dict(roll_cfg)
         st = {"ccmd": 0.0, "ref_ey": None, "pcy": float(data.subtree_com[0][1])}
         grid = [None]
@@ -240,6 +244,7 @@ def run(config, n_steps, view, json_path, baseline_path):
 
         def ss_step(clear_target, s_prog, record=True):
             wc = float(data.geom_xpos[foot_gid[lead]][2]) - swing_z0
+            M["swing_lift"] = max(M["swing_lift"], wc)
             st["ccmd"] = min(C_TOP, max(0.0, st["ccmd"] + CG * (clear_target - wc)))
             if grid[0] is not None:
                 for n, v in zip(free[0], swing_lookup(grid[0], s_prog, st["ccmd"])):
@@ -342,6 +347,9 @@ def run(config, n_steps, view, json_path, baseline_path):
             "ss_swing_clear": M["swing_clear"],
             "end_tilt": max(abs(roll), abs(pitch)),
             "end_corners": min(foot_corners(foot_gid["l_"]), foot_corners(foot_gid["r_"])),
+            "lead_x0": lead_x_start, "lead_x1": foot_world_x(lead),
+            "stance_x": stance_x_start, "px0": px_start, "px1": pelvis_x(),
+            "swing_lift": M["swing_lift"],
         }
 
     def classify(m):
@@ -407,6 +415,15 @@ def run(config, n_steps, view, json_path, baseline_path):
               f"{1e3*r['ss_margin']:>7.1f}mm {math.degrees(r['ss_tilt']):>6.1f}° "
               f"{1e3*r['ss_slip']:>6.1f}mm {100*r['ss_tq']:>3.0f} {math.degrees(r['end_tilt']):>6.1f}°  "
               f"{'PASS' if r['ok'] else 'FAIL: ' + ','.join(r['fail'])}")
+
+    # footwork: where each foot actually is, in world x, step by step
+    print(f"\n  footwork (world x, mm -- shows each foot swinging past the other):")
+    print(f"  {'step':>4} {'swing foot':>10} {'from x':>8} {'-> to x':>8} {'travel':>8} "
+          f"{'peak lift':>10} {'stance foot x':>14} {'pelvis x':>16}")
+    for r in rows:
+        print(f"  {r['i']:>4} {r['lead'][:-1]:>10} {1e3*r['lead_x0']:>7.0f} {1e3*r['lead_x1']:>8.0f} "
+              f"{1e3*(r['lead_x1']-r['lead_x0']):>7.0f} {1e3*r['swing_lift']:>8.1f}mm "
+              f"{1e3*r['stance_x']:>13.0f} {1e3*r['px0']:>7.0f} -> {1e3*r['px1']:>4.0f}")
 
     steps_ok = all(r["ok"] for r in rows)
     end_ok = (hold["tilt"] < MAX_TILT and hold["drift"] < FINAL_DRIFT
