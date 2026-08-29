@@ -388,7 +388,7 @@ morphology can never hide inside a half-trained policy:
 | **U3 — Jetson + battery** | 0.4 kg lumped, *switchable* mount; `placement_study.py` compares layouts | ✅ low-in-pelvis keeps COM ~20 mm lower + full shift envelope; "both high" costs ⅓ of it |
 | **U4 — passive arm masses** | 0.18 kg/side welded at the shoulder, mirror-symmetric, no articulation; whole-body inertia tensor via parallel axis | ✅ COM only +5.5 mm (arms near pelvis height); roll inertia +0.0076, yaw +0.0050 kg·m² per +0.6 kg; full body 4.37 kg |
 | **U5 — ears + head asymmetry** | 0.02 kg ear + 0.01 kg ear-servo/side welded to the head; `I ~ m r²` head-inertia study about the neck axis (`ear_inertia_study.py`) | ✅ ears are 17 % of head mass but +28 % of head **yaw** inertia (∝ lateral offset²); zero effect on standing/weight-shift; full body 4.43 kg |
-| U6 — full regression | re-measure the whole stack vs baseline, per-subsystem summary table | ⬜ morphology validation |
+| **U6 — full-body regression** | re-run the whole suite on the complete model; `subsystem_summary.py` builds it up one subsystem at a time vs the frozen baseline | ✅ **standing MET, weight-shift MET at ±0.020 m**; COM driven by torso+head, whole-body yaw inertia by the arms; morphology-validation phase (U1–U6) closed |
 | U7–U8 — unload / lift one foot | the balance/control boundary — new controllers start here | ⬜ |
 | RL locomotion policy | the section below | ⬜ deferred until the model is trusted |
 
@@ -665,7 +665,7 @@ Full reasoning in [`docs/understanding.md`](docs/understanding.md).
 
 | Path | What it is |
 | ---- | ---------- |
-| `cara_description/` | **Robot description + simulation model.** Composed YAML: `left_leg` → `cara_lower_body` (mirror + floating pelvis) → `cara_full_body` (`+ include cara_upper_body`) → generated URDF + MJCF. Validation + analysis scripts; frozen `baselines/` for regression. Currently: legs **standing & weight-shifting under PD**, + welded torso / head / electronics / passive-arm / ear lumps (Phases U1–U5). Built in stages. |
+| `cara_description/` | **Robot description + simulation model.** Composed YAML: `left_leg` → `cara_lower_body` (mirror + floating pelvis) → `cara_full_body` (`+ include cara_upper_body`) → generated URDF + MJCF. Validation + analysis scripts; frozen `baselines/` for regression. Currently: legs **standing & weight-shifting under PD**, + welded torso / head / electronics / passive-arm / ear lumps (Phases U1–U6; full body 4.43 kg, **standing + weight-shift both MET**). Built in stages. |
 | `isaac/` | Earlier NVIDIA Isaac Lab RL-environment exploration (locomotion env, PPO config). Superseded by the MuJoCo path for now; kept for possible large-scale parallel RL. |
 | `urdf/` | Pre-`cara_description` hand-written Xacro sketches — being superseded limb by limb. |
 | `ros2_ws/` | ROS 2 workspace: vision, gaze, emotion, behavior, health, and the `policy_node` that will run the trained locomotion policy. |
@@ -774,7 +774,7 @@ Cara has built-in safeguards that are mirrored in both simulation and on hardwar
 - **[`cara_description/docs/dynamics_notes.md`](cara_description/docs/dynamics_notes.md)** : provisional mass/COM/inertia, gravity-torque and Jacobian analysis, single-leg dynamic-plausibility results
 - **[`cara_description/docs/standing_notes.md`](cara_description/docs/standing_notes.md)** : mirroring the second leg, the floating-base standing rig, and the "hold 3 poses for 10 s" milestone
 - **[`cara_description/docs/weight_shift_notes.md`](cara_description/docs/weight_shift_notes.md)** : the task-space IK layer and the quasi-static weight-shift milestone (+ sweep to the double-support limit)
-- **[`cara_description/docs/upper_body_notes.md`](cara_description/docs/upper_body_notes.md)** : the composed config hierarchy and the staged upper-body mass/inertia analysis (U1 torso, U2 head/neck, U3 electronics placement study, U4 passive arm masses, U5 ears + `I ~ m r²` head-inertia study) measured vs a frozen baseline
+- **[`cara_description/docs/upper_body_notes.md`](cara_description/docs/upper_body_notes.md)** : the composed config hierarchy and the staged upper-body mass/inertia analysis (U1 torso, U2 head/neck, U3 electronics placement study, U4 passive arm masses, U5 ears + `I ~ m r²` head-inertia study, U6 full-body regression + per-subsystem summary table) measured vs a frozen baseline
 - **`docs/emotion.md`** : ViT architecture, self-attention, the teach-Cara workflow, calibration techniques
 - **`docs/understanding.md`** : Why agency precedes intelligence; the homeostatic loop in detail
 - **`docs/mbom.md`** : Full mechanical bill of materials and print guidance

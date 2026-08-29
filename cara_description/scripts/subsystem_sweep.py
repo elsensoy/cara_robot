@@ -133,6 +133,9 @@ def measure(spec, standing_poses=None, base_pose="stand_nominal", accept=None):
     table = wsh.build_ik_table(spec, rp[base_pose], py_max=max(PROBE_AMPLITUDES) + 0.03, n=45)
     nominal_ctrl = [float(rp[base_pose].get(n, 0.0)) for n in jn]
     shift_limit = 0.0
+    # weight-shift detail captured AT the largest passing amplitude (for U6):
+    shift = {"fn_centre": None, "fn_loaded": None, "fn_unloaded": None,
+             "slip_mm": None, "roll_deg": None, "sat": None}
     for A in PROBE_AMPLITUDES:
         traj, total, wnd = wsh.make_trajectory(A, PROBE_RAMP_S, PROBE_HOLD_S, 0.4)
         mujoco.mj_resetDataKeyframe(model, data, kid(base_pose))
@@ -140,7 +143,8 @@ def measure(spec, standing_poses=None, base_pose="stand_nominal", accept=None):
             data.ctrl[:] = nominal_ctrl
             mujoco.mj_step(model, data)
         foot0 = {s: np.array(data.geom_xpos[foot_g[s]][:2]) for s in foot_g}
-        w = {"margin": 1e9, "opp": 1e9, "tilt": 0.0, "slip": 0.0, "sat": 0, "planted": True}
+        w = {"margin": 1e9, "opp": 1e9, "tilt": 0.0, "slip": 0.0, "sat": 0, "planted": True,
+             "fn_l": 0.0, "fn_r": 0.0, "fn_n": 0}
         fz0 = None
         lo, hi = wnd["+A"]
         for step in range(int(total / dt)):
@@ -166,11 +170,17 @@ def measure(spec, standing_poses=None, base_pose="stand_nominal", accept=None):
                     w["planted"] = False
                 if any(abs(float(data.actuator_force[aid(n)])) >= forcerng[n] - 1e-6 for n in jn):
                     w["sat"] += 1
+                w["fn_l"] += fz["l_"]; w["fn_r"] += fz["r_"]; w["fn_n"] += 1
         ok = (w["planted"] and w["margin"] > MIN_MARGIN and w["opp"] > MIN_OPP_FRAC * total_w
               and w["tilt"] < MAX_TILT and w["slip"] < MAX_SLIP and w["sat"] == 0
               and fz0 is not None and fz["l_"] > fz0[0])
         if ok:
             shift_limit = A
+            n_ = max(1, w["fn_n"])
+            shift = {"fn_centre": 0.5 * (fz0[0] + fz0[1]) if fz0 else None,
+                     "fn_loaded": w["fn_l"] / n_, "fn_unloaded": w["fn_r"] / n_,
+                     "slip_mm": w["slip"] * 1e3, "roll_deg": math.degrees(w["tilt"]),
+                     "sat": w["sat"]}
         else:
             break
 
@@ -178,7 +188,7 @@ def measure(spec, standing_poses=None, base_pose="stand_nominal", accept=None):
     return {"m_total": float(sum(model.body_mass)), "com_h": com_h, "com_x": com_x,
             "com_z_pel": com_z_pel, "tilt": tilt, "margin": margin,
             "hip": grp["hip"], "knee": grp["knee"], "ankle": grp["ankle"],
-            "shift_limit": shift_limit,
+            "shift_limit": shift_limit, "shift": shift,
             "Ixx": Ic[0][0], "Iyy": Ic[1][1], "Izz": Ic[2][2]}
 
 

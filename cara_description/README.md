@@ -16,12 +16,13 @@ a full robot, not CAD, not a policy, and has no upper body yet.
 | ✅ | generated, inspectable URDF **and** MJCF (kinematic + dynamic) for each model |
 | ✅ | MuJoCo verified to reproduce the pure-Python FK to machine precision |
 | ✅ | **static standing** + **quasi-static weight shifting** — both milestones met (lower body & full body) |
-| ✅ | **Phases U1–U5** — welded torso + head/neck + Jetson/battery placement study + symmetric passive arms + ears/ear-servos with an `I ~ m r²` head-inertia study; COM / inertia tensor / torque / shift-limit measured vs a frozen baseline |
+| ✅ | **Phases U1–U6** — welded torso + head/neck + Jetson/battery placement study + symmetric passive arms + ears/ear-servos (`I ~ m r²` study), then a full-body regression with a per-subsystem summary table; every metric compared to a frozen lower-body baseline |
+| ✅ | **full body (4.43 kg): standing MET, weight-shift MET at ±0.020 m** — morphology-validation phase (U1–U6) closed |
 | ✅ | validation + FK + plausibility + standing + weight-shift scripts, and COM / whole-body-inertia / gravity-torque / Jacobian / sweep analysis |
 | 🔶 | dynamics — mass / COM / inertia / actuator limits / PD gains are **provisional placeholders** |
-| ❌ | waist joints, articulated neck / shoulders / ears (all present structurally, locked at 0 for now) — U6+ |
+| ❌ | waist joints, articulated neck / shoulders / ears (all present structurally, locked at 0 for now) — post-U6 |
 | ❌ | CAD geometry, servo brackets, wiring, shells |
-| ❌ | single-support, dynamic balance, RL / locomotion policy |
+| ❌ | single-support, dynamic balance, RL / locomotion policy — U7+ (balance/control) |
 
 Design constraint being followed: **kinematics, dynamics, and manufacturing
 are kept separate.** The YAML is layered accordingly. No servo is selected;
@@ -58,13 +59,15 @@ cara_description/
 │   ├── morphology_sweep.py      # pure-Python: param sweep → workspace / COM / analytic torque
 │   ├── subsystem_sweep.py       # MuJoCo: param sweep → standing COM / tilt / torque + weight-shift limit
 │   ├── placement_study.py       # U3: compare electronics.layouts (Jetson/battery mount points)
-│   └── ear_inertia_study.py     # U5: I ~ m r² -- ear mass/offset vs head inertia about the neck axis
+│   ├── ear_inertia_study.py     # U5: I ~ m r² -- ear mass/offset vs head inertia about the neck axis
+│   └── subsystem_summary.py     # U6: build the full body one subsystem at a time -> summary table
 ├── docs/
 │   ├── frames_and_joints.md     # frame conventions + per-joint math + foot frame hierarchy
 │   ├── dynamics_notes.md        # provisional dynamics layer + single-leg analysis
 │   ├── standing_notes.md        # mirroring the 2nd leg + the standing milestone
 │   ├── weight_shift_notes.md    # task-space IK + the weight-shift milestone
-│   └── upper_body_notes.md      # config hierarchy + staged upper-body mass/inertia analysis (U1–U5)
+│   ├── upper_body_notes.md      # config hierarchy + staged upper-body mass/inertia analysis (U1–U6)
+│   └── subsystem_summary.md     # GENERATED (subsystem_summary.py) — the U6 per-subsystem table
 └── README.md
 ```
 
@@ -277,6 +280,19 @@ Full upper body **with arms + ears**: **2.06 → 4.43 kg**, COM +24 mm above the
 pelvis, standing solid (all 3 poses PASS), weight-shift envelope **~0.020 m**
 (lower body 0.040 → U2 0.030 → U3 0.025 → U4 0.020 → U5 0.020 — each subsystem
 tightens the *dynamic* margin; standing is unaffected).
+
+**Phase U6 — full-body regression + per-subsystem summary.** No new hardware.
+`subsystem_summary.py` builds the full body up **one subsystem at a time**
+(by pruning the composed spec) and measures the same MuJoCo metrics at each
+stage; the pruned "lower body" stage reproduces `cara_lower_body.yaml` to
+0.0 g. The saved table ([`docs/subsystem_summary.md`](docs/subsystem_summary.md))
+makes each addition explicit — COM height is dominated by the **torso** (+67 mm)
+and **head** (+28 mm); whole-body **yaw inertia** by the **arms** (+0.0030,
+widest masses); the weight-shift envelope is cut only by the **torso**
+(0.040 → 0.030 m) and **arms** (0.030 → 0.020 m). Full-body milestones vs the
+frozen baseline: **standing MET** (tilt ≤ 1.6°, peak τ 1.23 N·m of ±3);
+**weight shift MET at ±0.020 m** (8/8 checks, roll 0.36°, slip 1.5 mm). This
+closes the morphology-validation phase (U1–U6).
 Details in [`docs/upper_body_notes.md`](docs/upper_body_notes.md).
 
 `type: fixed` / `locked: true` joints (the torso weld, the neck joints, the two
@@ -357,7 +373,8 @@ the file header and the script docstring):
 ## Roadmap
 
 Done: 1-leg kin/dyn/PD → 2 legs + pelvis → **static standing** →
-COM/support-polygon → **quasi-static weight shifting** → **U1–U5 upper body**.
+COM/support-polygon → **quasi-static weight shifting** → **U1–U6 upper body
+(morphology validation complete)**.
 
 Morphology / design validation (each measured vs the frozen baseline):
 
@@ -366,7 +383,7 @@ Morphology / design validation (each measured vs the frozen baseline):
 - **U3 Jetson + battery placement study** ✅ (`placement_study.py` over `electronics.layouts`)
 - **U4 passive arm masses** ✅ (symmetric, welded shoulders, no articulation; effect is on the inertia tensor)
 - **U5 ears + head asymmetry study** ✅ (`ear_inertia_study.py`: `I ~ m r²` about the neck axis; ear joints `locked`)
-- **U6** full-body standing + weight-shift regression, per-subsystem summary table
+- **U6 full-body regression + per-subsystem summary** ✅ (`subsystem_summary.py`; standing MET, weight-shift MET at ±0.020 m)
 
 Balance / control (the boundary — new controllers start here):
 

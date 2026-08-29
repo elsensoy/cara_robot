@@ -14,7 +14,7 @@ to stand and weight-shift with the existing joint PD, no new controllers).
 
 ```
 lower body ✅  →  U1 torso ✅  →  U2 head/neck ✅  →  U3 Jetson+battery ✅  →
-U4 passive arms ✅  →  U5 ears + head inertia ✅  →  U6 full regression  ──┼── boundary
+U4 passive arms ✅  →  U5 ears + head inertia ✅  →  U6 full regression ✅  ──┼── boundary
                                               U7 unload a foot  →  U8 lift a foot  → …
 ```
 
@@ -64,12 +64,14 @@ margin, peak/RMS actuator torque (standing); loaded/unloaded foot force, COM
 margin, pelvis roll, foot slip, and the quasi-static shift limit (weight-shift).
 Nothing in the baseline is dropped. `--json` writes a fresh snapshot.
 
-Through U5 the single-leg and lower-body generated URDF/MJCF stay
+Through U6 the single-leg and lower-body generated URDF/MJCF stay
 byte-identical (`git status` shows only `cara_full_body.*` changed). The
 single-leg and lower-body validators (`validate_description` 201 / 340 —
 U5 added an `l_*`↔`r_*` physical-link mass/COM symmetry check —
 `fk_sanity`, `validate_mjcf`, `dynamic_check`, both generators `--check`) all
-still pass unchanged — that is the hard gate.
+still pass unchanged — that is the hard gate. U6's `subsystem_summary.py`
+independently confirms it: its pruned "lower body" stage reproduces
+`cara_lower_body.yaml` to 0.0 g / 0.000°.
 
 ---
 
@@ -437,11 +439,75 @@ accepted.
 
 ---
 
-## Open TODOs (U1–U5)
+## Phase U6 — full-body regression + per-subsystem summary
+
+No new hardware. The whole standing / weight-shift suite is re-run on the
+complete model, and `subsystem_summary.py` builds the full body up **one
+subsystem at a time** — by pruning the composed `cara_full_body` spec down to
+each stage — and measures the same MuJoCo metrics at every stage. Stage 0
+("lower body", everything upper pruned) is cross-checked against
+`cara_lower_body.yaml` loaded directly: Δmass 0.0 g, Δtilt 0.000° — the prune is
+clean. The table lives at [`subsystem_summary.md`](subsystem_summary.md)
+(regenerate with `python3 scripts/subsystem_summary.py --md docs/subsystem_summary.md`).
+
+### The summary table (worst over the 3 standing poses; shift values at the limit)
+
+| stage | kg | COM z vs pelvis | tilt° | margin mm | knee τ | Ixx@COM | Izz@COM | shift limit |
+|---|---|---|---|---|---|---|---|---|
+| lower body | 2.06 | −72 mm | 0.16 | 33.1 | 0.40 | 0.0208 | 0.0064 | 0.040 m |
+| + torso | 3.26 | −5 mm | 0.33 | 31.1 | 0.83 | 0.0508 | 0.0099 | 0.030 m |
+| + head/neck | 3.61 | +23 mm | 0.29 | 31.9 | 0.97 | 0.0770 | 0.0104 | 0.030 m |
+| + electronics | 4.01 | +17 mm | 0.37 | 31.3 | 1.13 | 0.0781 | 0.0108 | 0.030 m |
+| + arms | 4.37 | +21 mm | 0.42 | 30.9 | 1.28 | 0.0827 | 0.0138 | 0.020 m |
+| + ears | 4.43 | +24 mm | 0.40 | 31.0 | 1.31 | 0.0868 | 0.0139 | 0.020 m |
+
+Marginal contribution of each subsystem:
+
+| added | Δmass | ΔCOM z | Δknee τ | ΔIxx@COM (roll) | ΔIzz@COM (yaw) | Δshift limit |
+|---|---|---|---|---|---|---|
+| torso | +1.20 kg | **+67 mm** | +0.43 | +0.030 | +0.0035 | **−0.010 m** |
+| head/neck | +0.35 kg | +28 mm | +0.14 | +0.026 | +0.0005 | 0 |
+| electronics (`pelvis_low`) | +0.40 kg | −5 mm | +0.16 | +0.001 | +0.0004 | 0 |
+| arms | +0.36 kg | +4 mm | +0.16 | +0.005 | **+0.0030** | **−0.010 m** |
+| ears | +0.06 kg | +4 mm | +0.03 | +0.004 | +0.0002 | 0 |
+
+Read-off:
+
+- **COM height** is dominated by the torso (+67 mm) then the head (+28 mm);
+  putting the electronics low in the pelvis *pulls the COM back down* 5 mm.
+- **Roll inertia (Ixx@COM)** jumps with the torso and head — mass placed high
+  above the whole-body COM — and barely moves for the low electronics.
+- **Yaw inertia (Izz@COM)** is driven by the **arms** (+0.0030, the widest
+  masses); the ears are negligible for the *whole body* (+0.0002) even though
+  they are +28 % of the *head-subsystem* yaw inertia (U5).
+- **Weight-shift envelope** is cut only by the two big lateral-mass additions:
+  the torso (0.040 → 0.030 m) and the arms (0.030 → 0.020 m). Head, electronics
+  and ears cost nothing.
+
+### Full-body milestones vs the frozen lower-body baseline
+
+| milestone | lower body | full body (4.43 kg) | verdict |
+|---|---|---|---|
+| **Standing** — hold 3 poses 10 s (`stand_check.py --baseline`) | ✅ | tilt ≤ 1.6°, margin ≥ 30 mm, peak τ 1.23 N·m (41 % of ±3), FK < 1e-15 | **MET** |
+| **Weight shift** ±0.020 m (`weight_shift.py --amplitude 0.02 --baseline`) | ✅ at ±0.040 m | 8/8 checks PASS — Fn 21.7 → 28.3 / 15.2 N, roll 0.36°, slip 1.5 mm, 15 % torque | **MET at ±0.020 m** |
+| Weight shift ±0.030 m | ✅ | fails (foot slip 3.8 mm of 3 mm) | envelope now ±0.020 m |
+
+**U6 acceptance criterion met:** the full standing + weight-shift suite passes
+on the complete model, every metric is compared to the lower-body-only baseline,
+and the saved per-subsystem table makes each addition's effect on COM, inertia,
+torque and the shift envelope explicit. The whole-body model is physically
+reasonable — this closes the morphology-validation phase (U1–U6). The next step
+(U7, unloading one foot toward `Fz → 0`) is balance/control, not morphology.
+
+---
+
+## Open TODOs (U1–U6)
 
 - [ ] Replace every `upper_body.*` / `electronics.*` / `dynamics.links.*` value with CAD / measured.
 - [ ] Mount offsets are guesses — `pelvis_low` at −30 mm assumes there is room below the pelvis frame.
 - [ ] Arm mass/length/COM/radius and the shoulder position are all provisional single-lump guesses.
 - [ ] Ear mass / servo mass / offsets are provisional — the neck-yaw servo spec depends on them.
-- [ ] U5 follow-on: add simple locked→driven ear motion now that the fixed-mass inertia is understood.
-- [ ] U6: full-body regression + a per-subsystem summary table (torso → head → electronics → arms → ears).
+- [ ] The ±3 N·m actuator limit is provisional — semi-squat already needs 1.3 N·m steady-state
+      (PD transients ~2.4 N·m); revisit once a servo is chosen.
+- [ ] Follow-on: locked→driven neck / shoulder / ear motion, now that the fixed-mass model is validated.
+- [ ] U7+: unload one foot → lift → single-support (balance/control — new controllers).
