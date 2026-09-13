@@ -342,12 +342,12 @@ analysis:
   # All timings / gains PROVISIONAL.  t_step must be >= the U13 lateral T_min.
   dcm_walk:
     base_pose: stand_nominal
-    warmup_steps: 6             # rocking half-steps in place (both feet planted) before the walk
+    warmup_steps: 12            # rocking half-steps in place (both feet planted) before the walk
     warmup_amp_lo: 0.005        # m, lateral CoP amplitude of the first rock (ramps toward warmup_amp_hi)
-    warmup_amp_hi: 0.035        # m, lateral CoP amplitude of the last rock (< w_hip_half -- see U16 note)
+    warmup_amp_hi: 0.030        # m, lateral CoP amplitude of the last rock (< w_hip_half -- see U16 note)
     warmup_t_step: 0.12         # s per warm-up half-step -- short on purpose (U16, see note below)
     n_steps: 8                  # forward steps after the warm-up
-    t_step: 0.50                # s per step  (U13 lateral T_min ~ 0.22 s)
+    t_step: 0.22                # s per forward step -- U13's T_min; see U17 note (was 0.50)
     stride: 0.024               # m, nominal forward foothold advance per forward step
     double_support_frac: 0.20   # opening/closing DS fraction of the step
     lift_height: 0.008          # m, swing-foot peak clearance (forward steps)
@@ -360,7 +360,7 @@ analysis:
     # a torque  tau = Fz * (p_cmd - p_ankle).
     ankle_kp: 22.0              # software attitude-PD stiffness on the torque ankles
     ankle_kd: 1.2
-    cop_torque_gain: 0.8        # scales the CoP torque  tau = gain * Fz * (p_cmd - p_ankle)
+    cop_torque_gain: 0.5        # scales the CoP torque  tau = gain * Fz * (p_cmd - p_ankle)  (U17: was 0.8)
     lead_in_seconds: 1.5
     tail_seconds: 3.0
     accept:

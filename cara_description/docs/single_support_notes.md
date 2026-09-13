@@ -1,4 +1,4 @@
-# Cara — Single support → stepping → the dynamic-walk model and controller (U7 → U16)
+# Cara — Single support → stepping → the dynamic-walk model and controller (U7 → U17)
 
 Companion to [`weight_shift_notes.md`](weight_shift_notes.md). This is the first
 work **past the morphology boundary** — U1–U6 validated the whole-body mass model
@@ -11,8 +11,9 @@ work **past the morphology boundary** — U1–U6 validated the whole-body mass 
       → U12 continuous *kinematic* walk ❌ (formulation wall) → U13 reduced-order
         model ✅ (a dynamic walk IS feasible) → U14 DCM-tracking controller 🔶
         → U15 torque-controlled ankles ✅ + warm-start 🔶 → U16 gait initiation
-        fixed ✅, double-support→single-support handoff is the open piece 🔶
-        (this doc) → …
+        fixed ✅, handoff blocker 🔶 → U17 same fixes extended to real forward
+        steps 🔶 (143→44mm peak error, clears warm-up + 1st step; 2nd step is
+        the open piece — this doc) → …
 ```
 
 Still transparent — the same frontal-plane IK from `weight_shift.py`, plus a
@@ -686,6 +687,105 @@ narrower problem at the handoff.
 - Or replace the step-by-step DCM feedback with a **ZMP-preview / MPC**
   formulation that plans the CoP over a receding horizon spanning the
   handoff, rather than reacting to it one step at a time.
+
+Still not RL, not a hardware change. **Quasi-static stepping (U11) stays
+Cara's locomotion meanwhile.**
+
+---
+
+## Phase U17 — the same U16 fixes, extended to real forward steps 🔶
+
+Debug instrumentation at the double-support → single-support handoff showed
+something U16 didn't expect: the first real forward step **does** complete —
+tilt never exceeds the fall threshold. What actually happens is a lateral
+overshoot *within* that step (COM sweeps from ~−7 mm past the midline to
++95 mm and picks up ~0.4 m/s the wrong way by the step's end), and it's the
+**second** forward step that then falls, handed a COM state nothing like what
+its own plan assumes. In other words: U16's "gait initiation" diagnosis was
+right that the rock itself is fixed, but the *forward stepping* it feeds into
+had the exact same two root causes U16 fixed for the warm-up — just never
+patched there.
+
+### Extending fix 1 — real steps have double support too
+
+`dcm_walk.py` switched to single-"stance"-foot CoP realisation the instant
+`i >= n_warm`, as if every real step were single support from its first
+substep. But `double_support_frac` (0.20) means the opening and closing 20%
+of *every* step — real ones included — keep both feet loaded (`sp` pinned at
+0 or 1); the debug trace confirms it: at the start of the first real step,
+`Fz_l = 55 N` and `Fz_r = 28 N` simultaneously, both clearly loaded, yet the
+old code was already committed to steering only the "stance" ankle.
+
+**Fix:** the per-foot, own-Fz, own-local-clamp CoP realisation U16 built for
+the warm-up now runs whenever `sp <= 0` or `sp >= 1` — warm-up or real step,
+it no longer matters which:
+
+```python
+in_double_support = warm or sp <= 0.0 or sp >= 1.0
+```
+
+### Extending fix 2 — real steps were still the ill-conditioned duration
+
+U16's root cause 2 was that a CoP nudge held for `t_step` (0.5 s, `e^(ω₀T) ≈
+18×`) needs near-mm CoP precision to land on target — and gave the *warm-up*
+its own short duration to fix it. Real forward steps still used the original
+0.5 s. Shortening `t_step` toward U13's own `T_min ≈ 0.22 s` (the fastest
+lateral step U13 found dynamically feasible at all) keeps `e^(ω₀T) ≈ 3.5×` for
+real stepping too — the same fix, just applied where it was always meant to
+matter most: single support, where there's only one foot's worth of CoP
+authority to correct with.
+
+A `t_step` sweep (0.20–0.50 s) confirms this isn't "faster is always better":
+0.20 s (below `T_min`) was worse (154 mm) and 0.24/0.30/0.35 s all beat 0.50 s
+but none matched 0.22 s (44 mm) — there's a real optimum near `T_min`, exactly
+where U13 said the physics stops fighting the controller.
+
+### Result
+
+Combined with a gentler warm-up (`warmup_steps` 6 → 12, spreading the same
+final amplitude over more, smaller rocks; `warmup_amp_hi` 0.035 → 0.030 m;
+`cop_torque_gain` 0.8 → 0.5, softening the realised torque so it doesn't
+overshoot the still-moving target):
+
+```
+                          steps survived   peak |DCM error|
+U16                       7 / 14                143 mm   (fell in the 1st forward step)
+U17 (this phase)          13 / 20                44 mm   (fell in the 2nd forward step)
+```
+
+```
+per-step DCM error: 2, 3, 3, 5, 5, 9, 9, 14, 14, 21, 21, 31, 44 mm
+                    (| = warm-up/forward boundary after 12)
+```
+
+Twelve clean warm-up rocks (2 → 31 mm, tracking a target that itself keeps
+growing), then the **entire first real forward step** (44 mm, still inside a
+plausible margin), then a fall during the *second*. A local parameter sweep
+around this point (`k_dcm`, `ankle_kp`, `ankle_kd`, `step_adjust_gain`,
+`warmup_amp_lo`, `double_support_frac`, `t_step` ±0.02 s) never beat it —
+every nearby configuration was flat or worse, which reads as a genuine local
+optimum for this control structure, not an undertuned one.
+
+**MILESTONE NOT MET** — still not walking — but the failure keeps getting
+narrower and the numbers keep improving by roughly the same margin each time
+(peak error 411 → 143 → 44 mm across U15 → U16 → U17). The remaining gap is
+now a single class of bug, repeating: **the same error-growth-then-handoff
+pattern that broke the warm-up→first-step transition now breaks the
+first-step→second-step transition**, once real single-support strides start
+chaining back-to-back instead of settling to a periodic rock.
+
+### What's left (U18)
+
+- The fix that worked twice (own-duration, own-realisation, per-transition)
+  suggests the pattern generalises: give **every** step-to-step handoff — not
+  just warm-up→step-1 — the same treatment, or better, stop treating each
+  step in isolation and adopt a genuine **multi-step DCM / ZMP-preview**
+  formulation that plans several steps' CoP trajectory jointly, so a handoff
+  is never a discontinuity the controller has to react to after the fact.
+- Alternatively, once one full periodic step-to-step cycle is achieved, check
+  whether the recurring "error resets small, then grows across the step"
+  pattern settles into a bounded limit cycle on its own (as U13's `lateral_cycle`
+  predicts a real periodic gait should) rather than growing without bound.
 
 Still not RL, not a hardware change. **Quasi-static stepping (U11) stays
 Cara's locomotion meanwhile.**

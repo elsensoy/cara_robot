@@ -25,7 +25,7 @@ a full robot, not CAD, not a policy, and has no upper body yet.
 | 🔶 | dynamics — mass / COM / inertia / actuator limits / PD gains **provisional**; U7–U11 feedback gains hand-picked |
 | ❌ | waist joints, articulated neck / shoulders / ears (all present structurally, locked at 0 for now) |
 | ❌ | CAD geometry, servo brackets, wiring, shells |
-| 🔶 | **a dynamic walking gait** — U13's model shows it's feasible; U15 gives the ankles **torque control** so the DCM controller's CoP command is realisable; U16 fixes **gait initiation** (the warm-up rock now survives cleanly at any length and carries into the first real forward step). The walk still doesn't complete — the double-support → single-support **handoff** at first liftoff is the open piece (U17) |
+| 🔶 | **a dynamic walking gait** — U13's model shows it's feasible; U15 gives the ankles **torque control**; U16 fixes **gait initiation** (the warm-up rock survives cleanly at any length); U17 extends both fixes to real forward steps (shorter step duration near U13's `T_min`, double-support CoP realisation during a real step's own DS windows) — peak DCM error 143 → 44 mm, clearing the whole warm-up **plus the first real forward step** every run. The walk still doesn't complete — the **second** forward step is now the open piece (U18) |
 | ❌ | turning / slopes, a sideways step, sagittal balance feedback, RL |
 
 Design constraint being followed: **kinematics, dynamics, and manufacturing
@@ -64,7 +64,7 @@ cara_description/
 │   ├── gait.py                  # U11: chain the U10 step, alternating legs -> a short quasi-static walk  (--view)
 │   ├── walk.py                  # U12: continuous-walk attempt -- precomputed periodic cycle; DOCUMENTS the dynamic-walk limit  (--view)
 │   ├── walk_model.py            # U13: reduced-order LIPM / DCM model -- predicts the feasible dynamic gait; pure Python (--check adds a MuJoCo omega0 cross-check)
-│   ├── dcm_walk.py              # U14/U15/U16: DCM-tracking walk -- torque-ankle CoP + warm-start + capture-point step adjustment; double-support->single-support handoff still open  (--view)
+│   ├── dcm_walk.py              # U14-U17: DCM-tracking walk -- torque-ankle CoP + warm-start + capture-point step adjustment; 2nd forward step handoff still open  (--view)
 │   ├── view_mujoco.py           # load a generated MJCF and open mujoco.viewer
 │   ├── center_of_mass.py        # whole-model COM for any joint configuration
 │   ├── gravity_torques.py       # gravitational joint torques for reference poses
@@ -79,7 +79,7 @@ cara_description/
 │   ├── dynamics_notes.md        # provisional dynamics layer + single-leg analysis
 │   ├── standing_notes.md        # mirroring the 2nd leg + the standing milestone
 │   ├── weight_shift_notes.md    # task-space IK + the weight-shift milestone
-│   ├── single_support_notes.md  # U7→U16: unloading a foot → single-support balance → stepping → the DCM dynamic-walk controller
+│   ├── single_support_notes.md  # U7→U17: unloading a foot → single-support balance → stepping → the DCM dynamic-walk controller
 │   ├── upper_body_notes.md      # config hierarchy + staged upper-body mass/inertia analysis (U1–U6)
 │   └── subsystem_summary.md     # GENERATED (subsystem_summary.py) — the U6 per-subsystem table
 └── README.md
@@ -502,7 +502,18 @@ Balance / control (the boundary — new controllers start here):
   now survives cleanly at any length (single-digit-mm to ~40 mm DCM error) and carries into
   the first real forward step (7/14 steps, 143 mm peak error, vs. U15's 1/14 at 411 mm). The
   double-support → single-support **handoff** at first liftoff is the new, narrower blocker)
-- **U17+** settle the double-support → single-support handoff, or a ZMP-preview / MPC
-  formulation → RL / learned policy
+- **U17 same fixes, extended to real forward steps** 🔶 (`dcm_walk.py`; the first real
+  forward step *does* complete, then overshoots so badly the *second* one fails —
+  the exact same two U16 root causes, just never patched outside the warm-up. Fixed:
+  double-support CoP realisation (own Fz, own local clamp) now runs during a real
+  step's own opening/closing DS windows too, not just `warm`; and the forward-step
+  duration shortened from 0.5 s toward U13's own `T_min` (0.22 s), the same
+  amplification-taming fix U16 used for the warm-up, now applied where it matters
+  most — single support. Plus a gentler warm-up (12 rocks, capped amplitude,
+  softer CoP gain). Peak DCM error **143 → 44 mm**; she now clears the entire
+  warm-up *and* the first real forward step, every run — falling only on the
+  *second* one)
+- **U18+** extend the same per-transition fix to every forward-step handoff, or a
+  multi-step ZMP-preview / MPC formulation → RL / learned policy
 
 CAD/measured values replace every `TODO` before single-support locomotion.
