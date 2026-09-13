@@ -1,4 +1,4 @@
-# Cara — Single support → stepping → the dynamic-walk model and controller (U7 → U15)
+# Cara — Single support → stepping → the dynamic-walk model and controller (U7 → U16)
 
 Companion to [`weight_shift_notes.md`](weight_shift_notes.md). This is the first
 work **past the morphology boundary** — U1–U6 validated the whole-body mass model
@@ -10,8 +10,9 @@ work **past the morphology boundary** — U1–U6 validated the whole-body mass 
       → U10 one forward step ✅ → U11 a short quasi-static walk ✅
       → U12 continuous *kinematic* walk ❌ (formulation wall) → U13 reduced-order
         model ✅ (a dynamic walk IS feasible) → U14 DCM-tracking controller 🔶
-        → U15 torque-controlled ankles ✅ + warm-start 🔶 (gait initiation is the
-        open piece — this doc) → …
+        → U15 torque-controlled ankles ✅ + warm-start 🔶 → U16 gait initiation
+        fixed ✅, double-support→single-support handoff is the open piece 🔶
+        (this doc) → …
 ```
 
 Still transparent — the same frontal-plane IK from `weight_shift.py`, plus a
@@ -585,3 +586,106 @@ limit cycle.
 None of this is RL or a hardware change — it's controller work on a model that
 now has the right actuation. **Quasi-static stepping (U11) stays Cara's
 locomotion meanwhile.**
+
+---
+
+## Phase U16 — gait initiation fixed, a narrower blocker remains 🔶
+
+U15 left one open question: why does the warm-up rock topple on its very first
+half-step? Two independent bugs turned out to be hiding in it, both specific to
+*double support* (both feet planted, no lift) rather than the single-support
+mechanics U9–U15 already validated.
+
+### Bug 1 — the CoP torque went to the wrong (unloaded) foot
+
+`dcm_walk.py`'s warm-up alternates a "stance" label by step index (`stance =
+OTHER[lead]`, `lead` flipping every half-step) and realised the CoP as torque
+on *only* that foot's ankle. But both feet stay planted the whole warm-up, and
+as the rock's amplitude grows, weight transfers fully onto one foot *before*
+its half-step officially ends — measured with `DCM_DBG` instrumentation,
+`Fz` on the labelled "stance" foot was already 0 N several tenths of a step
+before the code stopped trying to control it. Realising a CoP through a foot
+carrying no weight is realising nothing: zero authority exactly when the
+pendulum most needs correcting.
+
+**Fix:** during warm-up, drive *each* ankle from its *own* measured contact
+force and its *own* local CoP clamp (`min/max` around that foot's own sole,
+not a single shared target):
+
+```python
+for fp_ in ("l_", "r_"):
+    Fz_ = foot_normal_force(foot_gid[fp_])          # that foot's own load
+    py_l = clamp(p_cmd[1], sf_y[fp_] ± a_y)          # that foot's own reach
+    cop_tau[fp_+"ankle_roll"] = cop_gain * (-SIDE[fp_]) * Fz_ * (py_l - sf_y[fp_])
+```
+
+Whichever foot is actually loaded does the work; an unloaded foot's Fz gates
+its own contribution to ~0 automatically, so nothing needs to know in advance
+which foot that will be.
+
+### Bug 2 — an exponentially ill-conditioned excitation
+
+The DCM equation is exponential in `ω₀·T`. The warm-up used the *same*
+step duration as a real forward step (`t_step` ≈ 0.5 s ≈ 2.9 time constants at
+ω₀ ≈ 5.7 rad/s) to hold a small "CoP-leads-the-COM" nudge. Solving the DCM
+equation backward for the *exact* CoP that would land on-target from true rest
+showed the required precision: **~1 mm**, versus the ~15 mm nudge the
+heuristic amplitude schedule was actually commanding — any real discrepancy
+that size gets amplified `e^(ω₀T) ≈ 18×` by the end of the 0.5 s hold. That is
+the "diverges away from the stance foot" failure mode U15 documented: not a
+sign error, an **ill-conditioned control problem** at that duration.
+
+**Fix:** give the warm-up its own, much shorter step duration
+(`warmup_t_step`, 0.12 s here — chosen so `e^(ω₀T) ≈ 2.4×`, keeping the
+feedback law and the foot-sized CoP clamp inside their well-behaved linear
+regime) and cap the last rock's peak CoP excursion below the full foot
+half-width (`warmup_amp_hi = 0.035 m` of `w_hip_half = 0.05 m`) so it doesn't
+run out of margin exactly when the amplitude — and therefore the momentum
+carried into the handoff — is largest.
+
+### Result
+
+With both fixes, the warm-up rock is now **robust regardless of length** — it
+was re-run at 4, 6, 8, and 10 rocks and never fell during the rock itself, DCM
+tracking error staying single-digit-mm early, growing to ~40 mm by the largest
+rock (comfortably inside the 25 mm acceptance band for most of it). It then
+carries into the **first real forward step** before falling — vs. U15, which
+fell on the *first warm-up half-step* with a 411 mm peak error.
+
+```
+                          steps survived   peak |DCM error|
+U15 (as documented)       1 / 14                411 mm   (fell in warm-up step 1)
+U16 (this phase)          7 / 14                143 mm   (fell in the first forward step)
+```
+
+**MILESTONE NOT MET** — the walk still doesn't complete — but the failure is
+now precisely localised to one place: the **double-support → single-support
+handoff**, i.e. the instant the first foot genuinely leaves the ground (every
+warm-up "step" keeps both feet planted; `warmup_lift: 0`). The per-step DCM
+error trace makes the jump explicit:
+
+```
+per-step DCM error: 4, 4, 11, 12, 30, 38, 135 mm   (| = warm-up/forward boundary after 6)
+```
+
+six clean rocks, then an order-of-magnitude jump the instant real single
+support begins. A parameter sweep (`warmup_t_step`, `warmup_amp_lo`,
+`warmup_amp_hi`, `cop_torque_gain`, `k_dcm`, `ankle_kp`, `step_adjust_gain`,
+`warmup_steps` 4–10) never broke this pattern — every configuration tried
+survives the *entire* warm-up (however many rocks) and always fails at
+exactly the same place, the first real liftoff. That consistency is itself
+informative: this isn't a warm-up tuning problem any more, it's a distinct,
+narrower problem at the handoff.
+
+### What's left (U17)
+
+- Treat the double-support → single-support handoff as its own sub-phase —
+  e.g. widen (or slow) the double-support fraction specifically for the first
+  real step, so the first liftoff doesn't coincide with the rock's peak
+  momentum.
+- Or replace the step-by-step DCM feedback with a **ZMP-preview / MPC**
+  formulation that plans the CoP over a receding horizon spanning the
+  handoff, rather than reacting to it one step at a time.
+
+Still not RL, not a hardware change. **Quasi-static stepping (U11) stays
+Cara's locomotion meanwhile.**

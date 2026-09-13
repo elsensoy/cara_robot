@@ -25,7 +25,7 @@ a full robot, not CAD, not a policy, and has no upper body yet.
 | 🔶 | dynamics — mass / COM / inertia / actuator limits / PD gains **provisional**; U7–U11 feedback gains hand-picked |
 | ❌ | waist joints, articulated neck / shoulders / ears (all present structurally, locked at 0 for now) |
 | ❌ | CAD geometry, servo brackets, wiring, shells |
-| 🔶 | **a dynamic walking gait** — U13's model shows it's feasible; U15 gives the ankles **torque control** (`<motor>` actuators, byte-identical default, standing verified) so the DCM controller's CoP command is realisable. The walk still doesn't complete — **gait initiation** from rest is the open piece (U16) |
+| 🔶 | **a dynamic walking gait** — U13's model shows it's feasible; U15 gives the ankles **torque control** so the DCM controller's CoP command is realisable; U16 fixes **gait initiation** (the warm-up rock now survives cleanly at any length and carries into the first real forward step). The walk still doesn't complete — the double-support → single-support **handoff** at first liftoff is the open piece (U17) |
 | ❌ | turning / slopes, a sideways step, sagittal balance feedback, RL |
 
 Design constraint being followed: **kinematics, dynamics, and manufacturing
@@ -64,7 +64,7 @@ cara_description/
 │   ├── gait.py                  # U11: chain the U10 step, alternating legs -> a short quasi-static walk  (--view)
 │   ├── walk.py                  # U12: continuous-walk attempt -- precomputed periodic cycle; DOCUMENTS the dynamic-walk limit  (--view)
 │   ├── walk_model.py            # U13: reduced-order LIPM / DCM model -- predicts the feasible dynamic gait; pure Python (--check adds a MuJoCo omega0 cross-check)
-│   ├── dcm_walk.py              # U14/U15: DCM-tracking walk -- torque-ankle CoP + warm-start + capture-point step adjustment; gait initiation still open  (--view)
+│   ├── dcm_walk.py              # U14/U15/U16: DCM-tracking walk -- torque-ankle CoP + warm-start + capture-point step adjustment; double-support->single-support handoff still open  (--view)
 │   ├── view_mujoco.py           # load a generated MJCF and open mujoco.viewer
 │   ├── center_of_mass.py        # whole-model COM for any joint configuration
 │   ├── gravity_torques.py       # gravitational joint torques for reference poses
@@ -79,7 +79,7 @@ cara_description/
 │   ├── dynamics_notes.md        # provisional dynamics layer + single-leg analysis
 │   ├── standing_notes.md        # mirroring the 2nd leg + the standing milestone
 │   ├── weight_shift_notes.md    # task-space IK + the weight-shift milestone
-│   ├── single_support_notes.md  # U7→U9: unloading a foot → lifting → single-support balance
+│   ├── single_support_notes.md  # U7→U16: unloading a foot → single-support balance → stepping → the DCM dynamic-walk controller
 │   ├── upper_body_notes.md      # config hierarchy + staged upper-body mass/inertia analysis (U1–U6)
 │   └── subsystem_summary.md     # GENERATED (subsystem_summary.py) — the U6 per-subsystem table
 └── README.md
@@ -495,6 +495,14 @@ Balance / control (the boundary — new controllers start here):
   → `<motor>` actuators + passive joint damping; default MJCF byte-identical, standing
   verified — the U14 CoP-realisation blocker is removed. The walk still doesn't complete:
   **gait initiation** from rest is the open piece)
-- **U16+** CoP-leads-motion gait initiation + DCM tuning / ZMP-preview → RL / learned policy
+- **U16 gait initiation fixed** ✅, handoff still open 🔶 (`dcm_walk.py`; two bugs in the
+  warm-up rock — CoP realised on the wrong, unloaded foot in double support, and an
+  exponentially ill-conditioned excitation at the forward-step time constant — fixed with
+  per-foot CoP realisation + a short `warmup_t_step` + a capped `warmup_amp_hi`. The rock
+  now survives cleanly at any length (single-digit-mm to ~40 mm DCM error) and carries into
+  the first real forward step (7/14 steps, 143 mm peak error, vs. U15's 1/14 at 411 mm). The
+  double-support → single-support **handoff** at first liftoff is the new, narrower blocker)
+- **U17+** settle the double-support → single-support handoff, or a ZMP-preview / MPC
+  formulation → RL / learned policy
 
 CAD/measured values replace every `TODO` before single-support locomotion.

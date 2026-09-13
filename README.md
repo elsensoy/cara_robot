@@ -127,7 +127,8 @@ never hide inside a half-trained policy:
 | **U12** continuous *kinematic* walk | ❌ formulation wall — topples at the double-support transfer (fast) / no forward drive (slow) |
 | **U13** reduced-order model (LIPM + capture point) | ✅ **a dynamic walk IS within Cara's morphology** — lateral step time ≥ ~0.22 s; ω₀ cross-checks against MuJoCo |
 | **U14–U15** DCM-tracking controller + **torque-controlled ankles** | 🔶 torque ankles working (default MJCF byte-identical, standing verified); the walk still doesn't complete — **gait initiation** from rest is the open piece |
-| **U16** — gait initiation + DCM tuning / ZMP-preview → RL policy | ⬜ next |
+| **U16** gait initiation fixed | 🔶 the from-rest warm-up rock now survives cleanly at any length and reaches the first real forward step (7/14 steps vs. U15's 1/14); the double-support → single-support **handoff** at first liftoff is the new, narrower blocker |
+| **U17** — settle the handoff / ZMP-preview / MPC → RL policy | ⬜ next |
 
 Full detail and the validation scripts:
 [`cara_description/README.md`](cara_description/README.md) and
@@ -368,7 +369,7 @@ when wellness is critical.
 - [`cara_description/docs/dynamics_notes.md`](cara_description/docs/dynamics_notes.md) — provisional mass/COM/inertia, gravity-torque and Jacobian analysis
 - [`cara_description/docs/standing_notes.md`](cara_description/docs/standing_notes.md) — mirroring the second leg, the floating-base rig, the standing milestone
 - [`cara_description/docs/weight_shift_notes.md`](cara_description/docs/weight_shift_notes.md) — the task-space IK layer and the weight-shift milestone
-- [`cara_description/docs/single_support_notes.md`](cara_description/docs/single_support_notes.md) — U7 → U15: unloading a foot → single-support balance → stepping → the DCM-tracking dynamic-walk work
+- [`cara_description/docs/single_support_notes.md`](cara_description/docs/single_support_notes.md) — U7 → U16: unloading a foot → single-support balance → stepping → the DCM-tracking dynamic-walk work
 - [`cara_description/docs/upper_body_notes.md`](cara_description/docs/upper_body_notes.md) — the composed config hierarchy and the staged upper-body mass/inertia analysis (U1–U6)
 - [`jetson/control/README.md`](jetson/control/README.md) — the actuator-health controller: topics, parameters, launch arguments
 

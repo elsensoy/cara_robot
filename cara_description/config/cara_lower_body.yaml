@@ -343,7 +343,9 @@ analysis:
   dcm_walk:
     base_pose: stand_nominal
     warmup_steps: 6             # rocking half-steps in place (both feet planted) before the walk
-    warmup_amp_lo: 0.012        # m, lateral CoP amplitude of the first rock (ramps to the foot)
+    warmup_amp_lo: 0.005        # m, lateral CoP amplitude of the first rock (ramps toward warmup_amp_hi)
+    warmup_amp_hi: 0.035        # m, lateral CoP amplitude of the last rock (< w_hip_half -- see U16 note)
+    warmup_t_step: 0.12         # s per warm-up half-step -- short on purpose (U16, see note below)
     n_steps: 8                  # forward steps after the warm-up
     t_step: 0.50                # s per step  (U13 lateral T_min ~ 0.22 s)
     stride: 0.024               # m, nominal forward foothold advance per forward step

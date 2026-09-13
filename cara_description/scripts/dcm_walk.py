@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""U14 / U15 -- a DCM-tracking walk on torque-controlled ankles.
+"""U14 / U15 / U16 -- a DCM-tracking walk on torque-controlled ankles.
 
 U13 (`walk_model.py`) showed a dynamically-consistent walk is within Cara's
 morphology.  U14 built the DCM-tracking controller (plan + capture-point
@@ -7,7 +7,7 @@ feedback + step adjustment) but hit two realisation walls on the position-PD
 model: the from-rest lateral state exceeds the double-support envelope, and the
 position servos cannot place the center of pressure.
 
-**U15 unblocks both:**
+**U15 unblocked the actuation:**
 
   * the four ankle joints become direct-torque `<motor>` actuators
     (`dynamics.actuators.torque_joints`, set here at runtime) -- the DCM
@@ -16,6 +16,34 @@ position servos cannot place the center of pressure.
   * the walk is entered with a **limit-cycle warm-start** -- a few rocking
     half-steps in place that build the lateral momentum a LIPM gait needs,
     before any forward progress.
+
+The warm-start itself didn't work yet: it fell during the very first rock.
+
+**U16 fixes gait initiation.**  Two root causes, both in the warm-up rock:
+
+  1. *Wrong-foot CoP realisation.*  Each rocking half-step alternated which
+     foot's ankle received the CoP torque (by step index), but both feet stay
+     planted the whole warm-up -- as the rock's amplitude grows, weight can
+     (and does) transfer fully onto one foot *before* its half-step officially
+     ends, handing control to a foot carrying ~0 N right when it's needed
+     most.  Fixed: drive each ankle from its OWN measured contact force and
+     its OWN local CoP clamp, so whichever foot is actually loaded is the one
+     doing the work.
+  2. *An ill-conditioned excitation.*  The DCM equation is exponential in
+     omega0*T; a CoP nudge held for a full forward-step duration (t_step,
+     ~0.5s, ~2.9 time constants at omega0~5.7) amplifies any tracking error
+     by ~18x by the end of the step -- reaching a target from rest needs a
+     near-mm-precise CoP placement, which neither the feedback law nor the
+     foot-sized CoP clamp can deliver.  Fixed: give the warm-up its own, much
+     shorter step duration (`warmup_t_step`), keeping that amplification factor
+     small (~2-4x) and the controller in its well-behaved linear regime; also
+     cap the warm-up's peak CoP excursion below the full foot half-width
+     (`warmup_amp_hi`) so the last, biggest rock doesn't run out of margin.
+
+Result: the warm-up rock now survives cleanly regardless of how many steps it
+runs (DCM error single-digit-mm growing to ~40 mm), and carries into the first
+real forward step.  The walk still doesn't complete -- see the printed report
+for exactly where it now fails (the double-support -> single-support handoff).
 
 Then: plan the CoP + footholds + DCM reference from the LIPM, track the DCM
 (`p_cmd = p_ref + (1 + k/omega0)(xi_meas - xi_ref)`), adjust each foothold to the
@@ -27,6 +55,7 @@ Usage:
     python3 dcm_walk.py                     # full body: warm-up + N forward steps
     python3 dcm_walk.py --steps 10
     python3 dcm_walk.py --t-step 0.40
+    python3 dcm_walk.py --warmup-t-step 0.15
     python3 dcm_walk.py --no-torque-ankles  # U14 mode (position servos -- fails)
     python3 dcm_walk.py --view
     python3 dcm_walk.py --json baselines/full_body_dcm_walk.json
@@ -54,7 +83,7 @@ C_TOP = 0.035
 ANKLES = [p + a for p in ("l_", "r_") for a in ("ankle_roll", "ankle_pitch")]
 
 
-def run(config, n_steps_arg, t_step_arg, torque_ankles, view, json_path, baseline_path):
+def run(config, n_steps_arg, t_step_arg, t_warm_arg, torque_ankles, view, json_path, baseline_path):
     try:
         import mujoco
         import numpy as np
@@ -84,6 +113,7 @@ def run(config, n_steps_arg, t_step_arg, torque_ankles, view, json_path, baselin
     base_pose = dw.get("base_pose", "stand_nominal")
     stride = float(dw.get("stride", 0.024))
     t_step = float(t_step_arg if t_step_arg is not None else dw.get("t_step", 0.40))
+    t_warm = float(t_warm_arg if t_warm_arg is not None else dw.get("warmup_t_step", 0.18))
     n_steps = int(n_steps_arg if n_steps_arg is not None else dw.get("n_steps", 8))
     n_warm = int(dw.get("warmup_steps", 4))
     ds_frac = float(dw.get("double_support_frac", 0.20))
@@ -149,6 +179,7 @@ def run(config, n_steps_arg, t_step_arg, torque_ankles, view, json_path, baselin
     total_steps = n_warm + n_steps
     foot_nom = {"l_": [X0, +s_half], "r_": [X0, -s_half]}
     amp_lo = float(dw.get("warmup_amp_lo", 0.012))    # first rock's lateral CoP amplitude
+    amp_hi = float(dw.get("warmup_amp_hi", s_half))   # last rock's lateral CoP amplitude (<= s_half)
     plan_p, plan_lead = [], []
     fp = {"l_": list(foot_nom["l_"]), "r_": list(foot_nom["r_"])}
     for i in range(total_steps):
@@ -160,18 +191,28 @@ def run(config, n_steps_arg, t_step_arg, torque_ankles, view, json_path, baselin
             # toward the *swing* side so the pendulum accelerates the COM toward
             # the stance foot.  Amplitude ramps amp_lo -> full foot over the warm-up.
             frac = smooth01((i + 1) / max(1, n_warm))
-            amp = amp_lo + (s_half - amp_lo) * frac
+            amp = amp_lo + (amp_hi - amp_lo) * frac
             plan_p.append([X0 + com_bias[0], -SIDE[stance] * amp])
         else:
             plan_p.append([fp[stance][0] + com_bias[0], fp[stance][1] + com_bias[1]])
         adv = 0.0 if i < n_warm else stride
         fp[lead] = [fp[stance][0] + adv, foot_nom[lead][1]]
-    eT = math.exp(w0 * t_step)
+    # Each warm-up half-step gets its own (short) duration `t_warm`, not the
+    # forward-step duration `t_step`.  This matters: the DCM equation is
+    # exponential in omega0*T, so a nudge held for the full t_step (~0.5 s,
+    # ~2.9 time constants at omega0~5.7) amplifies any tracking error ~18x by
+    # the end of the step -- a razor's-edge CoP placement is needed to land
+    # exactly on target, and the single-stance-foot CoP clamp can't correct
+    # a miss that large.  A short t_warm (a fraction of a time constant) keeps
+    # that amplification factor small (~2-4x) so the DCM feedback law and the
+    # foot-sized CoP clamp stay inside their linear, non-saturating regime.
+    step_T = [t_warm] * n_warm + [t_step] * n_steps
+    eT_i = [math.exp(w0 * T) for T in step_T]
     xi_ini = [None] * (total_steps + 1)
     xi_ini[total_steps] = list(plan_p[-1])
     for i in range(total_steps - 1, -1, -1):
         p = plan_p[i]
-        xi_ini[i] = [p[k] + (xi_ini[i + 1][k] - p[k]) / eT for k in (0, 1)]
+        xi_ini[i] = [p[k] + (xi_ini[i + 1][k] - p[k]) / eT_i[i] for k in (0, 1)]
 
     def dcm_ref(i, tau):
         p = plan_p[i]
@@ -285,7 +326,7 @@ def run(config, n_steps_arg, t_step_arg, torque_ankles, view, json_path, baselin
             vx = (cx - prev_com[0]) / dt
             vy = (cy - prev_com[1]) / dt
             xi_now = [cx + vx / w0, cy + vy / w0]
-            xi_eos_pred = [p_i[k] + (xi_now[k] - p_i[k]) * eT for k in (0, 1)]
+            xi_eos_pred = [p_i[k] + (xi_now[k] - p_i[k]) * eT_i[i] for k in (0, 1)]
             nom_next = (plan_p[i + 1] if i + 1 < total_steps else list(p_i))
             adj_cop = [nom_next[k] + (0.0 if warm else step_adj_gain) * (xi_eos_pred[k] - xi_ini[i + 1][k])
                        for k in (0, 1)]
@@ -305,14 +346,15 @@ def run(config, n_steps_arg, t_step_arg, torque_ankles, view, json_path, baselin
                 c, sh = math.cosh(w0 * tau), math.sinh(w0 * tau)
                 return p_i[1] + (cy0 - p_i[1]) * c + (vy0 / w0) * sh
 
-            nsub = int(t_step / dt)
+            t_step_i = step_T[i]
+            nsub = int(t_step_i / dt)
             ss_lo, ss_hi = ds_frac, 1.0 - ds_frac
             a_roll = stance + "ankle_roll"
             a_pit = stance + "ankle_pitch"
             step_err = 0.0
             for k in range(nsub):
                 p = k / nsub
-                tau = p * t_step
+                tau = p * t_step_i
                 sp = 0.0 if p <= ss_lo else (1.0 if p >= ss_hi else (p - ss_lo) / (ss_hi - ss_lo))
                 clr = lh * math.sin(math.pi * sp) if 0.0 < sp < 1.0 else 0.0
 
@@ -340,22 +382,53 @@ def run(config, n_steps_arg, t_step_arg, torque_ankles, view, json_path, baselin
                 step_err = max(step_err, math.hypot(*err))
                 log["dcm_err"] = max(log["dcm_err"], math.hypot(*err))
                 p_cmd = [p_i[k2] + (1.0 + k_dcm / w0) * err[k2] for k2 in (0, 1)]
-                sf = data.geom_xpos[foot_gid[stance]]
-                px_c = min(float(sf[0]) + a_x, max(float(sf[0]) - a_x, p_cmd[0]))
-                py_c = min(float(sf[1]) + a_y, max(float(sf[1]) - a_y, p_cmd[1]))
-                if abs(px_c - p_cmd[0]) > 1e-4 or abs(py_c - p_cmd[1]) > 1e-4:
-                    log["cop_sat"] += 1
-
-                # --- realise the CoP as stance ankle torque --------------- #
-                Fz = max(0.0, foot_normal_force(foot_gid[stance]))
                 cop_tau = {}
-                if is_torque[JIDX[a_roll]]:
-                    cop_tau[a_roll] = cop_gain * (-SIDE[stance]) * Fz * (py_c - float(sf[1]))
-                    cop_tau[a_pit] = cop_gain * Fz * (px_c - float(sf[0]))
+                if warm:
+                    # Double support the whole time (no foot ever lifts): the CoP is
+                    # realisable across BOTH soles, not just the nominal "stance" foot
+                    # for this half-step.  As the rock builds amplitude, weight can
+                    # (and does) transfer fully onto one foot *before* its half-step
+                    # is officially over -- realising the CoP only through the
+                    # index-alternated "stance" ankle then hands control to a foot
+                    # carrying ~0 N, i.e. zero authority, right when it's needed most.
+                    # Fix: drive each ankle from its OWN measured contact force and
+                    # its OWN local CoP clamp (a global target beyond one sole's
+                    # +-a_y just saturates that ankle at its own edge, it doesn't
+                    # hand it an unrealisable target), so whichever foot is actually
+                    # loaded is the one doing the work, within what its sole allows.
+                    cop_sat_any = False
+                    for fp_ in ("l_", "r_"):
+                        sf_ = data.geom_xpos[foot_gid[fp_]]
+                        Fz_ = max(0.0, foot_normal_force(foot_gid[fp_]))
+                        px_l = min(float(sf_[0]) + a_x, max(float(sf_[0]) - a_x, p_cmd[0]))
+                        py_l = min(float(sf_[1]) + a_y, max(float(sf_[1]) - a_y, p_cmd[1]))
+                        if abs(px_l - p_cmd[0]) > 1e-4 or abs(py_l - p_cmd[1]) > 1e-4:
+                            cop_sat_any = True
+                        r_j, p_j = fp_ + "ankle_roll", fp_ + "ankle_pitch"
+                        if is_torque[JIDX[r_j]]:
+                            cop_tau[r_j] = cop_gain * (-SIDE[fp_]) * Fz_ * (py_l - float(sf_[1]))
+                            cop_tau[p_j] = cop_gain * Fz_ * (px_l - float(sf_[0]))
+                        else:
+                            cmd[r_j] = cmd.get(r_j, 0.0) + (-SIDE[fp_]) * 1.8 * (py_l - float(sf_[1]))
+                            cmd[p_j] = cmd.get(p_j, 0.0) + 1.8 * (px_l - float(sf_[0]))
+                    if cop_sat_any:
+                        log["cop_sat"] += 1
                 else:
-                    # position-servo fallback (U14 mode): trim the target angle
-                    cmd[a_roll] += (-SIDE[stance]) * 1.8 * (py_c - float(sf[1]))
-                    cmd[a_pit] += 1.8 * (px_c - float(sf[0]))
+                    sf = data.geom_xpos[foot_gid[stance]]
+                    px_c = min(float(sf[0]) + a_x, max(float(sf[0]) - a_x, p_cmd[0]))
+                    py_c = min(float(sf[1]) + a_y, max(float(sf[1]) - a_y, p_cmd[1]))
+                    if abs(px_c - p_cmd[0]) > 1e-4 or abs(py_c - p_cmd[1]) > 1e-4:
+                        log["cop_sat"] += 1
+
+                    # --- realise the CoP as stance ankle torque ------------ #
+                    Fz = max(0.0, foot_normal_force(foot_gid[stance]))
+                    if is_torque[JIDX[a_roll]]:
+                        cop_tau[a_roll] = cop_gain * (-SIDE[stance]) * Fz * (py_c - float(sf[1]))
+                        cop_tau[a_pit] = cop_gain * Fz * (px_c - float(sf[0]))
+                    else:
+                        # position-servo fallback (U14 mode): trim the target angle
+                        cmd[a_roll] += (-SIDE[stance]) * 1.8 * (py_c - float(sf[1]))
+                        cmd[a_pit] += 1.8 * (px_c - float(sf[0]))
 
                 apply_ctrl(cmd, cop_tau)
                 mujoco.mj_step(model, data)
@@ -417,10 +490,11 @@ def run(config, n_steps_arg, t_step_arg, torque_ankles, view, json_path, baselin
                     time.sleep(1 / 30)
         return 0
 
-    print(f"DCM-tracking walk (U15)  base '{base_pose}'  {model_name}   "
+    print(f"DCM-tracking walk (U16)  base '{base_pose}'  {model_name}   "
           f"{'TORQUE ankles' if torque_ankles else 'position ankles (U14 mode)'}")
-    print(f"{m_total:.2f} kg  omega0 {w0:.2f}  |  {n_warm} warm-up + {n_steps} forward steps, "
-          f"T {t_step:.2f}s, stride {1e3*stride:.0f}mm -> {1e3*stride/t_step:.0f} mm/s  |  "
+    print(f"{m_total:.2f} kg  omega0 {w0:.2f}  |  {n_warm} warm-up steps (T {t_warm:.2f}s) + "
+          f"{n_steps} forward steps (T {t_step:.2f}s), stride {1e3*stride:.0f}mm -> "
+          f"{1e3*stride/t_step:.0f} mm/s  |  "
           f"DCM k {k_dcm:.1f}, ankle PD {kp_att:.0f}/{kd_att:.1f}, CoP-tau gain {cop_gain:.1f}")
 
     log = walk_sim()
@@ -472,14 +546,17 @@ def run(config, n_steps_arg, t_step_arg, torque_ankles, view, json_path, baselin
         print(f"MILESTONE NOT MET: got {done}/{total_steps} steps"
               + (f", fell during {seg_lbl}" if log["fell"] else "") + f"; peak DCM error {1e3*log['dcm_err']:.0f} mm.")
         if torque_ankles:
-            print("  U15 DID unblock the actuation: the ankles are torque-controlled <motor>s")
-            print("  now (byte-identical default; standing verified), so the CoP command IS")
-            print("  realisable.  What still fails is GAIT INITIATION: from rest at the midline")
-            print("  the pendulum diverges *away* from the intended stance foot, and the")
-            print("  steady-state lateral displacement (~40 mm) is past the double-support")
-            print("  envelope -- the warm-start rock doesn't yet build the limit cycle cleanly.")
-            print("  Remaining: a CoP-leads-motion gait-initiation sequence + DCM-controller")
-            print("  tuning (or a ZMP-preview / MPC formulation).  Not RL, not hardware.")
+            print("  U15 unblocked the actuation (torque ankles, byte-identical default,")
+            print("  standing verified) and U16 fixed gait initiation itself: a rest-start")
+            print("  rocking warm-up now needs its own (short) step duration and its own")
+            print("  double-support CoP realisation -- driving each ankle from its OWN")
+            print("  measured contact force, not a single index-alternated 'stance' foot --")
+            print("  and it survives cleanly (DCM error single-digit-mm to ~40 mm across every")
+            print("  rock, however many).  What still fails is narrower now: the HANDOFF from")
+            print("  double support into the first genuine single-support forward step (the")
+            print("  first real foot liftoff), where the DCM error jumps an order of magnitude.")
+            print("  Remaining: settle that handoff specifically (e.g. widen double support")
+            print("  right at first liftoff) or a ZMP-preview / MPC formulation.  Not RL, not hardware.")
         else:
             print("  (position-ankle mode -- U14 showed this cannot place the CoP)")
     print("  LIPM plan + DCM feedback + capture-point step adjustment + torque-ankle CoP; no RL. "
@@ -492,13 +569,15 @@ def main(argv=None) -> int:
     ap.add_argument("config", nargs="?", default=DEFAULT_CONFIG)
     ap.add_argument("--steps", type=int, default=None)
     ap.add_argument("--t-step", type=float, default=None)
+    ap.add_argument("--warmup-t-step", type=float, default=None,
+                    help="duration of each warm-up rocking half-step (s); short on purpose, see U16 notes")
     ap.add_argument("--no-torque-ankles", action="store_true",
                     help="keep position servos on the ankles (U14 mode -- fails)")
     ap.add_argument("--view", action="store_true")
     ap.add_argument("--json", default=None)
     ap.add_argument("--baseline", default=None)
     args = ap.parse_args(argv)
-    return run(args.config, args.steps, args.t_step, not args.no_torque_ankles,
+    return run(args.config, args.steps, args.t_step, args.warmup_t_step, not args.no_torque_ankles,
                args.view, args.json, args.baseline)
 
 
