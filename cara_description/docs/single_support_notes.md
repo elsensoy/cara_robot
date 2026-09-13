@@ -1,4 +1,4 @@
-# Cara — Single support → stepping → the dynamic-walk model and controller (U7 → U17)
+# Cara — Single support → stepping → the dynamic-walk model and controller (U7 → U18, paused)
 
 Companion to [`weight_shift_notes.md`](weight_shift_notes.md). This is the first
 work **past the morphology boundary** — U1–U6 validated the whole-body mass model
@@ -789,3 +789,124 @@ chaining back-to-back instead of settling to a periodic rock.
 
 Still not RL, not a hardware change. **Quasi-static stepping (U11) stays
 Cara's locomotion meanwhile.**
+
+---
+
+## Phase U18 — a contact observer, a touchdown gate, a landing-geometry fix
+that regressed, and an isolated ankle-instability finding — then **parked**
+
+A code review of `dcm_walk.py` (external, applied through this same
+methodology of small isolated experiments) drove this phase. Summary of what
+shipped, what was tried and reverted, and what was found and left open.
+
+**Shipped, kept:**
+
+- **Contact observer** (`make_support_observer`): classifies `DOUBLE_SUPPORT`
+  / `LEFT_SUPPORT` / `RIGHT_SUPPORT` / `NO_SUPPORT` from measured Fz with
+  Schmitt-trigger thresholds + a 20 ms persistence window, run in shadow mode
+  (classifies, logs; doesn't gate anything by itself).
+- **Touchdown gate**: role exchange (swing → stance) now requires the
+  observer to confirm the lead foot is actually supported before advancing
+  to the next step. If not, the step holds — repeating the landed command
+  with `tau` frozen at the step's own duration (not advancing the DCM/CoM
+  reference past its domain) — for a bounded extra window, then fails
+  explicitly (`fail_reason="no_touchdown"`) rather than silently reporting a
+  completed handoff. Verified this catches the real failure (U17's silent
+  advance into an unlanded foot) one step earlier and more honestly than
+  before, with an unchanged tilt-based fall as the fallback.
+- **`--ankle-kd-sweep`**: a permanent, flag-gated diagnostic. Snapshots
+  MuJoCo state (`qpos`/`qvel`/`qacc_warmstart`) at a chosen step/substep,
+  replays a short window under different per-joint `kd` overrides from the
+  *identical* restored state each time, and reports velocity, saturation,
+  sign-flip count, and position tracking. Costs nothing when unused
+  (`KD_OVERRIDE` is an empty dict by default).
+
+**Tried, reverted (kept out-of-tree for reference):** a live, per-substep
+world-frame swing IK (`swing_target_world`/`solve_swing`), replacing the
+sagittal swing table's stale nominal-pelvis-frame target with one re-solved
+against the *live* pelvis pose every substep. An offline, physics-free replay
+of the recorded (pelvis pose, commanded roll) trajectory through this IK —
+reseeded from the true measured joint state at each step boundary — showed
+the geometry **is** reachable and continuous (0.00mm task residual almost
+everywhere; the one exception, `l_knee_pitch` pinned at full extension near
+the hip-roll zero-crossing, degraded it only to 1–5mm). A scoped live
+re-attempt (first real swing only, everything else on the old table) matched
+that: the world-frame target computation is not the failure. The regression
+traced instead to the *activation transition* (a ~35° one-substep joint jump
+where the mechanism engages) and, once that was fixed with a quintic
+decaying joint-space offset (verified: zero discontinuity at activation), to
+an **independent, pre-existing ankle-loop instability** — see below. The
+world-frame fix itself remains a validated, ready-to-integrate piece; it's
+parked, not disproven.
+
+**Found and isolated — an ankle software-PD instability, unrelated to the
+above:** the swing leg's torque-controlled `ankle_pitch` chatters — velocity
+alternating ±14–15 rad/s every substep, torque saturated at ±2 N·m nearly
+every substep — the instant it's unloaded, **independent of the swing
+mechanism, the transition, or even a moving target**: reproduced against a
+perfectly static table command, present from the first substep of the
+unmodified baseline. A snapshot/restore damping sweep (`kp=22` fixed, `kd` in
+{1.2, 0.6, 0.3, 0.1, 0.05, 0.025, 0}) found:
+
+- **1.2 → 0.3 have *zero* effect** — bit-identical trajectories. The
+  saturated torque's sign is set almost entirely by the (already-large)
+  velocity's sign once `kp·err + kd·qvel` clips, so the exact `kd` value in
+  that range doesn't matter — a discrete relay/bang-bang limit cycle, not a
+  gradually-worsening linear instability.
+- **Below the instantaneous torque-headroom bound**
+  (`kd ≤ (2 − |τ_P|)/|q̇|`, median ≈0.05 over the window, tightest ≈0.01),
+  the chatter breaks cleanly: `kd = 0.1/0.05/0.025/0` all decay from the
+  inherited ~15 rad/s to a small residual (≲2 rad/s) within a handful of
+  substeps, saturation drops to 0–2%, and **final position tracking is
+  excellent and essentially identical across all four** (0.0014–0.0025 rad).
+  `kd=0` decays cleanest (fewest sign flips) — consistent with the model's
+  *existing* passive joint damping (`torque_joint_damping=0.06`, U15,
+  handled implicitly by the `implicitfast` integrator) already doing real
+  damping work on its own; the explicit software `kd` term contributes
+  nothing here but the failure mode once torque saturates.
+- **This is contact-dependent, not a global fix**: re-running the full
+  contact-gated baseline with `kd=0` on *all four* ankles (not just the
+  unloaded one) made the walk markedly worse (peak DCM error 55→442mm,
+  warm-up itself degrading) — the *loaded* (stance, CoP-realising) ankle
+  needs `kd≈1.2` for its own stability. The right fix is a **contact-gated
+  kd** (small/zero when a foot's own Fz is near zero, ~1.2 when loaded), not
+  a single constant for both regimes.
+- **Not yet done**: distinguishing "prevents the oscillation from starting"
+  from "escapes an already-established one" (only the latter was tested —
+  every snapshot taken was already chattering), the transition-to-loaded
+  gain change at touchdown, and a timestep-sensitivity check (deferred: the
+  damping sweep's flat 1.2→0.3 region argues for a saturation/relay
+  explanation over a simple discretization-margin one, so a smaller `h`
+  alone is not expected to be informative until a candidate `kd` is chosen).
+
+**Accepted finding (recorded, not yet wired into the live controller):**
+`kd ≈ 0.025` for a torque ankle while its own foot is unloaded — small
+enough to be clear of the torque-headroom bound with margin, empirically
+indistinguishable in tracking quality from `kd=0`, and conservative next to
+literally removing the derivative term. Wiring this in requires a
+contact-gated blend (not an abrupt switch — the loaded→unloaded *and*
+unloaded→loaded transitions both need their own verification) and is exactly
+the kind of change the touchdown gate above depends on being clean; left for
+whenever DCM work resumes.
+
+### DCM dynamic walking — status frozen here
+
+Per direction, this line of work is paused, not abandoned, with **completing
+it explicitly optional** against the project's actual next goal (RL
+readiness). Current state, for whoever picks it back up:
+
+- **What works and stays as regression coverage**: standing (`stand_check.py`),
+  weight-shifting (`weight_shift.py`), single-support balance
+  (`single_support.py`), quasi-static stepping (`gait.py`) — all still MET,
+  re-verified this phase. **Quasi-static stepping (U11) remains Cara's only
+  complete locomotion.**
+- **What's built but incomplete**: `dcm_walk.py` — LIPM/DCM planning,
+  capture-point step adjustment, torque-ankle CoP realisation, a contact
+  observer, and a touchdown gate. It reliably clears the warm-up and the
+  first real forward step (peak DCM error 44mm) and fails at the second, for
+  the reasons above (ankle chatter + an unverified world-frame landing fix).
+- **Not required for step-3-onward RL work**: none of the above. RL training
+  does not inherit the DCM footstep schedule or its controllers by default —
+  see the root README's RL-environment section.
+
+Not RL, not a hardware change. Still parked here for the reasons above.

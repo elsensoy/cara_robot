@@ -129,28 +129,58 @@ never hide inside a half-trained policy:
 | **U14–U15** DCM-tracking controller + **torque-controlled ankles** | 🔶 torque ankles working (default MJCF byte-identical, standing verified); the walk still doesn't complete — **gait initiation** from rest is the open piece |
 | **U16** gait initiation fixed | 🔶 the from-rest warm-up rock now survives cleanly at any length and reaches the first real forward step (7/14 steps vs. U15's 1/14); the double-support → single-support **handoff** at first liftoff is the new, narrower blocker |
 | **U17** same fixes extended to real forward steps | 🔶 shorter forward-step duration (near U13's `T_min`) + double-support CoP realisation during a real step's own DS windows; peak DCM error **143 → 44 mm**, clears the whole warm-up **and** the first real forward step every run — falls only on the *second* forward step now |
-| **U18** — extend the fix to every forward-step handoff / ZMP-preview / MPC → RL policy | ⬜ next |
+| **U18** contact observer + touchdown gate ✅; ankle-instability isolated 🔶; **DCM walking paused** | ⏸️ a real, pre-existing ankle software-PD instability was root-caused (contact-gated fix found, not yet wired in); the project's next goal is RL-readiness, not completing this controller (see "Toward an RL Environment" below). Quasi-static stepping (U11) stays Cara's locomotion meanwhile |
 
 Full detail and the validation scripts:
 [`cara_description/README.md`](cara_description/README.md) and
 [`cara_description/docs/`](cara_description/docs/).
 
-### Walking as a learned stability problem
+### Toward an RL environment — walking as a learned stability problem
 
-Once the 20-DoF model is trusted, walking is trained as reinforcement learning in
-MuJoCo (MJX for parallel rollouts), where balance, energy efficiency, and
-recoverability dominate raw speed — Cara learns to walk *sustainably*, not as
-fast as possible.
+As of U18, hand-designed dynamic gait control (`dcm_walk.py`, U12–U18) is
+**paused, not abandoned** — a real ankle software-PD instability was
+root-caused and a fix identified but not yet wired in (see
+[`cara_description/docs/single_support_notes.md`](cara_description/docs/single_support_notes.md#phase-u18)).
+The project's current goal is **RL-readiness**, built directly on the model
+foundation that *is* solid — standing, weight-shifting, single-support
+balance, and quasi-static stepping (U11) all stay as regression tests, and
+U11 remains Cara's only complete locomotion in the meantime.
 
-- **Observations:** 20 joint positions + 20 velocities, base linear velocity, IMU orientation (domain-randomized).
-- **Actions:** target joint positions, mapped 1:1 to servo commands.
-- **Reward:** forward velocity − energy penalty − stability penalty + a thermal proxy that encourages an alternating gait (lets the motors "rest").
+**RL environment design** (wraps the existing MuJoCo full-body model; does
+**not** inherit `dcm_walk`'s footstep schedule or controllers by default —
+the policy learns its own coordination):
+
+- **Actions:** bounded joint-position offsets around the nominal standing
+  pose, executed by the (separately stabilized) low-level PD/torque
+  controller — not raw torques.
+- **Observations:** joint positions/velocities, projected gravity, base
+  angular velocity, desired walking velocity, previous action. Anything not
+  available on real hardware is marked explicitly.
+- **Reward:** velocity tracking + upright bonus − effort / abrupt-action /
+  unwanted-collision penalties.
+- **Termination:** falls, invalid simulation state, episode timeout.
+- **Measured, not necessarily rewarded:** actual foot clearance and
+  touchdown, torque saturation, tracking error, distance travelled.
+
+**Roadmap:** (1) stabilize the ankle controller [substantially done, U18 —
+fix identified, not yet wired in] → (2) freeze DCM, keep the model's
+validated milestones as regression [done] → (3) build reset/step/obs/reward
+around the model → (4) train nominal flat-ground walk-and-stop with fixed
+dynamics → (5) add domain randomization (mass/CoM, friction, actuator
+strength, delay, sensor noise, pushes) → (6) add adaptation (recurrent
+policy / history, compared against the robust baseline on held-out
+changes). The first adaptation question is narrow: *can Cara maintain or
+recover walking when payload, friction, or actuator strength change
+unexpectedly?*
 
 ```
 MuJoCo (from cara_description) → RL policy → ONNX → ROS 2 → PCA9685 → servos
 ```
 
-Control runs at **50 Hz** in sim and on hardware for direct transfer.
+Control runs at **50 Hz** in sim and on hardware for direct transfer. CAD
+work (parametric skeleton, component layout) can proceed in parallel —
+actuator selection and updated mass properties are needed before claiming
+any hardware transfer, but not before starting the parametric model.
 
 ### Emotion as a motion modifier
 
@@ -370,7 +400,7 @@ when wellness is critical.
 - [`cara_description/docs/dynamics_notes.md`](cara_description/docs/dynamics_notes.md) — provisional mass/COM/inertia, gravity-torque and Jacobian analysis
 - [`cara_description/docs/standing_notes.md`](cara_description/docs/standing_notes.md) — mirroring the second leg, the floating-base rig, the standing milestone
 - [`cara_description/docs/weight_shift_notes.md`](cara_description/docs/weight_shift_notes.md) — the task-space IK layer and the weight-shift milestone
-- [`cara_description/docs/single_support_notes.md`](cara_description/docs/single_support_notes.md) — U7 → U17: unloading a foot → single-support balance → stepping → the DCM-tracking dynamic-walk work
+- [`cara_description/docs/single_support_notes.md`](cara_description/docs/single_support_notes.md) — U7 → U18: unloading a foot → single-support balance → stepping → the DCM-tracking dynamic-walk work (paused at U18 — see "Toward an RL Environment")
 - [`cara_description/docs/upper_body_notes.md`](cara_description/docs/upper_body_notes.md) — the composed config hierarchy and the staged upper-body mass/inertia analysis (U1–U6)
 - [`jetson/control/README.md`](jetson/control/README.md) — the actuator-health controller: topics, parameters, launch arguments
 

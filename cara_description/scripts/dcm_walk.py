@@ -733,19 +733,28 @@ def run(config, n_steps_arg, t_step_arg, t_warm_arg, torque_ankles, view, json_p
                         cmd[a_roll] += (-SIDE[stance]) * 1.8 * (py_c - float(sf[1]))
                         cmd[a_pit] += 1.8 * (px_c - float(sf[0]))
 
+                if SWEEP_LOG is not None:
+                    # pre-step state: what apply_ctrl actually saw to compute
+                    # tau_P/tau_raw for THIS substep (post-step th/thd would
+                    # be one substep stale for that purpose).
+                    a_pit_l = lead + "ankle_pitch"
+                    ai = JIDX[a_pit_l]
+                    th_pre = float(data.qpos[7 + ai])
+                    thd_pre = float(data.qvel[6 + ai])
+                    tau_p_pre = kp_att * (cmd[a_pit_l] - th_pre)
+
                 apply_ctrl(cmd, cop_tau)
                 mujoco.mj_step(model, data)
                 t_global += dt
 
                 if SWEEP_LOG is not None:
-                    a_pit_l = lead + "ankle_pitch"
-                    ai = JIDX[a_pit_l]
                     SWEEP_LOG.append(dict(
                         thd=float(data.qvel[6 + ai]),
                         th=float(data.qpos[7 + ai]),
                         target=float(cmd[a_pit_l]),
                         torque_applied=float(data.ctrl[aid(a_pit_l)]),
                         fz=foot_normal_force(foot_gid[lead]),
+                        thd_pre=thd_pre, tau_p_pre=tau_p_pre,
                     ))
 
                 # --- diagnostic: does the realised CoP actually land on p_cmd? --- #
@@ -814,7 +823,13 @@ def run(config, n_steps_arg, t_step_arg, t_warm_arg, torque_ankles, view, json_p
                       f"N={N_SWEEP} substeps ({N_SWEEP*dt*1e3:.0f}ms)  "
                       f"static target={cur.get(a_pit_l, float('nan')):.4f}rad "
                       f"(table target this window: see below)", file=sys.stderr)
-                for kd_trial in (1.2, 0.6, 0.3, 0.0):
+                # Torque-headroom bound (instantaneous, not a stability
+                # guarantee): kd <= (2 - |tau_P|)/|qvel| when |tau_P|<2.
+                # Computed from the kd=1.2 (baseline) trial's own tau_P/qvel
+                # below, since tau_P barely depends on kd (it doesn't use kd
+                # at all) -- report it once candidates are chosen.
+                headroom_bounds = []
+                for kd_trial in (1.2, 0.1, 0.05, 0.025, 0.0):
                     data.qpos[:] = qpos0
                     data.qvel[:] = qvel0
                     data.qacc_warmstart[:] = warm0
@@ -828,23 +843,31 @@ def run(config, n_steps_arg, t_step_arg, t_warm_arg, torque_ankles, view, json_p
                             break
                     KD_OVERRIDE.pop(a_pit_l, None)
                     if not SWEEP_LOG:
-                        print(f"  kd={kd_trial:.1f}: no data recorded (fell immediately)", file=sys.stderr)
+                        print(f"  kd={kd_trial:.3f}: no data recorded (fell immediately)", file=sys.stderr)
                         continue
                     thds = [r["thd"] for r in SWEEP_LOG]
                     tors = [r["torque_applied"] for r in SWEEP_LOG]
                     errs = [r["target"] - r["th"] for r in SWEEP_LOG]
                     fzs = [r["fz"] for r in SWEEP_LOG]
                     n_sat = sum(1 for t in tors if abs(t) >= forcerng[JIDX[a_pit_l]] - 1e-6)
-                    # alternating-sign check: consecutive samples with opposite sign torque
                     n_alt = sum(1 for a, b in zip(tors, tors[1:]) if a * b < 0)
-                    print(f"  kd={kd_trial:.1f}: |thd| max={max(abs(v) for v in thds):.2f} "
+                    if kd_trial == 1.2:
+                        for r in SWEEP_LOG:
+                            if abs(r["tau_p_pre"]) < 2.0 and abs(r["thd_pre"]) > 1e-6:
+                                headroom_bounds.append((2.0 - abs(r["tau_p_pre"])) / abs(r["thd_pre"]))
+                    print(f"  kd={kd_trial:.3f}: |thd| max={max(abs(v) for v in thds):.2f} "
                           f"mean={sum(abs(v) for v in thds)/len(thds):.2f} rad/s   "
                           f"sat_frac={n_sat/len(tors)*100:.0f}%  sign_flips={n_alt}/{len(tors)-1}  "
-                          f"|pos_err| max={max(abs(v) for v in errs):.4f} mean={sum(abs(v) for v in errs)/len(errs):.4f} rad  "
+                          f"pos_err: peak={max(abs(v) for v in errs):.4f} final={abs(errs[-1]):.4f} rad  "
                           f"Fz range=[{min(fzs):.1f},{max(fzs):.1f}]  "
                           f"{'(FELL during window)' if fell_trial else ''}", file=sys.stderr)
                     print(f"    thd series (rad/s, every 2 substeps): "
                           f"{[round(v,2) for v in thds[::2]]}", file=sys.stderr)
+                if headroom_bounds:
+                    print(f"  [headroom] instantaneous kd bound (2-|tau_P|)/|qvel| over the "
+                          f"kd=1.2 trial: min={min(headroom_bounds):.4f} "
+                          f"median={sorted(headroom_bounds)[len(headroom_bounds)//2]:.4f}  "
+                          f"(torque-headroom check, not a stability guarantee)", file=sys.stderr)
                 # restore the true state so nothing downstream is corrupted,
                 # then stop -- this mode reports, it does not keep walking.
                 data.qpos[:] = qpos0
