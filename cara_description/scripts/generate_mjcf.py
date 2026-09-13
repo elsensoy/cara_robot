@@ -141,6 +141,9 @@ def build_mjcf(spec: dict, dynamic: bool = False) -> str:
     ground = lm.ground_params(spec)
     friction = ground["friction"]
     control = lm.actuator_control(spec)
+    _torque_names = set(lm.torque_joint_names(spec))
+    _tj_damping = float(((spec.get("dynamics", {}) or {}).get("actuators", {}) or {})
+                        .get("torque_joint_damping", 0.06))
     poses = lm.reference_poses(spec)
     foot_links = {child for child, _p, _j in stacks if child.endswith("foot")}
 
@@ -242,7 +245,11 @@ def build_mjcf(spec: dict, dynamic: bool = False) -> str:
                 w(f'{indent}  <!-- {jm.name}: {jm.jtype}'
                   f'{" (locked)" if jm.jtype != "fixed" else ""}, welded -->')
                 continue
-            w(f'{indent}  <joint name="{jm.name}" type="hinge" pos="{_xyz(anchor)}" '
+            # torque-controlled joints (U15+) carry a little passive damping so the
+            # software attitude PD on the <motor> stays stable under stiff contact
+            damp = (f' damping="{_fmt(_tj_damping)}"'
+                    if dynamic and jm.name in _torque_names else "")
+            w(f'{indent}  <joint name="{jm.name}" type="hinge"{damp} pos="{_xyz(anchor)}" '
               f'axis="{_xyz(jm.axis)}" range="{_fmt(jm.lower)} {_fmt(jm.upper)}"/>')
         w(f'{indent}  <inertial pos="{_xyz(li.com)}" mass="{_fmt(li.mass)}" '
           f'diaginertia="{_xyz(li.inertia_diag)}"/>')
@@ -280,9 +287,15 @@ def build_mjcf(spec: dict, dynamic: bool = False) -> str:
 
     # ---- actuators (dynamic only) -------------------------------------
     if dynamic:
+        torque = set(lm.torque_joint_names(spec))     # <motor> instead of <position>
         w("  <actuator>")
         for jm in chain:
             if jm.fixed:
+                continue
+            if jm.name in torque:
+                w(f'    <motor name="{jm.name}" joint="{jm.name}" gear="1" '
+                  f'ctrlrange="{_fmt(-jm.effort)} {_fmt(jm.effort)}" '
+                  f'forcerange="{_fmt(-jm.effort)} {_fmt(jm.effort)}"/>')
                 continue
             c = control[jm.name]
             w(f'    <position name="{jm.name}" joint="{jm.name}" '

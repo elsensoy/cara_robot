@@ -518,6 +518,15 @@ def joint_limits(spec: dict) -> Dict[str, Tuple[float, float]]:
     return {jm.name: (jm.lower, jm.upper) for jm in build_chain(spec)}
 
 
+def torque_joint_names(spec: dict) -> List[str]:
+    """Joints listed under dynamics.actuators.torque_joints -- these get a direct
+    <motor> (torque) actuator in the dynamic MJCF instead of the PD <position>
+    servo.  Empty unless a spec opts in (U15+: torque-controlled ankles)."""
+    tj = ((spec.get("dynamics", {}) or {}).get("actuators", {}) or {}).get("torque_joints", []) or []
+    want = set(tj)
+    return [n for n in actuated_joint_names(spec) if n in want]
+
+
 # --------------------------------------------------------------------------- #
 # Forward kinematics
 # --------------------------------------------------------------------------- #

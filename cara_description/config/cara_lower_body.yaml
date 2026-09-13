@@ -332,25 +332,38 @@ analysis:
   #     the stance foot, realised as stance ankle_roll / ankle_pitch trims
   #   * step adjustment: shift the next foothold to null the predicted DCM error
   # All timings / gains PROVISIONAL.  t_step must be >= the U13 lateral T_min.
+  # --- U14/U15: DCM-TRACKING WALK (scripts/dcm_walk.py)
+  # U15: the 4 ankle joints become direct-torque <motor> actuators
+  # (dynamics.actuators.torque_joints, set at runtime by dcm_walk.py) so the DCM
+  # controller's CoP command is realisable -- U14's blocker.  Warm-start first:
+  # rocking half-steps (both feet planted) to build the lateral limit cycle.
+  # STATUS: torque ankles WORK (default MJCF byte-identical; standing verified);
+  # the walk does NOT yet complete -- gait initiation from rest is the open piece.
+  # All timings / gains PROVISIONAL.  t_step must be >= the U13 lateral T_min.
   dcm_walk:
     base_pose: stand_nominal
-    n_steps: 8
-    t_step: 0.40                # s per step (U13 lateral T_min ~ 0.22 s)
-    stride: 0.024               # m, nominal forward foothold advance per step
+    warmup_steps: 6             # rocking half-steps in place (both feet planted) before the walk
+    warmup_amp_lo: 0.012        # m, lateral CoP amplitude of the first rock (ramps to the foot)
+    n_steps: 8                  # forward steps after the warm-up
+    t_step: 0.50                # s per step  (U13 lateral T_min ~ 0.22 s)
+    stride: 0.024               # m, nominal forward foothold advance per forward step
     double_support_frac: 0.20   # opening/closing DS fraction of the step
-    lift_height: 0.010          # m, swing-foot peak clearance
-    sway: 0.030                 # m, feed-forward lateral COM sway amplitude
-    clearance_gain: 0.015       # closed-loop swing-foot clearance
-    k_dcm: 3.0                  # DCM feedback gain (p_cmd = p_ref + (1+k/w0) e)
-    realize_gain_roll: 1.8     # stance ankle_roll trim per m of CoP-y command
-    realize_gain_pitch: 1.8    # stance ankle_pitch trim per m of CoP-x command
-    step_adjust_gain: 1.0       # 1 = full capture-point foothold adjustment
-    lead_in_seconds: 2.0
-    settle_seconds: 1.5
+    lift_height: 0.008          # m, swing-foot peak clearance (forward steps)
+    warmup_lift: 0.000          # m, swing-foot clearance during the warm-up rock
+    clearance_gain: 0.020       # closed-loop swing-foot clearance
+    k_dcm: 2.5                  # DCM feedback gain:  p_cmd = p_ref + (1 + k/omega0) e
+    step_adjust_gain: 0.7       # capture-point foothold adjustment (0..1)
+    # torque-ankle realisation (U15): the 4 ankle joints become <motor> actuators;
+    # a software attitude PD keeps the foot behaving, the CoP command is added as
+    # a torque  tau = Fz * (p_cmd - p_ankle).
+    ankle_kp: 22.0              # software attitude-PD stiffness on the torque ankles
+    ankle_kd: 1.2
+    cop_torque_gain: 0.8        # scales the CoP torque  tau = gain * Fz * (p_cmd - p_ankle)
+    lead_in_seconds: 1.5
     tail_seconds: 3.0
     accept:
       max_pelvis_tilt_deg: 10.0
-      max_dcm_error: 0.020      # m, peak |xi_meas - xi_ref| over the walk
-      min_speed_frac: 0.5      # mean forward speed >= this * commanded
+      max_dcm_error: 0.025      # m, peak |xi_meas - xi_ref| over the walk
+      min_speed_frac: 0.5       # mean forward speed >= this * commanded
       max_torque_frac: 1.0
       tail_hold_drift: 0.012

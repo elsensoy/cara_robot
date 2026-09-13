@@ -1,4 +1,4 @@
-# Cara — Single support → stepping → the dynamic-walk model and controller (U7 → U14)
+# Cara — Single support → stepping → the dynamic-walk model and controller (U7 → U15)
 
 Companion to [`weight_shift_notes.md`](weight_shift_notes.md). This is the first
 work **past the morphology boundary** — U1–U6 validated the whole-body mass model
@@ -10,7 +10,8 @@ work **past the morphology boundary** — U1–U6 validated the whole-body mass 
       → U10 one forward step ✅ → U11 a short quasi-static walk ✅
       → U12 continuous *kinematic* walk ❌ (formulation wall) → U13 reduced-order
         model ✅ (a dynamic walk IS feasible) → U14 DCM-tracking controller 🔶
-        (built; blocked on ankle torque control — this doc) → …
+        → U15 torque-controlled ankles ✅ + warm-start 🔶 (gait initiation is the
+        open piece — this doc) → …
 ```
 
 Still transparent — the same frontal-plane IK from `weight_shift.py`, plus a
@@ -530,3 +531,57 @@ missing is:
 Both are follow-on work. `dcm_walk.py` stays in the tree as the planner +
 feedback law + step-adjustment implementation, and prints exactly which blocker
 it hit. **Quasi-static stepping (U11) remains Cara's locomotion.**
+
+---
+
+## Phase U15 — torque-controlled ankles ✅ + a warm-start 🔶
+
+U14 said a dynamic walk needs the CoP to be an **ankle-torque** action, not a
+position target. U15 delivers that.
+
+### Torque-controlled ankles — done and validated
+
+`dynamics.actuators.torque_joints: [...]` (set at runtime by `dcm_walk.py`)
+makes `generate_mjcf` emit a direct-torque **`<motor>`** actuator for the listed
+joints instead of the PD `<position>` servo, plus a little passive
+`<joint damping>` (`torque_joint_damping`, default 0.06) so a software attitude
+PD on top stays stable under the stiff ground contact. `dcm_walk.py` flags the
+four ankle joints; `data.ctrl[ankle]` is then a torque in N·m, and it applies
+
+```
+τ_ankle = kp_att·(θ_des − θ) − kd_att·θ̇   +   Fz·(p_cmd − p_ankle)
+          └────── keep the foot behaving ──────┘   └── place the CoP ──┘
+```
+
+- **Default MJCF is byte-identical** — no config opts in, so `<position>`
+  everywhere and the hard gate holds.
+- **Standing verified** with the torque ankles + software PD (tilt 0.4°).
+
+So the U14 realisation blocker is removed: the CoP command *is* now realisable.
+
+### Warm-start — the remaining piece
+
+`dcm_walk.py` prefixes the walk with `warmup_steps` rocking half-steps (both feet
+planted, CoP oscillating with growing amplitude) to build the lateral limit
+cycle before any forward progress.
+
+**It doesn't yet produce a walk** — she stands, does ~1 rocking half-step, then
+topples (`baselines/full_body_dcm_walk.json`). The failure is now purely **gait
+initiation**: from rest at the midline the inverted pendulum diverges *away* from
+the intended stance foot (`ẍ = ω₀²(x − p)` with `x` on the far side of `p`), and
+the steady-state lateral displacement (~40 mm) is past the ~20 mm double-support
+envelope, so a simple "rock toward the stance foot" doesn't converge to the
+limit cycle.
+
+### What's left (U16)
+
+- A proper **CoP-leads-motion gait-initiation** sequence — the CoP placed to
+  *accelerate* the COM toward the first stance foot, then caught — rather than
+  the current fixed-amplitude rock.
+- **DCM-controller tuning** on the (now correct) torque-ankle model, or a
+  **ZMP-preview / MPC** formulation that plans the CoP over a horizon instead of
+  step-by-step.
+
+None of this is RL or a hardware change — it's controller work on a model that
+now has the right actuation. **Quasi-static stepping (U11) stays Cara's
+locomotion meanwhile.**
