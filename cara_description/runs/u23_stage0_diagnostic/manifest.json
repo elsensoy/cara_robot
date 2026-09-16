@@ -1,0 +1,48 @@
+{
+  "workstream": "U23 -- bounded diagnostic comparison (NOT a training run): why does PPO training move away from the zero-action standing baseline, even at stage 0?",
+  "date": "2026-09-14",
+  "motivation": "U22's curriculum never advanced past stage 0 (pure balance, desired_vx=0.0) across an 800k-step budget, despite zero forward-velocity demand. Explicit instruction: investigate action scaling and exploration next, using the known zero-action standing policy as the control -- and do NOT extend the training budget yet.",
+  "script": "cara_description/scripts/diagnose_stage0.py",
+  "method": "Four controllers under identical resets (CaraWalkEnv.reset() is confirmed fully deterministic -- no noise added to the keyframe pose -- so this is automatically satisfied), identical stage-0 reward (desired_vx=0.0), identical episode length (200 steps / 4s), identical model config (the same cara_full_body.yaml dynamic MJCF used everywhere in this project). Observation normalizer held frozen during every rollout (no online updates), to isolate policy behavior from a shifting normalizer.",
+  "action_range_translation": {
+    "action_range_frac": 0.30,
+    "per_joint_offset_scale_rad": {
+      "hip_yaw": 0.237, "hip_roll": 0.1695, "hip_pitch": 0.420,
+      "knee_pitch": 0.354, "ankle_pitch": 0.222, "ankle_roll": 0.132
+    },
+    "note": "left/right symmetric. hip_pitch has the largest range (24 deg), ankle_roll the smallest (7.6 deg)."
+  },
+  "exploration_std_translation": {
+    "initial_actor_logstd": -0.5,
+    "initial_action_space_std": 0.6065,
+    "per_joint_1sigma_swing_deg": {
+      "hip_yaw": 8.24, "hip_roll": 5.89, "hip_pitch": 14.60,
+      "knee_pitch": 12.30, "ankle_pitch": 7.71, "ankle_roll": 4.59
+    },
+    "theoretical_p_single_joint_clipped_per_step_at_init": "9.9%",
+    "theoretical_p_any_of_12_joints_clipped_per_step_at_init": "71.5%",
+    "note": "The initial exploration std alone predicts that at least one of the 12 joints' sampled action exceeds the [-1,1] action bound on ~72% of steps, before any training happens. This was a theoretical check computed BEFORE the empirical rollout confirmed it."
+  },
+  "results": {
+    "1_zero_action": {"steps": 200, "fell": false, "total_return": 193.00,
+      "note": "Reconfirms standing under the actual training resets/config -- holds full 200-step episode."},
+    "2_untrained_mean": {"steps": 200, "fell": false, "total_return": 191.82,
+      "action_absmean": 0.0025,
+      "note": "The freshly-initialized policy's MEAN output is nearly zero (orthogonal init with std=0.01 on the final actor layer) -- initialization starts almost exactly at the zero-action standing baseline, matching it within 1.2 return points."},
+    "3_untrained_sampled": {"n_repeats": 10, "mean_steps": 21.3, "fall_rate": "100%", "mean_return": -5.45,
+      "action_clip_rate_range": "6.5%-12.8% (matches the 9.9% theoretical prediction)",
+      "actuator_saturation_range": "90-100% mean per episode",
+      "peak_tilt_range_deg": "41.5-46.0 (at/near the 40deg fall threshold)",
+      "note": "Sampling noise ALONE, from the SAME mean policy that stood perfectly in condition 2, destroys stance in 21 steps on average across all 10 independent repeats -- a 100% fall rate. This mean_steps=21.3 also closely matches what real PPO training showed throughout U21 and most of U22 (~20-30 steps)."},
+    "4_trained_mean": {"steps": 41, "fell": true, "total_return": -18.23,
+      "action_absmean": 0.5196, "action_clip_rate": "12.8%",
+      "note": "After 800k steps of training against overwhelmingly falling (noise-corrupted) rollouts, the DETERMINISTIC mean policy itself has been pulled away from its good initialization -- it no longer resembles the near-zero mean of condition 2, and its return (-18.23) is now worse than the untrained mean's (191.82)."}
+  },
+  "decision_sequence_readout": {
+    "step1_zero_action_fails_under_training_resets": "NO -- zero action holds the full episode (193.00 return). Reset/baseline stability is confirmed fine.",
+    "step2_zero_action_rewarded_poorly": "NO -- zero-action return (193.00) is far ABOVE the trained/learned-fall return (-18.23). The objective correctly favors standing; this is not a reward problem.",
+    "step3_initial_mean_succeeds_sampling_fails": "YES -- untrained mean stands (191.82, matches zero action), untrained SAMPLED falls 100% of the time (mean 21.3 steps). This is the branch that fired.",
+    "conclusion": "Per the given decision rule: reduce initial exploration std first, keeping the action bounds (action_range_frac=0.30) unchanged. Steps 4 (actuator path) and 5 (PPO updates/obs normalization) were not reached -- their preconditions were not met by this evidence."
+  },
+  "not_done_this_turn": "No training budget was spent or extended, per instruction. No fix has been implemented or validated yet -- this run is diagnosis only. The concrete next step (lower initial actor_logstd, e.g. via a new --init-logstd CLI flag on train_ppo.py, keeping action_range_frac=0.30 unchanged, then a bounded validation run at the SAME budget scale as U21/U22) is proposed but not started, pending confirmation."
+}

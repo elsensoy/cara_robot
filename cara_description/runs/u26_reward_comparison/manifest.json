@@ -1,0 +1,55 @@
+{
+  "workstream": "U26 -- bounded reward comparison: unchanged vs stronger action-rate penalty, both continued from U24",
+  "date": "2026-09-14",
+  "motivation": "U25 narrowed the problem (nominal stance works, modest smooth commands track cleanly, the learned policy generates disruptive commands) but did not prove w_action_rate=0.01 was the cause. Explicit instruction: run ONE bounded comparison, set the decision rule before training, then decide -- this is meant to be the last local smoothness experiment before a strategy decision.",
+  "frozen_this_run": "CaraWalkEnv mechanics unchanged: same actuators, action_range_frac=0.30, curriculum settings (vx_stages, advance thresholds, stage_min_steps), and termination (40deg tilt / 0.15m height). The ONLY varied factor between branches is w_action_rate.",
+  "penalty_derivation": {
+    "method": "cara_description/scripts/analyze_reward_contributions.py measured the ACTUAL raw (unweighted) r_rate distribution from U24, both deterministic-mean and stochastic-sampled (using U24's own learned std -- representative of what training rollouts actually look like).",
+    "measured_P75_raw_r_rate": {"deterministic": 0.02907, "sampled": 0.31495},
+    "target": "P75 |raw r_rate| should cost ~10% of the per-step alive bonus (w_alive=1.0)",
+    "candidate_from_sampled_distribution": 0.318,
+    "chosen_w_action_rate": 0.3,
+    "note": "The sampled-rollout distribution was used (not the deterministic one) because PPO's training gradient is computed from sampled rollouts, not the deterministic mean -- this is the representative basis for a weight meant to shape TRAINING. Explicitly NOT chosen from the coefficient's size alone."
+  },
+  "resumption": {
+    "from_checkpoint": "cara_description/runs/u24_ppo_lowstd/ppo_lowstd_seed0.pt",
+    "restored": ["model weights (policy+critic)", "actor_logstd (the actual learned exploration std, not init_logstd)", "observation normalizer"],
+    "not_restored": "Optimizer (Adam moment) state -- U24's checkpoint predates optimizer-state saving (added in this same session, AFTER U24 was trained). Per instruction, this is disclosed explicitly: both branches are WARM-STARTED continuations of U24, not exact resumptions. train_ppo.py now saves optimizer_state going forward, so any FUTURE resume from a post-U26 checkpoint can be exact -- verified via train_ppo.py's own resume_was_exact flag, which is False for both branches here.",
+    "seed": 0, "identical_for_both_branches": true
+  },
+  "budget": {"total_timesteps_per_branch": 400000, "wall_time_branchA_s": 474, "wall_time_branchB_s": 475,
+             "note": "Same additional transition budget for both branches, as instructed."},
+  "decision_rule_set_before_training": {
+    "unchanged_improves_substantially": "More training was useful; continue that branch",
+    "stronger_penalty_improves_survival_and_reduces_disruption": "Keep it and test the standing milestone",
+    "smoother_but_survival_unchanged": "Stop treating jitter as the primary explanation",
+    "neither_improves": "Stop coefficient tuning; change initialization strategy (start near known standing solution, then small reset perturbations)"
+  },
+  "results": {
+    "deterministic_mean_eval_4s_episode": {
+      "U24_baseline":      {"steps": 63, "tracking_err_mean": 0.0199, "saturation_mean": "75.82%"},
+      "branchA_unchanged": {"steps": 56, "tracking_err_mean": 0.0215, "saturation_mean": "72.91%"},
+      "branchB_strongrate":{"steps": 74, "tracking_err_mean": 0.0150, "saturation_mean": "62.41%"}
+    },
+    "raw_r_rate_P75_deterministic": {
+      "U24_baseline": 0.02907, "branchA_unchanged": 0.02122, "branchB_strongrate": 0.00555,
+      "note": "Branch B is ~3.8x smoother than branch A and ~5.2x smoother than the U24 baseline, on the exact same deterministic-mean metric."
+    },
+    "raw_r_rate_P75_sampled": {
+      "branchA_unchanged": 0.24500, "branchB_strongrate": 0.20622,
+      "note": "Only a modest ~16% reduction under sampling -- most of sampled-mode jitter comes from the sampling noise itself (std barely differs between branches: -1.548 vs -1.556 mean logstd), not the mean policy's smoothness. The penalty mainly cleaned up the DEPLOYED (deterministic) behavior, which is what actually gets evaluated."
+    },
+    "training_curve": {
+      "branchA_unchanged": "fall_rate stayed at 1.0 for the entire 400k-step continuation; ep_len plateaued ~33-36 (essentially flat vs. U24's own ~30-35 plateau)",
+      "branchB_strongrate": "fall_rate ALSO stayed at 1.0 for the entire continuation; ep_len plateaued ~36-41 (a real but modest upward shift vs. branch A)"
+    },
+    "standing_milestone_30_resets": {
+      "checkpoint_tested": "branchB_strongrate.pt",
+      "method": "CaraWalkEnv.reset() is confirmed deterministic (U23) -- 30 identical resets of a deterministic policy would just repeat one trial. This test instead used the policy's OWN learned stochastic sampling (its trained std) across 30 independent repeats -- the only way 30 resets produce meaningfully different trials in the CURRENT environment, pending the separately-defined perturbation test.",
+      "result": "0/30 = 0.0% full-episode survival (gate: >=90%). Mean survival 37.3/200 steps, 100% fall rate.",
+      "verdict": "NOT MET -- expected and disclosed as such, not a setback specific to branch B."
+    }
+  },
+  "decision": "Branch B fires 'stronger penalty improves survival AND reduces disruptive commands' -- survival +17.5% over U24 baseline (63->74 steps), deterministic-mode jitter -5.2x, tracking error -25%, saturation -18% relative, all in the same direction. Branch A (unchanged) did NOT improve substantially -- survival actually regressed slightly (63->56 steps) despite 400k additional steps of identical-objective training. Per the pre-set rule: KEEP w_action_rate=0.3 as the new default going forward, and the standing milestone (>=90% survival over 30 resets) has been tested as instructed -- result: NOT MET (0%). This is the expected, honestly-reported outcome at this stage, not a failure of the branch B decision itself.",
+  "not_done_this_turn": "No further coefficient tuning, no further mechanical diagnosis. Per instruction, this was meant to be the LAST local smoothness experiment before a strategy decision -- next is either continuing to close the gap toward the 90% milestone under w_action_rate=0.3, or moving to the proposed 'start near the known standing solution, then small reset perturbations' strategy. Flagged for the next decision, not started unilaterally."
+}

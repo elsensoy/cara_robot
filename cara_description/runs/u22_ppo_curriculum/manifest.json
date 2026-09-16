@@ -1,0 +1,24 @@
+{
+  "workstream": "U22 -- PPO with a desired_vx curriculum (start near 0, expand gradually)",
+  "date": "2026-09-13",
+  "motivation": "U21's PPO baseline showed the SAME obstacle across all 3 seeds: fall_rate stuck at 1.0 and episode length never grew past ~20-24 of 200 possible steps, for the entire budget, regardless of desired_vx. Per the review guidance's own decision rule (\"if exploration repeatedly destroys stance before any useful transfer occurs, begin with easier low-speed commands and gradually expand them\"), that is exactly the trigger condition for trying a curriculum.",
+  "trainer_script": "cara_description/scripts/train_ppo.py --curriculum",
+  "mechanism": "vx_stages=[0.0, 0.03, 0.06, 0.10]. Advancement to the next stage requires, over the most recent 30 completed episodes: mean episode length >= 80% of the 200-step horizon AND fall rate <= 30%, after spending at least 100,000 env-steps in the current stage. Implemented via AsyncVectorEnv.call('set_desired_vx', vx) reaching into all 8 worker processes live -- no vector-env teardown/recreate needed between stages.",
+  "reward_version": "v3_alive+vel10 (same audited reward as U20/U21, unchanged)",
+  "task_and_reward_unchanged_except_curriculum": true,
+  "budget": {
+    "total_timesteps": 800000,
+    "seeds_run": 1,
+    "rationale": "First validation of a new mechanism (the curriculum itself) -- run 1 seed before committing to a 3-seed budget, consistent with 'measure/decide before scaling' used throughout this project.",
+    "wall_time_s": 946.5
+  },
+  "result": {
+    "outcome": "CURRICULUM DID NOT ADVANCE PAST STAGE 0 (desired_vx=0.0, pure balance) for the entire 800,000-step budget.",
+    "training_trend": "Episode length improved gradually from ~20 steps (early) to a plateau around ~26-30 steps (from roughly step 400,000 onward) -- real but small progress, well short of the 160-step (80%) advancement threshold. Fall rate stayed at 1.0 (100%) for the ENTIRE run, never dipping below the 30% threshold needed to advance even once.",
+    "significance": "This isolates the obstacle further than U21 could: even with ZERO forward-velocity demand (pure upright balance on the nominal pose, the easiest possible stage), the policy could not learn to survive reliably within this budget. The bottleneck observed in U21 is not really about learning to walk forward -- it is more fundamental: this PPO setup (architecture, action-space granularity, budget, or possibly the position-PD actuation dynamics themselves) has not learned to balance at all yet, independent of any locomotion target.",
+    "eval_deterministic": "1/1 evaluated episode FELL, at 0.82s (41 steps of 200), forward drift -0.056m, 2 genuine steps (single-support >=60ms) before the fall, actuator saturation mean=87% max=100% (notably higher than U21's fixed-vx runs, 34-84% mean) -- the policy is working very hard and still failing to hold balance.",
+    "checkpoint": "ppo_curr_seed0.pt", "train_log": "ppo_curr_seed0_train.log",
+    "eval": "ppo_curr_seed0_eval.json", "gif": "ppo_curr_seed0_standing.gif (verified frame-by-frame; shows a forward-toppling fall from a crouched/leaning posture)"
+  },
+  "net_assessment": "The curriculum mechanism itself works correctly (verified via smoke test with lenient thresholds -- advancement logic, live desired_vx propagation to all workers, and checkpoint/history recording all function as intended). But under real (non-lenient) thresholds, it never had reason to advance: the underlying balance-learning problem was not solved even at the easiest possible stage. This shifts the leading hypothesis away from 'walking forward is hard' and toward 'this policy/setup has not learned to balance yet' -- worth investigating before spending more compute on further curriculum stages or seeds. Candidates worth checking next: whether the observation/action interface gives the policy enough signal to recover from small perturbations (e.g., is 0.30 action_range_frac too large/small for fine balance corrections), whether more training budget alone would eventually crack stage 0, or whether the position-PD actuation itself (bypassing U15's torque-ankle scheme, per the original U19 design choice) has weaker disturbance rejection than assumed. Not acted on unilaterally -- flagged for the next decision."
+}

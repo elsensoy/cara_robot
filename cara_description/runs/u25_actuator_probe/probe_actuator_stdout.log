@@ -1,0 +1,62 @@
+
+=== Test 1: zero-action hold (baseline) ===
+  steps=100 fell=False peak_tilt=0.82deg
+  [l_ankle_pitch] tracking err: mean=0.0016 max=0.0092 rad  return-to-target err: 0.0007 rad  saturation: 0.0% of steps, longest run 0ms  peak|vel|=0.26 rad/s
+  [l_knee_pitch] tracking err: mean=0.0049 max=0.0071 rad  return-to-target err: 0.0054 rad  saturation: 0.0% of steps, longest run 0ms  peak|vel|=0.36 rad/s
+  [l_hip_pitch] tracking err: mean=0.0004 max=0.0022 rad  return-to-target err: 0.0001 rad  saturation: 0.0% of steps, longest run 0ms  peak|vel|=0.11 rad/s
+
+=== Test [fast] l_ankle_pitch: amplitude=0.4, ramp=100ms, hold=200ms ===
+  steps=45/50 fell=True peak_tilt=41.43deg
+  [l_ankle_pitch] tracking err: mean=0.0187 max=0.0527 rad  return-to-target err: 0.0128 rad  saturation: 0.0% of steps, longest run 0ms  peak|vel|=1.21 rad/s
+  NOTE: fell during this single-joint excursion -- examine whether l_ankle_pitch tracked smoothly before balance was lost (see mean/max tracking error above) before calling this an actuator defect.
+
+=== Test [fast] l_knee_pitch: amplitude=0.4, ramp=100ms, hold=200ms ===
+  steps=43/50 fell=True peak_tilt=40.57deg
+  [l_knee_pitch] tracking err: mean=0.0140 max=0.0388 rad  return-to-target err: 0.0067 rad  saturation: 0.0% of steps, longest run 0ms  peak|vel|=1.03 rad/s
+  NOTE: fell during this single-joint excursion -- examine whether l_knee_pitch tracked smoothly before balance was lost (see mean/max tracking error above) before calling this an actuator defect.
+
+=== Test [fast] l_hip_pitch: amplitude=0.4, ramp=100ms, hold=200ms ===
+  steps=50/50 fell=False peak_tilt=6.98deg
+  [l_hip_pitch] tracking err: mean=0.0237 max=0.0808 rad  return-to-target err: 0.0051 rad  saturation: 0.0% of steps, longest run 0ms  peak|vel|=1.13 rad/s
+
+=== Test [slow] l_ankle_pitch: amplitude=0.4, ramp=400ms, hold=200ms ===
+  steps=54/80 fell=True peak_tilt=40.41deg
+  [l_ankle_pitch] tracking err: mean=0.0160 max=0.0245 rad  return-to-target err: 0.0137 rad  saturation: 0.0% of steps, longest run 0ms  peak|vel|=0.35 rad/s
+  NOTE: fell during this single-joint excursion -- examine whether l_ankle_pitch tracked smoothly before balance was lost (see mean/max tracking error above) before calling this an actuator defect.
+
+=== Test [slow] l_knee_pitch: amplitude=0.4, ramp=400ms, hold=200ms ===
+  steps=53/80 fell=True peak_tilt=40.24deg
+  [l_knee_pitch] tracking err: mean=0.0138 max=0.0328 rad  return-to-target err: 0.0205 rad  saturation: 0.0% of steps, longest run 0ms  peak|vel|=0.39 rad/s
+  NOTE: fell during this single-joint excursion -- examine whether l_knee_pitch tracked smoothly before balance was lost (see mean/max tracking error above) before calling this an actuator defect.
+
+=== Test [slow] l_hip_pitch: amplitude=0.4, ramp=400ms, hold=200ms ===
+  steps=80/80 fell=False peak_tilt=8.22deg
+  [l_hip_pitch] tracking err: mean=0.0201 max=0.0496 rad  return-to-target err: 0.0034 rad  saturation: 0.0% of steps, longest run 0ms  peak|vel|=0.38 rad/s
+
+=== Test 4: U24 trained policy (deterministic mean) -- same per-joint metrics ===
+  steps=63/200 fell=True peak_tilt=40.43deg  whole-body action |mean|=0.3811  action delta step-to-step=0.1154
+  [l_ankle_pitch] tracking err: mean=0.0391 max=0.1990 rad  return-to-target err: 0.0157 rad  saturation: 20.6% of steps, longest run 140ms  peak|vel|=6.22 rad/s
+  [l_knee_pitch] tracking err: mean=0.0191 max=0.0745 rad  return-to-target err: 0.0139 rad  saturation: 0.0% of steps, longest run 0ms  peak|vel|=3.81 rad/s
+  [l_hip_pitch] tracking err: mean=0.0191 max=0.0609 rad  return-to-target err: 0.0261 rad  saturation: 1.6% of steps, longest run 20ms  peak|vel|=2.78 rad/s
+
+=== decision readout ===
+
+l_ankle_pitch:
+  zero-hold saturation: 0.0%  (does zero action ALREADY saturate this joint? no)
+  fast excursion:  tracking err mean=0.0187 rad  return-to-target=0.0128 rad  saturation=0.0%
+  slow excursion:  tracking err mean=0.0160 rad  return-to-target=0.0137 rad  saturation=0.0%
+  U24 replay:      tracking err mean=0.0391 rad  peak|vel|=6.22 rad/s  saturation=20.6%  (fast test peak|vel|=1.21, slow=0.35 rad/s -- U24 EXCEEDS the tested speed range)
+
+l_knee_pitch:
+  zero-hold saturation: 0.0%  (does zero action ALREADY saturate this joint? no)
+  fast excursion:  tracking err mean=0.0140 rad  return-to-target=0.0067 rad  saturation=0.0%
+  slow excursion:  tracking err mean=0.0138 rad  return-to-target=0.0205 rad  saturation=0.0%
+  U24 replay:      tracking err mean=0.0191 rad  peak|vel|=3.81 rad/s  saturation=0.0%  (fast test peak|vel|=1.03, slow=0.39 rad/s -- U24 EXCEEDS the tested speed range)
+
+l_hip_pitch:
+  zero-hold saturation: 0.0%  (does zero action ALREADY saturate this joint? no)
+  fast excursion:  tracking err mean=0.0237 rad  return-to-target=0.0051 rad  saturation=0.0%
+  slow excursion:  tracking err mean=0.0201 rad  return-to-target=0.0034 rad  saturation=0.0%
+  U24 replay:      tracking err mean=0.0191 rad  peak|vel|=2.78 rad/s  saturation=1.6%  (fast test peak|vel|=1.13, slow=0.38 rad/s -- U24 EXCEEDS the tested speed range)
+
+saved -> /tmp/probe_actuator.json

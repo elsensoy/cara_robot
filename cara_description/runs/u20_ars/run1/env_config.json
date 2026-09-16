@@ -1,0 +1,17 @@
+{
+  "config_path": "/home/elida_sensoy/cara_robot/cara_robot/cara_description/config/cara_full_body.yaml",
+  "base_pose": "stand_nominal",
+  "control_hz": 50.0,
+  "episode_seconds": 4.0,
+  "action_range_frac": 0.3,
+  "desired_vx": 0.1,
+  "fall_tilt_deg": 40.0,
+  "fall_height_m": 0.15,
+  "w_alive": 1.0,
+  "w_vel": 1.0,
+  "w_upright": 0.5,
+  "w_effort": 0.01,
+  "w_action_rate": 0.01,
+  "w_collision": 1.0,
+  "seed": 0
+}

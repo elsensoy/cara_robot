@@ -1,0 +1,42 @@
+{
+  "workstream": "U21 -- nonlinear PPO baseline (separate learning setup from U20's ARS baseline)",
+  "date": "2026-09-13",
+  "algorithm": "PPO (CleanRL-style single-file implementation, ppo_continuous_action.py structure), tanh MLP actor-critic (64,64), state-independent log-std",
+  "trainer_script": "cara_description/scripts/train_ppo.py",
+  "eval_script": "cara_description/scripts/evaluate_ppo.py",
+  "venv": ".venv-rl (Python 3.11, torch 2.14.0+cpu, gymnasium 1.3.0, mujoco 3.13.0) -- separate from the project's main .venv; cara_env.py itself imports neither torch nor gymnasium",
+  "reward_version": "v3_alive+vel10 (same as U20 run2 -- audited PASS by reward_audit.py, 100.8% margin, before this run started)",
+  "pre_run_check": "reward_audit.py run and passed before this experiment (see docs/rl_environment_notes.md U20 reward-audit section) -- required before trusting this run's results, per review guidance.",
+  "throughput_measurement": {
+    "single_process_env_only": "2736 steps/sec (no learning, random actions)",
+    "8_process_env_only_aggregate": "~9571 steps/sec (measured via 8 concurrent worker processes)",
+    "full_ppo_end_to_end_8envs": "~730 steps/sec (rollout collection + 10 epochs x 8 minibatches of gradient updates per iteration, batch_size=2048)"
+  },
+  "fixed_budget_from_throughput": "300,000 env-steps/seed (~410s projected from the 730 steps/sec end-to-end measurement; actual: 375-388s/seed)",
+  "task_kept_fixed": "same as U20: flat terrain (default MJCF), nominal masses, unchanged action_range_frac=0.30, desired_vx=0.10 m/s. No curriculum, no reward change during this run.",
+  "hyperparameters": {
+    "total_timesteps": 300000, "num_envs": 8, "num_steps": 256, "num_minibatches": 8,
+    "update_epochs": 10, "learning_rate": 3e-4, "anneal_lr": true, "gamma": 0.99,
+    "gae_lambda": 0.95, "clip_coef": 0.2, "ent_coef": 0.0, "vf_coef": 0.5,
+    "max_grad_norm": 0.5, "norm_adv": true, "clip_vloss": true
+  },
+  "seeds": {
+    "seed0": {"wall_time_s": 388, "final_fall_rate_during_training": 1.0, "final_ep_length_steps": "~19-22 (never grew)",
+              "checkpoint": "ppo_seed0.pt", "train_log": "ppo_seed0_train.log",
+              "eval": "ppo_seed0_eval.json", "eval_summary": "standing: NOT WALKING (survived 4s, +0.013m). forward-walk: FELL at 0.64s, 2 genuine steps, +0.058m."},
+    "seed1": {"wall_time_s": 378, "final_fall_rate_during_training": 1.0, "final_ep_length_steps": "~19-22 (never grew)",
+              "checkpoint": "ppo_seed1.pt", "train_log": "ppo_seed1_train.log",
+              "eval": "ppo_seed1_eval.json", "eval_summary": "standing: FELL at 1.16s (+0.205m). forward-walk: FELL at 0.64s, 2 genuine steps, +0.148m."},
+    "seed2": {"wall_time_s": 387, "final_fall_rate_during_training": 1.0, "final_ep_length_steps": "~19-24 (never grew)",
+              "checkpoint": "ppo_seed2.pt", "train_log": "ppo_seed2_train.log",
+              "eval": "ppo_seed2_eval.json", "eval_summary": "standing: FELL at 0.70s (+0.198m). forward-walk: FELL at 0.88s, 3 genuine steps, -0.077m. GIF: ppo_seed2_forward_walk.gif (verified frame-by-frame)."}
+  },
+  "comparison_to_u20_ars": {
+    "ars_run2_best_genuine_steps": 2,
+    "ppo_best_genuine_steps": 3,
+    "both_baselines_fall_rate": "100% across all evaluated episodes except PPO seed0's standing case",
+    "note": "PPO shows marginally more partial stepping progress (3 vs 2 genuine steps, and larger forward CoM drift before falling in 2 of 3 seeds) but does NOT solve the milestone either. Per the guidance this does not isolate which change (nonlinear policy vs. search method) would help -- it is a different learning setup, not a controlled ablation."
+  },
+  "training_curve_pattern": "Consistent obstacle across all 3 seeds: fall_rate stayed at 1.0 (never below) and mean episode length never grew past ~20-24 steps of a possible 200-step (4s) episode, for the entire 300k-step budget -- i.e. exploration appears to repeatedly destroy stance before any useful transfer occurs, which is exactly the pattern the review guidance names as the trigger condition for considering a curriculum (starting with an easier/lower-speed command). This is flagged as an observation for the next decision, not acted on unilaterally in this run.",
+  "net_assessment": "Milestone (repeatable forward stepping) not met by PPO either, within this bounded budget. Reward audit passed beforehand, so the reward is not implicated. The consistent early-fall pattern across all 3 seeds is a real, reproducible signal -- not noise -- and is the strongest candidate next lead (curriculum on command speed, or a larger/longer budget) per the review guidance's own decision rule."
+}

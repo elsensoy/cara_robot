@@ -1,0 +1,508 @@
+{
+  "std": 5.0,
+  "N": 50,
+  "zero": [
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 60,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 51,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 56,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 36,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 59,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 62,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 49,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 52,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    }
+  ],
+  "policy": [
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 76,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 49,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 59,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 37,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 59,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 62,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 56,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    },
+    {
+      "steps": 63,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 200,
+      "fell": false,
+      "survived_full": true
+    }
+  ]
+}

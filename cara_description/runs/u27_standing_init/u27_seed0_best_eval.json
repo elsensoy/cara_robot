@@ -1,0 +1,580 @@
+{
+  "1_deterministic_nominal": {
+    "steps": 200,
+    "fell": false,
+    "survived_full": true
+  },
+  "2_sampled_nominal": {
+    "repeats": [
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 199,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 171,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 106,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 126,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 175,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 125,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      }
+    ],
+    "survival_rate": 0.8,
+    "fall_rate": 0.2,
+    "mean_steps": 190.06666666666666
+  },
+  "3_deterministic_perturbed_vs_zero": {
+    "reset_qvel_noise_std": 6.0,
+    "n_resets": 40,
+    "policy_results": [
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 64,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 46,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 73,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 49,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 55,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 60,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 24,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 56,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 66,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 72,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 57,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 63,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      }
+    ],
+    "zero_results": [
+      {
+        "steps": 63,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 60,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 44,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 78,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 45,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 52,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 54,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 24,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 51,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 67,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 57,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 56,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 65,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      }
+    ],
+    "policy_survival_rate": 0.7,
+    "zero_survival_rate": 0.675,
+    "policy_mean_steps": 157.125,
+    "zero_mean_steps": 152.9,
+    "n_policy_better": 9,
+    "n_zero_better": 3,
+    "n_tied": 28,
+    "verdict": "learned policy shows a real but MODEST recovery edge over zero action"
+  }
+}

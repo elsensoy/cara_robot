@@ -1,0 +1,68 @@
+{
+  "checkpoint": "/home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u21_ppo/ppo_seed0.pt",
+  "env_config": {
+    "reward_version": "v3_alive+vel10",
+    "config_path": "/home/elida_sensoy/cara_robot/cara_robot/cara_description/config/cara_full_body.yaml",
+    "base_pose": "stand_nominal",
+    "control_hz": 50.0,
+    "episode_seconds": 4.0,
+    "action_range_frac": 0.3,
+    "desired_vx": 0.1,
+    "fall_tilt_deg": 40.0,
+    "fall_height_m": 0.15,
+    "w_alive": 1.0,
+    "w_vel": 10.0,
+    "w_upright": 0.5,
+    "w_effort": 0.01,
+    "w_action_rate": 0.01,
+    "w_collision": 1.0,
+    "seed": null
+  },
+  "train_args": {
+    "total_timesteps": 300000,
+    "num_envs": 8,
+    "num_steps": 256,
+    "num_minibatches": 8,
+    "update_epochs": 10,
+    "learning_rate": 0.0003,
+    "anneal_lr": true,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_coef": 0.2,
+    "clip_vloss": true,
+    "ent_coef": 0.0,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "norm_adv": true,
+    "episode_seconds": 4.0,
+    "desired_vx": 0.1,
+    "seed": 0,
+    "out": "/home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u21_ppo/ppo_seed0.pt"
+  },
+  "episode_seconds": 4.0,
+  "fall_rate": "1/2",
+  "scenarios": {
+    "standing (vx=0)": {
+      "duration_s": 4.0,
+      "fell": false,
+      "fwd_dist": 0.01307460430291407,
+      "vx_mean": 0.0030064478218956837,
+      "switches": 7,
+      "genuine_steps": 0,
+      "qpos_err_mean": 0.009039332489083196,
+      "torque_frac_max": 0.857462300378004,
+      "verdict": "NOT WALKING"
+    },
+    "forward walk (vx=trained target)": {
+      "duration_s": 0.64,
+      "fell": true,
+      "fwd_dist": 0.05839527250522295,
+      "vx_mean": 0.06146000951944568,
+      "switches": 12,
+      "genuine_steps": 2,
+      "qpos_err_mean": 0.0262907201244216,
+      "torque_frac_max": 1.0,
+      "verdict": "FELL"
+    }
+  }
+}

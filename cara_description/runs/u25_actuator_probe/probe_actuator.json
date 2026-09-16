@@ -1,0 +1,149 @@
+{
+  "1_zero_hold": {
+    "l_ankle_pitch": {
+      "mean_tracking_error_rad": 0.0016038811381095474,
+      "max_tracking_error_rad": 0.009171315881018646,
+      "return_to_target_error_rad": 0.0006953088137291327,
+      "saturation_fraction": 0.0,
+      "saturation_longest_run_steps": 0,
+      "saturation_longest_run_ms": 0,
+      "max_abs_force": 0.27833392133702617,
+      "mean_abs_vel": 0.020181894153647545,
+      "max_abs_vel": 0.2624287216409239
+    },
+    "l_knee_pitch": {
+      "mean_tracking_error_rad": 0.004941952843812561,
+      "max_tracking_error_rad": 0.007092974680752512,
+      "return_to_target_error_rad": 0.005360987086281602,
+      "saturation_fraction": 0.0,
+      "saturation_longest_run_steps": 0,
+      "saturation_longest_run_ms": 0,
+      "max_abs_force": 0.5492689655885457,
+      "mean_abs_vel": 0.014799774777972176,
+      "max_abs_vel": 0.36249439953128637
+    },
+    "l_hip_pitch": {
+      "mean_tracking_error_rad": 0.0003529088580820976,
+      "max_tracking_error_rad": 0.002183040932712585,
+      "return_to_target_error_rad": 5.8797406981297987e-05,
+      "saturation_fraction": 0.0,
+      "saturation_longest_run_steps": 0,
+      "saturation_longest_run_ms": 0,
+      "max_abs_force": 0.19013073530811653,
+      "mean_abs_vel": 0.006462600218532184,
+      "max_abs_vel": 0.10602029401643792
+    }
+  },
+  "2_fast_excursion": {
+    "l_ankle_pitch": {
+      "mean_tracking_error_rad": 0.01865757727272103,
+      "max_tracking_error_rad": 0.05271862241783819,
+      "return_to_target_error_rad": 0.012842075442686968,
+      "saturation_fraction": 0.0,
+      "saturation_longest_run_steps": 0,
+      "saturation_longest_run_ms": 0,
+      "max_abs_force": 1.541997427644991,
+      "mean_abs_vel": 0.20024714676967872,
+      "max_abs_vel": 1.2091846228039376
+    },
+    "l_knee_pitch": {
+      "mean_tracking_error_rad": 0.014031195394479426,
+      "max_tracking_error_rad": 0.03876917599459673,
+      "return_to_target_error_rad": 0.006677923226184509,
+      "saturation_fraction": 0.0,
+      "saturation_longest_run_steps": 0,
+      "saturation_longest_run_ms": 0,
+      "max_abs_force": 1.082455056931055,
+      "mean_abs_vel": 0.24706265985403963,
+      "max_abs_vel": 1.0275263203995322
+    },
+    "l_hip_pitch": {
+      "mean_tracking_error_rad": 0.023704924294948384,
+      "max_tracking_error_rad": 0.08078600865220548,
+      "return_to_target_error_rad": 0.005145759926093294,
+      "saturation_fraction": 0.0,
+      "saturation_longest_run_steps": 0,
+      "saturation_longest_run_ms": 0,
+      "max_abs_force": 2.0997806925331073,
+      "mean_abs_vel": 0.22345471512822526,
+      "max_abs_vel": 1.1317410318393544
+    }
+  },
+  "3_slow_excursion": {
+    "l_ankle_pitch": {
+      "mean_tracking_error_rad": 0.016007861658852113,
+      "max_tracking_error_rad": 0.024534250984299608,
+      "return_to_target_error_rad": 0.013700762249152426,
+      "saturation_fraction": 0.0,
+      "saturation_longest_run_steps": 0,
+      "saturation_longest_run_ms": 0,
+      "max_abs_force": 0.7250636910872228,
+      "mean_abs_vel": 0.19330851545139485,
+      "max_abs_vel": 0.34818539027142464
+    },
+    "l_knee_pitch": {
+      "mean_tracking_error_rad": 0.0138010977454741,
+      "max_tracking_error_rad": 0.03282596908417412,
+      "return_to_target_error_rad": 0.020494751418565455,
+      "saturation_fraction": 0.0,
+      "saturation_longest_run_steps": 0,
+      "saturation_longest_run_ms": 0,
+      "max_abs_force": 1.2415726484975504,
+      "mean_abs_vel": 0.22943097800349171,
+      "max_abs_vel": 0.3932922698621966
+    },
+    "l_hip_pitch": {
+      "mean_tracking_error_rad": 0.02012575741417293,
+      "max_tracking_error_rad": 0.049644856333661246,
+      "return_to_target_error_rad": 0.0033684035498075166,
+      "saturation_fraction": 0.0,
+      "saturation_longest_run_steps": 0,
+      "saturation_longest_run_ms": 0,
+      "max_abs_force": 1.7498779198020318,
+      "mean_abs_vel": 0.15263380656483932,
+      "max_abs_vel": 0.3848422293074205
+    }
+  },
+  "4_u24_replay": {
+    "l_ankle_pitch": {
+      "mean_tracking_error_rad": 0.03907011664347552,
+      "max_tracking_error_rad": 0.1990103183795946,
+      "return_to_target_error_rad": 0.015704780970473575,
+      "saturation_fraction": 0.20634920634920634,
+      "saturation_longest_run_steps": 7,
+      "saturation_longest_run_ms": 140,
+      "max_abs_force": 2.0,
+      "mean_abs_vel": 1.0494741259119456,
+      "max_abs_vel": 6.218217834696287
+    },
+    "l_knee_pitch": {
+      "mean_tracking_error_rad": 0.01913903817408258,
+      "max_tracking_error_rad": 0.07448241539250958,
+      "return_to_target_error_rad": 0.013881391783885238,
+      "saturation_fraction": 0.0,
+      "saturation_longest_run_steps": 0,
+      "saturation_longest_run_ms": 0,
+      "max_abs_force": 2.3596239671949437,
+      "mean_abs_vel": 1.1278001840534602,
+      "max_abs_vel": 3.8108863963078954
+    },
+    "l_hip_pitch": {
+      "mean_tracking_error_rad": 0.019082889126120228,
+      "max_tracking_error_rad": 0.060916315497838824,
+      "return_to_target_error_rad": 0.02611047396361032,
+      "saturation_fraction": 0.015873015873015872,
+      "saturation_longest_run_steps": 1,
+      "saturation_longest_run_ms": 20,
+      "max_abs_force": 3.0,
+      "mean_abs_vel": 0.5451220451779984,
+      "max_abs_vel": 2.779264514133074
+    },
+    "_whole_body": {
+      "steps": 63,
+      "fell": true,
+      "peak_tilt": 40.42676834190722,
+      "action_absmean": 0.3810958644700429,
+      "action_delta_absmean": 0.11539883626053336
+    }
+  }
+}

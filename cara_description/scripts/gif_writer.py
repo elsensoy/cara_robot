@@ -40,11 +40,24 @@ def _build_index_frame(frame, palette_arr):
 
 
 def _lzw_encode(index_stream, min_code_size):
+    """Degenerate, deliberately uncompressed LZW: every pixel is emitted as
+    its own single-symbol code at a fixed width. This is NOT simply "no
+    dictionary growth on the encoder side" -- a spec-compliant LZW decoder
+    grows its OWN table by one entry per code decoded (after the first),
+    regardless of what the encoder emits, so a naive fixed-width stream
+    desyncs from the decoder the moment its table would need to widen past
+    the current code size (a first attempt did exactly this and every
+    decoder rejected frame 0 outright). The fix: periodically re-emit a
+    CLEAR code, comfortably before the decoder's table (which starts at
+    `clear_code + 2` entries and grows by one per code) would reach
+    `2**code_size` entries -- a CLEAR resets the decoder's table back to its
+    initial state, so the stream never needs an actual code-size increase."""
     clear_code = 1 << min_code_size
     end_code = clear_code + 1
-    next_code = end_code + 1
     code_size = min_code_size + 1
-    table = {(i,): i for i in range(clear_code)}
+    # Margin well under the true limit (2**code_size - clear_code - 2) so
+    # off-by-one differences between decoders can't matter.
+    reset_period = max(1, (1 << code_size) // 4)
 
     bits = []
 
@@ -53,26 +66,13 @@ def _lzw_encode(index_stream, min_code_size):
             bits.append((code >> i) & 1)
 
     emit(clear_code, code_size)
-    w = ()
+    since_clear = 0
     for byte in index_stream:
-        wc = w + (byte,)
-        if wc in table:
-            w = wc
-            continue
-        emit(table[w], code_size)
-        if next_code < 4096:
-            table[wc] = next_code
-            next_code += 1
-            if next_code == (1 << code_size) + 1 and code_size < 12:
-                code_size += 1
-        else:
+        if since_clear >= reset_period:
             emit(clear_code, code_size)
-            table = {(i,): i for i in range(clear_code)}
-            next_code = end_code + 1
-            code_size = min_code_size + 1
-        w = (byte,)
-    if w:
-        emit(table[w], code_size)
+            since_clear = 0
+        emit(byte, code_size)
+        since_clear += 1
     emit(end_code, code_size)
 
     out = bytearray()
@@ -94,20 +94,27 @@ def write_gif(path, frames, fps=10):
     palette = _quantize_palette(frames)
     palette_arr = np.array(palette, dtype=np.int32)
     n_colors = len(palette)
-    color_table_size = 1
-    while (1 << color_table_size) < n_colors:
-        color_table_size += 1
-    min_code_size = max(2, color_table_size)
+    # bpp = bits needed to INDEX n_colors (also the LZW min-code-size).
+    # The GIF header's "Size of Global Color Table" field is a separate,
+    # 3-bit quantity N where the table holds 2^(N+1) entries -- i.e. N = bpp-1,
+    # NOT bpp itself. Conflating the two (using bpp directly as N, when
+    # bpp=8 doesn't even fit in 3 bits) corrupted the header's packed byte
+    # on the first attempt and produced an unreadable file.
+    bpp = 1
+    while (1 << bpp) < n_colors:
+        bpp += 1
+    n_field = bpp - 1
+    min_code_size = max(2, bpp)
     delay_cs = max(1, round(100.0 / fps))
 
     with open(path, "wb") as f:
         f.write(b"GIF89a")
         f.write(struct.pack("<HH", w, h))
         gct_flag = 1
-        packed = (gct_flag << 7) | (0b111 << 4) | (0 << 3) | color_table_size
+        packed = (gct_flag << 7) | (0b111 << 4) | (0 << 3) | n_field
         f.write(struct.pack("B", packed))
         f.write(struct.pack("BB", 0, 0))  # background color index, pixel aspect
-        table_entries = 1 << (color_table_size + 1)
+        table_entries = 1 << bpp
         for i in range(table_entries):
             if i < n_colors:
                 f.write(bytes(palette[i]))

@@ -1,0 +1,56 @@
+
+=== magnitude 0.0 rad/s (N=40) ===
+  zero action: survival=100.0%  mean_steps=200.0  settled/survived=40/40
+  frozen U28:  survival=100.0%  mean_steps=200.0  settled/survived=40/40
+  U29:         survival=100.0%  mean_steps=200.0  settled/survived=40/40
+  U29 vs frozen U28: +0.0% survival
+
+=== magnitude 3.0 rad/s (N=40) ===
+  zero action: survival=100.0%  mean_steps=200.0  settled/survived=40/40
+  frozen U28:  survival=100.0%  mean_steps=200.0  settled/survived=40/40
+  U29:         survival=100.0%  mean_steps=200.0  settled/survived=40/40
+  U29 vs frozen U28: +0.0% survival
+
+=== magnitude 5.0 rad/s (N=40) ===
+  zero action: survival=90.0%  mean_steps=185.4  settled/survived=36/36
+  frozen U28:  survival=95.0%  mean_steps=193.7  settled/survived=37/38
+  U29:         survival=100.0%  mean_steps=200.0  settled/survived=40/40
+  U29 vs frozen U28: +5.0% survival
+
+=== magnitude 6.0 rad/s (N=40) ===
+  zero action: survival=87.5%  mean_steps=182.1  settled/survived=35/35
+  frozen U28:  survival=95.0%  mean_steps=192.6  settled/survived=37/38
+  U29:         survival=95.0%  mean_steps=195.5  settled/survived=38/38
+  U29 vs frozen U28: +0.0% survival
+
+=== magnitude 7.0 rad/s (N=40) ===
+  zero action: survival=80.0%  mean_steps=171.5  settled/survived=32/32
+  frozen U28:  survival=90.0%  mean_steps=185.7  settled/survived=35/36
+  U29:         survival=90.0%  mean_steps=184.8  settled/survived=36/36
+  U29 vs frozen U28: +0.0% survival
+
+=== magnitude 8.0 rad/s (N=40) ===
+  zero action: survival=67.5%  mean_steps=152.4  settled/survived=27/27
+  frozen U28:  survival=77.5%  mean_steps=165.2  settled/survived=30/31
+  U29:         survival=80.0%  mean_steps=168.0  settled/survived=32/32
+  U29 vs frozen U28: +2.5% survival
+
+=== magnitude 9.0 rad/s (N=40) ===
+  zero action: survival=47.5%  mean_steps=120.9  settled/survived=19/19
+  frozen U28:  survival=70.0%  mean_steps=150.9  settled/survived=27/28
+  U29:         survival=70.0%  mean_steps=152.1  settled/survived=28/28
+  U29 vs frozen U28: +0.0% survival
+
+=== magnitude 10.0 rad/s (N=40) ===
+  zero action: survival=37.5%  mean_steps=101.7  settled/survived=15/15
+  frozen U28:  survival=57.5%  mean_steps=131.8  settled/survived=21/23
+  U29:         survival=65.0%  mean_steps=141.4  settled/survived=26/26
+  U29 vs frozen U28: +7.5% survival
+
+=== success criterion: U29 improves on frozen U28 in the harder band, while preserving nominal standing and the existing (U28-tested) recovery range ===
+  nominal (0.0) preserved: True
+  existing recovery range (6.0, U28's own test point) preserved: True
+  harder band (7-10) improved by >5pp somewhere: True
+  OVERALL: SUCCESS
+
+saved -> /home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u29_perturb_curriculum/u29_seed0_eval.json

@@ -1,0 +1,196 @@
+iter    1/195  step=    2048  ep_return=   82.21  ep_len= 182.6  fall_rate=0.25  logstd=-3.004  clipfrac=0.56  t=   2.1s
+iter    2/195  step=    4096  ep_return=   93.19  ep_len= 186.9  fall_rate=0.23529411764705882  logstd=-3.007  clipfrac=0.50  t=   4.5s
+iter    3/195  step=    6144  ep_return=   81.42  ep_len= 183.6  fall_rate=0.4  logstd=-3.008  clipfrac=0.50  t=   7.0s
+iter    4/195  step=    8192  ep_return=   78.25  ep_len= 165.6  fall_rate=0.4  logstd=-3.009  clipfrac=0.51  t=   9.2s
+iter    5/195  step=   10240  ep_return=   80.15  ep_len= 169.6  fall_rate=0.4  logstd=-3.011  clipfrac=0.52  t=  11.6s  eval_steps=200 (NEW BEST)
+iter    6/195  step=   12288  ep_return=  101.04  ep_len= 191.2  fall_rate=0.3  logstd=-3.016  clipfrac=0.50  t=  14.4s
+iter    7/195  step=   14336  ep_return=  120.91  ep_len= 198.9  fall_rate=0.1  logstd=-3.019  clipfrac=0.50  t=  16.6s
+iter    8/195  step=   16384  ep_return=  124.68  ep_len= 199.0  fall_rate=0.05  logstd=-3.020  clipfrac=0.50  t=  19.0s
+iter    9/195  step=   18432  ep_return=  118.52  ep_len= 199.3  fall_rate=0.05  logstd=-3.021  clipfrac=0.50  t=  21.1s
+iter   10/195  step=   20480  ep_return=  117.34  ep_len= 198.2  fall_rate=0.1  logstd=-3.024  clipfrac=0.49  t=  23.4s  eval_steps=200
+iter   11/195  step=   22528  ep_return=  126.41  ep_len= 197.7  fall_rate=0.1  logstd=-3.026  clipfrac=0.50  t=  25.9s
+iter   12/195  step=   24576  ep_return=  125.92  ep_len= 192.6  fall_rate=0.1  logstd=-3.027  clipfrac=0.50  t=  28.5s
+iter   13/195  step=   26624  ep_return=  130.79  ep_len= 191.3  fall_rate=0.1  logstd=-3.029  clipfrac=0.48  t=  31.0s
+iter   14/195  step=   28672  ep_return=  126.51  ep_len= 195.4  fall_rate=0.1  logstd=-3.030  clipfrac=0.51  t=  33.3s
+iter   15/195  step=   30720  ep_return=  132.53  ep_len= 198.8  fall_rate=0.05  logstd=-3.031  clipfrac=0.49  t=  35.8s  eval_steps=200
+iter   16/195  step=   32768  ep_return=  144.08  ep_len= 201.0  fall_rate=0.0  logstd=-3.033  clipfrac=0.50  t=  38.7s
+iter   17/195  step=   34816  ep_return=  145.71  ep_len= 201.0  fall_rate=0.0  logstd=-3.032  clipfrac=0.50  t=  41.2s
+iter   18/195  step=   36864  ep_return=  138.24  ep_len= 199.2  fall_rate=0.05  logstd=-3.034  clipfrac=0.49  t=  43.7s
+iter   19/195  step=   38912  ep_return=  141.31  ep_len= 199.2  fall_rate=0.05  logstd=-3.036  clipfrac=0.48  t=  46.0s
+iter   20/195  step=   40960  ep_return=  145.69  ep_len= 201.0  fall_rate=0.0  logstd=-3.038  clipfrac=0.48  t=  48.6s  eval_steps=200
+iter   21/195  step=   43008  ep_return=  145.39  ep_len= 201.0  fall_rate=0.0  logstd=-3.039  clipfrac=0.49  t=  51.1s
+iter   22/195  step=   45056  ep_return=  146.59  ep_len= 201.0  fall_rate=0.0  logstd=-3.040  clipfrac=0.50  t=  53.4s
+iter   23/195  step=   47104  ep_return=  143.50  ep_len= 201.0  fall_rate=0.0  logstd=-3.044  clipfrac=0.48  t=  55.7s
+iter   24/195  step=   49152  ep_return=  147.25  ep_len= 201.0  fall_rate=0.0  logstd=-3.048  clipfrac=0.51  t=  58.3s
+iter   25/195  step=   51200  ep_return=  149.70  ep_len= 201.0  fall_rate=0.0  logstd=-3.047  clipfrac=0.51  t=  60.8s  eval_steps=200
+iter   26/195  step=   53248  ep_return=  145.87  ep_len= 201.0  fall_rate=0.0  logstd=-3.051  clipfrac=0.48  t=  63.1s
+iter   27/195  step=   55296  ep_return=  147.17  ep_len= 201.0  fall_rate=0.0  logstd=-3.053  clipfrac=0.50  t=  65.3s
+iter   28/195  step=   57344  ep_return=  149.26  ep_len= 201.0  fall_rate=0.0  logstd=-3.057  clipfrac=0.50  t=  67.6s
+iter   29/195  step=   59392  ep_return=  144.65  ep_len= 201.0  fall_rate=0.0  logstd=-3.059  clipfrac=0.48  t=  69.9s
+iter   30/195  step=   61440  ep_return=  145.63  ep_len= 201.0  fall_rate=0.0  logstd=-3.062  clipfrac=0.48  t=  72.2s  eval_steps=200
+iter   31/195  step=   63488  ep_return=  150.12  ep_len= 201.0  fall_rate=0.0  logstd=-3.065  clipfrac=0.51  t=  74.7s
+iter   32/195  step=   65536  ep_return=  145.32  ep_len= 201.0  fall_rate=0.0  logstd=-3.067  clipfrac=0.51  t=  77.2s
+iter   33/195  step=   67584  ep_return=  146.91  ep_len= 201.0  fall_rate=0.0  logstd=-3.069  clipfrac=0.50  t=  79.8s
+iter   34/195  step=   69632  ep_return=  148.14  ep_len= 201.0  fall_rate=0.0  logstd=-3.070  clipfrac=0.49  t=  82.3s
+iter   35/195  step=   71680  ep_return=  147.11  ep_len= 201.0  fall_rate=0.0  logstd=-3.070  clipfrac=0.49  t=  84.8s  eval_steps=200
+iter   36/195  step=   73728  ep_return=  151.61  ep_len= 201.0  fall_rate=0.0  logstd=-3.071  clipfrac=0.48  t=  87.2s
+iter   37/195  step=   75776  ep_return=  152.20  ep_len= 201.0  fall_rate=0.0  logstd=-3.072  clipfrac=0.49  t=  89.5s
+iter   38/195  step=   77824  ep_return=  151.53  ep_len= 201.0  fall_rate=0.0  logstd=-3.073  clipfrac=0.48  t=  91.7s
+iter   39/195  step=   79872  ep_return=  153.19  ep_len= 201.0  fall_rate=0.0  logstd=-3.077  clipfrac=0.48  t=  94.4s
+iter   40/195  step=   81920  ep_return=  151.74  ep_len= 201.0  fall_rate=0.0  logstd=-3.078  clipfrac=0.48  t=  96.7s  eval_steps=200
+iter   41/195  step=   83968  ep_return=  152.53  ep_len= 201.0  fall_rate=0.0  logstd=-3.079  clipfrac=0.49  t=  99.3s
+iter   42/195  step=   86016  ep_return=  154.91  ep_len= 201.0  fall_rate=0.0  logstd=-3.081  clipfrac=0.48  t= 101.8s
+iter   43/195  step=   88064  ep_return=  150.56  ep_len= 201.0  fall_rate=0.0  logstd=-3.082  clipfrac=0.48  t= 104.2s
+iter   44/195  step=   90112  ep_return=  148.47  ep_len= 201.0  fall_rate=0.0  logstd=-3.086  clipfrac=0.46  t= 106.8s
+iter   45/195  step=   92160  ep_return=  136.15  ep_len= 193.5  fall_rate=0.1  logstd=-3.087  clipfrac=0.48  t= 109.4s  eval_steps=200
+iter   46/195  step=   94208  ep_return=  139.75  ep_len= 193.5  fall_rate=0.1  logstd=-3.090  clipfrac=0.47  t= 112.1s
+iter   47/195  step=   96256  ep_return=  156.51  ep_len= 201.0  fall_rate=0.0  logstd=-3.093  clipfrac=0.47  t= 114.3s
+iter   48/195  step=   98304  ep_return=  153.79  ep_len= 201.0  fall_rate=0.0  logstd=-3.094  clipfrac=0.46  t= 116.7s
+iter   49/195  step=  100352  ep_return=  154.96  ep_len= 201.0  fall_rate=0.0  logstd=-3.096  clipfrac=0.46  t= 119.0s
+iter   50/195  step=  102400  ep_return=  155.42  ep_len= 201.0  fall_rate=0.0  logstd=-3.097  clipfrac=0.46  t= 121.2s  eval_steps=200
+iter   51/195  step=  104448  ep_return=  153.64  ep_len= 201.0  fall_rate=0.0  logstd=-3.097  clipfrac=0.46  t= 123.5s
+iter   52/195  step=  106496  ep_return=  155.75  ep_len= 201.0  fall_rate=0.0  logstd=-3.098  clipfrac=0.49  t= 126.1s
+iter   53/195  step=  108544  ep_return=  158.31  ep_len= 201.0  fall_rate=0.0  logstd=-3.100  clipfrac=0.47  t= 128.3s
+iter   54/195  step=  110592  ep_return=  157.53  ep_len= 201.0  fall_rate=0.0  logstd=-3.102  clipfrac=0.47  t= 130.6s
+iter   55/195  step=  112640  ep_return=  158.13  ep_len= 201.0  fall_rate=0.0  logstd=-3.103  clipfrac=0.46  t= 132.8s  eval_steps=200
+iter   56/195  step=  114688  ep_return=  159.33  ep_len= 201.0  fall_rate=0.0  logstd=-3.106  clipfrac=0.46  t= 135.4s
+iter   57/195  step=  116736  ep_return=  158.18  ep_len= 201.0  fall_rate=0.0  logstd=-3.109  clipfrac=0.48  t= 137.6s
+iter   58/195  step=  118784  ep_return=  156.90  ep_len= 201.0  fall_rate=0.0  logstd=-3.110  clipfrac=0.47  t= 139.9s
+iter   59/195  step=  120832  ep_return=  158.92  ep_len= 201.0  fall_rate=0.0  logstd=-3.111  clipfrac=0.47  t= 142.3s
+iter   60/195  step=  122880  ep_return=  159.83  ep_len= 201.0  fall_rate=0.0  logstd=-3.113  clipfrac=0.46  t= 144.5s  eval_steps=200
+iter   61/195  step=  124928  ep_return=  159.19  ep_len= 201.0  fall_rate=0.0  logstd=-3.114  clipfrac=0.48  t= 146.9s
+iter   62/195  step=  126976  ep_return=  157.45  ep_len= 201.0  fall_rate=0.0  logstd=-3.114  clipfrac=0.45  t= 149.2s
+iter   63/195  step=  129024  ep_return=  156.42  ep_len= 201.0  fall_rate=0.0  logstd=-3.115  clipfrac=0.46  t= 151.3s
+iter   64/195  step=  131072  ep_return=  158.95  ep_len= 201.0  fall_rate=0.0  logstd=-3.118  clipfrac=0.45  t= 153.5s
+iter   65/195  step=  133120  ep_return=  158.52  ep_len= 201.0  fall_rate=0.0  logstd=-3.119  clipfrac=0.46  t= 156.2s  eval_steps=200
+iter   66/195  step=  135168  ep_return=  157.86  ep_len= 201.0  fall_rate=0.0  logstd=-3.120  clipfrac=0.46  t= 159.0s
+iter   67/195  step=  137216  ep_return=  159.14  ep_len= 201.0  fall_rate=0.0  logstd=-3.122  clipfrac=0.47  t= 161.6s
+iter   68/195  step=  139264  ep_return=  160.34  ep_len= 201.0  fall_rate=0.0  logstd=-3.123  clipfrac=0.46  t= 163.7s
+iter   69/195  step=  141312  ep_return=  161.19  ep_len= 201.0  fall_rate=0.0  logstd=-3.126  clipfrac=0.45  t= 166.3s
+iter   70/195  step=  143360  ep_return=  160.53  ep_len= 201.0  fall_rate=0.0  logstd=-3.128  clipfrac=0.44  t= 169.1s  eval_steps=200
+iter   71/195  step=  145408  ep_return=  160.20  ep_len= 201.0  fall_rate=0.0  logstd=-3.130  clipfrac=0.44  t= 172.0s
+iter   72/195  step=  147456  ep_return=  161.20  ep_len= 201.0  fall_rate=0.0  logstd=-3.131  clipfrac=0.44  t= 174.3s
+iter   73/195  step=  149504  ep_return=  159.43  ep_len= 201.0  fall_rate=0.0  logstd=-3.133  clipfrac=0.47  t= 176.9s
+iter   74/195  step=  151552  ep_return=  157.77  ep_len= 201.0  fall_rate=0.0  logstd=-3.134  clipfrac=0.45  t= 179.2s
+iter   75/195  step=  153600  ep_return=  158.24  ep_len= 201.0  fall_rate=0.0  logstd=-3.136  clipfrac=0.46  t= 181.5s  eval_steps=200
+iter   76/195  step=  155648  ep_return=  157.83  ep_len= 201.0  fall_rate=0.0  logstd=-3.139  clipfrac=0.45  t= 183.8s
+iter   77/195  step=  157696  ep_return=  159.41  ep_len= 201.0  fall_rate=0.0  logstd=-3.140  clipfrac=0.46  t= 186.4s
+iter   78/195  step=  159744  ep_return=  159.51  ep_len= 201.0  fall_rate=0.0  logstd=-3.141  clipfrac=0.44  t= 188.6s
+iter   79/195  step=  161792  ep_return=  159.78  ep_len= 201.0  fall_rate=0.0  logstd=-3.142  clipfrac=0.44  t= 191.0s
+iter   80/195  step=  163840  ep_return=  161.75  ep_len= 201.0  fall_rate=0.0  logstd=-3.144  clipfrac=0.45  t= 193.5s  eval_steps=200
+iter   81/195  step=  165888  ep_return=  161.49  ep_len= 201.0  fall_rate=0.0  logstd=-3.146  clipfrac=0.45  t= 196.2s
+iter   82/195  step=  167936  ep_return=  160.17  ep_len= 201.0  fall_rate=0.0  logstd=-3.145  clipfrac=0.43  t= 198.8s
+iter   83/195  step=  169984  ep_return=  159.94  ep_len= 201.0  fall_rate=0.0  logstd=-3.146  clipfrac=0.44  t= 201.1s
+iter   84/195  step=  172032  ep_return=  160.34  ep_len= 201.0  fall_rate=0.0  logstd=-3.147  clipfrac=0.45  t= 203.5s
+iter   85/195  step=  174080  ep_return=  158.42  ep_len= 201.0  fall_rate=0.0  logstd=-3.148  clipfrac=0.43  t= 206.1s  eval_steps=200
+iter   86/195  step=  176128  ep_return=  160.22  ep_len= 201.0  fall_rate=0.0  logstd=-3.149  clipfrac=0.42  t= 209.0s
+iter   87/195  step=  178176  ep_return=  160.95  ep_len= 201.0  fall_rate=0.0  logstd=-3.150  clipfrac=0.43  t= 211.8s
+iter   88/195  step=  180224  ep_return=  162.33  ep_len= 201.0  fall_rate=0.0  logstd=-3.152  clipfrac=0.43  t= 214.5s
+iter   89/195  step=  182272  ep_return=  163.09  ep_len= 201.0  fall_rate=0.0  logstd=-3.152  clipfrac=0.44  t= 216.7s
+iter   90/195  step=  184320  ep_return=  161.90  ep_len= 201.0  fall_rate=0.0  logstd=-3.153  clipfrac=0.44  t= 219.0s  eval_steps=200
+iter   91/195  step=  186368  ep_return=  160.94  ep_len= 201.0  fall_rate=0.0  logstd=-3.155  clipfrac=0.43  t= 221.6s
+iter   92/195  step=  188416  ep_return=  161.96  ep_len= 201.0  fall_rate=0.0  logstd=-3.155  clipfrac=0.42  t= 224.2s
+iter   93/195  step=  190464  ep_return=  161.06  ep_len= 201.0  fall_rate=0.0  logstd=-3.157  clipfrac=0.43  t= 226.5s
+iter   94/195  step=  192512  ep_return=  160.77  ep_len= 201.0  fall_rate=0.0  logstd=-3.158  clipfrac=0.44  t= 228.6s
+iter   95/195  step=  194560  ep_return=  160.94  ep_len= 201.0  fall_rate=0.0  logstd=-3.160  clipfrac=0.43  t= 230.8s  eval_steps=200
+iter   96/195  step=  196608  ep_return=  160.87  ep_len= 201.0  fall_rate=0.0  logstd=-3.160  clipfrac=0.43  t= 233.3s
+iter   97/195  step=  198656  ep_return=  163.64  ep_len= 201.0  fall_rate=0.0  logstd=-3.162  clipfrac=0.42  t= 236.0s
+iter   98/195  step=  200704  ep_return=  164.99  ep_len= 201.0  fall_rate=0.0  logstd=-3.162  clipfrac=0.43  t= 238.5s
+iter   99/195  step=  202752  ep_return=  161.87  ep_len= 201.0  fall_rate=0.0  logstd=-3.163  clipfrac=0.43  t= 241.3s
+iter  100/195  step=  204800  ep_return=  159.73  ep_len= 198.0  fall_rate=0.05  logstd=-3.162  clipfrac=0.42  t= 243.5s  eval_steps=200
+iter  101/195  step=  206848  ep_return=  158.14  ep_len= 198.0  fall_rate=0.05  logstd=-3.163  clipfrac=0.43  t= 246.6s
+iter  102/195  step=  208896  ep_return=  159.94  ep_len= 201.0  fall_rate=0.0  logstd=-3.164  clipfrac=0.43  t= 249.2s
+iter  103/195  step=  210944  ep_return=  160.75  ep_len= 201.0  fall_rate=0.0  logstd=-3.166  clipfrac=0.42  t= 251.6s
+iter  104/195  step=  212992  ep_return=  159.86  ep_len= 201.0  fall_rate=0.0  logstd=-3.166  clipfrac=0.40  t= 254.0s
+iter  105/195  step=  215040  ep_return=  161.87  ep_len= 201.0  fall_rate=0.0  logstd=-3.168  clipfrac=0.39  t= 256.4s  eval_steps=200
+iter  106/195  step=  217088  ep_return=  163.70  ep_len= 201.0  fall_rate=0.0  logstd=-3.169  clipfrac=0.39  t= 259.1s
+iter  107/195  step=  219136  ep_return=  162.68  ep_len= 201.0  fall_rate=0.0  logstd=-3.170  clipfrac=0.40  t= 261.7s
+iter  108/195  step=  221184  ep_return=  163.79  ep_len= 201.0  fall_rate=0.0  logstd=-3.171  clipfrac=0.42  t= 264.0s
+iter  109/195  step=  223232  ep_return=  164.02  ep_len= 201.0  fall_rate=0.0  logstd=-3.172  clipfrac=0.43  t= 266.7s
+iter  110/195  step=  225280  ep_return=  163.18  ep_len= 201.0  fall_rate=0.0  logstd=-3.172  clipfrac=0.40  t= 269.0s  eval_steps=200
+iter  111/195  step=  227328  ep_return=  163.40  ep_len= 201.0  fall_rate=0.0  logstd=-3.173  clipfrac=0.39  t= 271.9s
+iter  112/195  step=  229376  ep_return=  164.35  ep_len= 201.0  fall_rate=0.0  logstd=-3.174  clipfrac=0.40  t= 274.3s
+iter  113/195  step=  231424  ep_return=  164.61  ep_len= 201.0  fall_rate=0.0  logstd=-3.176  clipfrac=0.41  t= 277.0s
+iter  114/195  step=  233472  ep_return=  164.22  ep_len= 201.0  fall_rate=0.0  logstd=-3.177  clipfrac=0.40  t= 279.4s
+iter  115/195  step=  235520  ep_return=  165.22  ep_len= 201.0  fall_rate=0.0  logstd=-3.177  clipfrac=0.40  t= 282.0s  eval_steps=200
+iter  116/195  step=  237568  ep_return=  163.40  ep_len= 201.0  fall_rate=0.0  logstd=-3.178  clipfrac=0.42  t= 284.7s
+iter  117/195  step=  239616  ep_return=  163.11  ep_len= 201.0  fall_rate=0.0  logstd=-3.178  clipfrac=0.40  t= 287.6s
+iter  118/195  step=  241664  ep_return=  163.58  ep_len= 201.0  fall_rate=0.0  logstd=-3.179  clipfrac=0.40  t= 291.0s
+iter  119/195  step=  243712  ep_return=  163.87  ep_len= 201.0  fall_rate=0.0  logstd=-3.179  clipfrac=0.39  t= 293.6s
+iter  120/195  step=  245760  ep_return=  163.49  ep_len= 201.0  fall_rate=0.0  logstd=-3.179  clipfrac=0.39  t= 296.0s  eval_steps=200
+iter  121/195  step=  247808  ep_return=  162.91  ep_len= 201.0  fall_rate=0.0  logstd=-3.179  clipfrac=0.38  t= 298.6s
+iter  122/195  step=  249856  ep_return=  163.48  ep_len= 201.0  fall_rate=0.0  logstd=-3.180  clipfrac=0.39  t= 301.4s
+iter  123/195  step=  251904  ep_return=  165.37  ep_len= 201.0  fall_rate=0.0  logstd=-3.181  clipfrac=0.37  t= 303.8s
+iter  124/195  step=  253952  ep_return=  165.93  ep_len= 201.0  fall_rate=0.0  logstd=-3.181  clipfrac=0.37  t= 306.4s
+iter  125/195  step=  256000  ep_return=  164.09  ep_len= 201.0  fall_rate=0.0  logstd=-3.183  clipfrac=0.39  t= 309.2s  eval_steps=200
+iter  126/195  step=  258048  ep_return=  162.21  ep_len= 201.0  fall_rate=0.0  logstd=-3.184  clipfrac=0.36  t= 312.1s
+iter  127/195  step=  260096  ep_return=  163.32  ep_len= 201.0  fall_rate=0.0  logstd=-3.184  clipfrac=0.36  t= 314.5s
+iter  128/195  step=  262144  ep_return=  164.49  ep_len= 201.0  fall_rate=0.0  logstd=-3.185  clipfrac=0.38  t= 316.7s
+iter  129/195  step=  264192  ep_return=  162.41  ep_len= 201.0  fall_rate=0.0  logstd=-3.185  clipfrac=0.38  t= 319.1s
+iter  130/195  step=  266240  ep_return=  161.74  ep_len= 201.0  fall_rate=0.0  logstd=-3.185  clipfrac=0.38  t= 321.4s  eval_steps=200
+iter  131/195  step=  268288  ep_return=  165.06  ep_len= 201.0  fall_rate=0.0  logstd=-3.185  clipfrac=0.36  t= 323.9s
+iter  132/195  step=  270336  ep_return=  164.96  ep_len= 201.0  fall_rate=0.0  logstd=-3.186  clipfrac=0.37  t= 326.4s
+iter  133/195  step=  272384  ep_return=  164.86  ep_len= 201.0  fall_rate=0.0  logstd=-3.187  clipfrac=0.35  t= 329.3s
+iter  134/195  step=  274432  ep_return=  163.44  ep_len= 201.0  fall_rate=0.0  logstd=-3.187  clipfrac=0.34  t= 331.6s
+iter  135/195  step=  276480  ep_return=  162.71  ep_len= 201.0  fall_rate=0.0  logstd=-3.188  clipfrac=0.35  t= 334.0s  eval_steps=200
+iter  136/195  step=  278528  ep_return=  161.28  ep_len= 201.0  fall_rate=0.0  logstd=-3.190  clipfrac=0.33  t= 336.8s
+iter  137/195  step=  280576  ep_return=  161.44  ep_len= 201.0  fall_rate=0.0  logstd=-3.192  clipfrac=0.35  t= 340.1s
+iter  138/195  step=  282624  ep_return=  164.88  ep_len= 201.0  fall_rate=0.0  logstd=-3.193  clipfrac=0.36  t= 342.5s
+iter  139/195  step=  284672  ep_return=  165.40  ep_len= 201.0  fall_rate=0.0  logstd=-3.195  clipfrac=0.35  t= 345.0s
+iter  140/195  step=  286720  ep_return=  162.75  ep_len= 201.0  fall_rate=0.0  logstd=-3.196  clipfrac=0.31  t= 347.6s  eval_steps=200
+iter  141/195  step=  288768  ep_return=  162.23  ep_len= 201.0  fall_rate=0.0  logstd=-3.197  clipfrac=0.34  t= 350.3s
+iter  142/195  step=  290816  ep_return=  161.75  ep_len= 201.0  fall_rate=0.0  logstd=-3.198  clipfrac=0.36  t= 352.9s
+iter  143/195  step=  292864  ep_return=  162.76  ep_len= 201.0  fall_rate=0.0  logstd=-3.199  clipfrac=0.32  t= 355.7s
+iter  144/195  step=  294912  ep_return=  162.51  ep_len= 201.0  fall_rate=0.0  logstd=-3.200  clipfrac=0.34  t= 357.9s
+iter  145/195  step=  296960  ep_return=  162.74  ep_len= 201.0  fall_rate=0.0  logstd=-3.200  clipfrac=0.32  t= 360.6s  eval_steps=200
+iter  146/195  step=  299008  ep_return=  163.80  ep_len= 201.0  fall_rate=0.0  logstd=-3.201  clipfrac=0.32  t= 363.4s
+iter  147/195  step=  301056  ep_return=  163.36  ep_len= 201.0  fall_rate=0.0  logstd=-3.202  clipfrac=0.32  t= 366.5s
+iter  148/195  step=  303104  ep_return=  162.98  ep_len= 201.0  fall_rate=0.0  logstd=-3.203  clipfrac=0.33  t= 369.1s
+iter  149/195  step=  305152  ep_return=  164.09  ep_len= 201.0  fall_rate=0.0  logstd=-3.204  clipfrac=0.34  t= 372.4s
+iter  150/195  step=  307200  ep_return=  165.38  ep_len= 201.0  fall_rate=0.0  logstd=-3.204  clipfrac=0.31  t= 374.8s  eval_steps=200
+iter  151/195  step=  309248  ep_return=  164.17  ep_len= 201.0  fall_rate=0.0  logstd=-3.204  clipfrac=0.31  t= 377.3s
+iter  152/195  step=  311296  ep_return=  164.44  ep_len= 201.0  fall_rate=0.0  logstd=-3.205  clipfrac=0.30  t= 379.5s
+iter  153/195  step=  313344  ep_return=  164.33  ep_len= 201.0  fall_rate=0.0  logstd=-3.206  clipfrac=0.31  t= 381.9s
+iter  154/195  step=  315392  ep_return=  165.34  ep_len= 201.0  fall_rate=0.0  logstd=-3.206  clipfrac=0.29  t= 384.6s
+iter  155/195  step=  317440  ep_return=  166.25  ep_len= 201.0  fall_rate=0.0  logstd=-3.207  clipfrac=0.31  t= 387.0s  eval_steps=200
+iter  156/195  step=  319488  ep_return=  165.64  ep_len= 201.0  fall_rate=0.0  logstd=-3.207  clipfrac=0.30  t= 389.5s
+iter  157/195  step=  321536  ep_return=  165.90  ep_len= 201.0  fall_rate=0.0  logstd=-3.208  clipfrac=0.29  t= 391.7s
+iter  158/195  step=  323584  ep_return=  166.61  ep_len= 201.0  fall_rate=0.0  logstd=-3.208  clipfrac=0.29  t= 394.5s
+iter  159/195  step=  325632  ep_return=  164.86  ep_len= 201.0  fall_rate=0.0  logstd=-3.209  clipfrac=0.30  t= 396.9s
+iter  160/195  step=  327680  ep_return=  164.68  ep_len= 201.0  fall_rate=0.0  logstd=-3.209  clipfrac=0.27  t= 399.6s  eval_steps=200
+iter  161/195  step=  329728  ep_return=  166.49  ep_len= 201.0  fall_rate=0.0  logstd=-3.210  clipfrac=0.31  t= 402.3s
+iter  162/195  step=  331776  ep_return=  166.89  ep_len= 201.0  fall_rate=0.0  logstd=-3.211  clipfrac=0.28  t= 404.9s
+iter  163/195  step=  333824  ep_return=  159.52  ep_len= 197.9  fall_rate=0.05  logstd=-3.211  clipfrac=0.21  t= 407.4s
+iter  164/195  step=  335872  ep_return=  160.08  ep_len= 197.9  fall_rate=0.05  logstd=-3.211  clipfrac=0.24  t= 409.8s
+iter  165/195  step=  337920  ep_return=  167.68  ep_len= 201.0  fall_rate=0.0  logstd=-3.211  clipfrac=0.26  t= 412.2s  eval_steps=200
+iter  166/195  step=  339968  ep_return=  165.95  ep_len= 201.0  fall_rate=0.0  logstd=-3.212  clipfrac=0.28  t= 414.6s
+iter  167/195  step=  342016  ep_return=  165.54  ep_len= 201.0  fall_rate=0.0  logstd=-3.212  clipfrac=0.25  t= 417.2s
+iter  168/195  step=  344064  ep_return=  164.97  ep_len= 201.0  fall_rate=0.0  logstd=-3.212  clipfrac=0.23  t= 419.4s
+iter  169/195  step=  346112  ep_return=  167.77  ep_len= 201.0  fall_rate=0.0  logstd=-3.212  clipfrac=0.23  t= 421.7s
+iter  170/195  step=  348160  ep_return=  168.02  ep_len= 201.0  fall_rate=0.0  logstd=-3.212  clipfrac=0.26  t= 424.2s  eval_steps=200
+iter  171/195  step=  350208  ep_return=  168.44  ep_len= 201.0  fall_rate=0.0  logstd=-3.213  clipfrac=0.26  t= 426.9s
+iter  172/195  step=  352256  ep_return=  167.37  ep_len= 201.0  fall_rate=0.0  logstd=-3.213  clipfrac=0.23  t= 429.8s
+iter  173/195  step=  354304  ep_return=  164.37  ep_len= 201.0  fall_rate=0.0  logstd=-3.213  clipfrac=0.21  t= 432.1s
+iter  174/195  step=  356352  ep_return=  166.57  ep_len= 201.0  fall_rate=0.0  logstd=-3.213  clipfrac=0.21  t= 434.4s
+iter  175/195  step=  358400  ep_return=  167.66  ep_len= 201.0  fall_rate=0.0  logstd=-3.214  clipfrac=0.21  t= 437.2s  eval_steps=200
+iter  176/195  step=  360448  ep_return=  164.58  ep_len= 201.0  fall_rate=0.0  logstd=-3.214  clipfrac=0.21  t= 439.9s
+iter  177/195  step=  362496  ep_return=  164.60  ep_len= 201.0  fall_rate=0.0  logstd=-3.214  clipfrac=0.19  t= 442.6s
+iter  178/195  step=  364544  ep_return=  167.78  ep_len= 201.0  fall_rate=0.0  logstd=-3.214  clipfrac=0.21  t= 445.3s
+iter  179/195  step=  366592  ep_return=  166.82  ep_len= 201.0  fall_rate=0.0  logstd=-3.214  clipfrac=0.18  t= 447.5s
+iter  180/195  step=  368640  ep_return=  166.00  ep_len= 201.0  fall_rate=0.0  logstd=-3.214  clipfrac=0.18  t= 450.2s  eval_steps=200
+iter  181/195  step=  370688  ep_return=  168.56  ep_len= 201.0  fall_rate=0.0  logstd=-3.214  clipfrac=0.19  t= 453.1s
+iter  182/195  step=  372736  ep_return=  169.41  ep_len= 201.0  fall_rate=0.0  logstd=-3.214  clipfrac=0.17  t= 455.4s
+iter  183/195  step=  374784  ep_return=  170.34  ep_len= 201.0  fall_rate=0.0  logstd=-3.214  clipfrac=0.10  t= 457.7s
+iter  184/195  step=  376832  ep_return=  169.84  ep_len= 201.0  fall_rate=0.0  logstd=-3.214  clipfrac=0.14  t= 460.3s
+iter  185/195  step=  378880  ep_return=  167.91  ep_len= 201.0  fall_rate=0.0  logstd=-3.214  clipfrac=0.15  t= 462.8s  eval_steps=200
+iter  186/195  step=  380928  ep_return=  168.87  ep_len= 201.0  fall_rate=0.0  logstd=-3.214  clipfrac=0.12  t= 465.7s
+iter  187/195  step=  382976  ep_return=  170.12  ep_len= 201.0  fall_rate=0.0  logstd=-3.215  clipfrac=0.10  t= 468.1s
+iter  188/195  step=  385024  ep_return=  167.74  ep_len= 201.0  fall_rate=0.0  logstd=-3.215  clipfrac=0.10  t= 470.5s
+iter  189/195  step=  387072  ep_return=  166.43  ep_len= 201.0  fall_rate=0.0  logstd=-3.215  clipfrac=0.10  t= 473.1s
+iter  190/195  step=  389120  ep_return=  168.56  ep_len= 201.0  fall_rate=0.0  logstd=-3.215  clipfrac=0.07  t= 475.6s  eval_steps=200
+iter  191/195  step=  391168  ep_return=  167.28  ep_len= 201.0  fall_rate=0.0  logstd=-3.215  clipfrac=0.06  t= 478.2s
+iter  192/195  step=  393216  ep_return=  165.69  ep_len= 201.0  fall_rate=0.0  logstd=-3.215  clipfrac=0.03  t= 480.8s
+iter  193/195  step=  395264  ep_return=  166.55  ep_len= 201.0  fall_rate=0.0  logstd=-3.215  clipfrac=0.03  t= 483.5s
+iter  194/195  step=  397312  ep_return=  167.37  ep_len= 201.0  fall_rate=0.0  logstd=-3.215  clipfrac=0.00  t= 486.1s
+iter  195/195  step=  399360  ep_return=  167.43  ep_len= 201.0  fall_rate=0.0  logstd=-3.215  clipfrac=0.00  t= 488.4s  eval_steps=200
+saved checkpoint -> /home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u27_standing_init/u27_seed0.pt

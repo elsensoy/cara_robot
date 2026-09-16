@@ -1,0 +1,247 @@
+{
+  "seeds": {
+    "seed0": {
+      "checkpoint": "/home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u27_standing_init/u27_seed0.pt",
+      "deterministic_nominal": {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      "sampled_nominal": {
+        "n": 30,
+        "survival_rate": 1.0,
+        "fall_rate": 0.0,
+        "mean_steps": 200.0
+      },
+      "perturbed_policy": {
+        "n": 40,
+        "survival_rate": 0.975,
+        "fall_rate": 0.025,
+        "mean_steps": 196.375
+      },
+      "perturbed_zero": {
+        "n": 40,
+        "survival_rate": 0.825,
+        "fall_rate": 0.175,
+        "mean_steps": 173.55
+      },
+      "pairing": {
+        "n": 40,
+        "both_survived": 33,
+        "survival_flips_policy_only": 6,
+        "survival_flips_zero_only": 0,
+        "time_to_fall_policy_longer": 1,
+        "time_to_fall_zero_longer": 0,
+        "both_fell_tied": 0,
+        "mean_step_diff": 22.825,
+        "median_step_diff": 0.0,
+        "step_diffs": [
+          0,
+          152,
+          0,
+          0,
+          153,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          151,
+          0,
+          151,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          13,
+          0,
+          0,
+          0,
+          0,
+          148,
+          0,
+          145,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "seed1": {
+      "checkpoint": "/home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u27_standing_init/u27_seed1.pt",
+      "deterministic_nominal": {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      "sampled_nominal": {
+        "n": 30,
+        "survival_rate": 1.0,
+        "fall_rate": 0.0,
+        "mean_steps": 200.0
+      },
+      "perturbed_policy": {
+        "n": 40,
+        "survival_rate": 0.95,
+        "fall_rate": 0.05,
+        "mean_steps": 194.2
+      },
+      "perturbed_zero": {
+        "n": 40,
+        "survival_rate": 0.825,
+        "fall_rate": 0.175,
+        "mean_steps": 173.55
+      },
+      "pairing": {
+        "n": 40,
+        "both_survived": 32,
+        "survival_flips_policy_only": 6,
+        "survival_flips_zero_only": 1,
+        "time_to_fall_policy_longer": 1,
+        "time_to_fall_zero_longer": 0,
+        "both_fell_tied": 0,
+        "mean_step_diff": 20.65,
+        "median_step_diff": 0.0,
+        "step_diffs": [
+          0,
+          152,
+          0,
+          0,
+          153,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          151,
+          0,
+          151,
+          0,
+          0,
+          0,
+          0,
+          0,
+          -115,
+          0,
+          41,
+          0,
+          0,
+          0,
+          0,
+          148,
+          0,
+          145,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "seed2": {
+      "checkpoint": "/home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u27_standing_init/u27_seed2.pt",
+      "deterministic_nominal": {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      "sampled_nominal": {
+        "n": 30,
+        "survival_rate": 1.0,
+        "fall_rate": 0.0,
+        "mean_steps": 200.0
+      },
+      "perturbed_policy": {
+        "n": 40,
+        "survival_rate": 0.975,
+        "fall_rate": 0.025,
+        "mean_steps": 196.05
+      },
+      "perturbed_zero": {
+        "n": 40,
+        "survival_rate": 0.825,
+        "fall_rate": 0.175,
+        "mean_steps": 173.55
+      },
+      "pairing": {
+        "n": 40,
+        "both_survived": 33,
+        "survival_flips_policy_only": 6,
+        "survival_flips_zero_only": 0,
+        "time_to_fall_policy_longer": 0,
+        "time_to_fall_zero_longer": 0,
+        "both_fell_tied": 1,
+        "mean_step_diff": 22.5,
+        "median_step_diff": 0.0,
+        "step_diffs": [
+          0,
+          152,
+          0,
+          0,
+          153,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          151,
+          0,
+          151,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          148,
+          0,
+          145,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  },
+  "untrained_sampled_nominal": {
+    "n": 30,
+    "survival_rate": 0.6333333333333333,
+    "fall_rate": 0.36666666666666664,
+    "mean_steps": 178.43333333333334
+  }
+}

@@ -1,0 +1,161 @@
+{
+  "checkpoint": "/home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u26_reward_comparison/branchB_strongrate.pt",
+  "n_resets": 30,
+  "max_steps": 200,
+  "results": [
+    {
+      "steps": 43,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 21,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 39,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 32,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 70,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 32,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 36,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 42,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 35,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 23,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 54,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 30,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 42,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 42,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 33,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 31,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 32,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 31,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 26,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 37,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 39,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 57,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 33,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 39,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 32,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 29,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 30,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 62,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 27,
+      "fell": true,
+      "survived_full": false
+    },
+    {
+      "steps": 41,
+      "fell": true,
+      "survived_full": false
+    }
+  ],
+  "survived_full_count": 0,
+  "survival_rate": 0.0,
+  "gate": 0.9,
+  "met": false
+}

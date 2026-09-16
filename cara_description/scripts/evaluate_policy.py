@@ -76,6 +76,30 @@ def run_episode(env, W, normalizer, max_steps, record_gif_every=None):
     return dict(fell=fell, steps=steps, total_reward=total_reward, frames=frames, **log)
 
 
+def count_genuine_steps(support, min_run=3):
+    """A "genuine step" is a maximal run of single-leg support (L-only or
+    R-only) lasting at least `min_run` control steps (60ms at 50Hz) --
+    long enough to be an actual weight transfer, not the 1-2-step contact
+    flicker a topple produces for free. Per the review guidance: "four
+    genuine steps followed by a fall is useful progress; contact flicker
+    during a topple is not" -- this is what keeps that distinction honest
+    even when the episode ends in a fall."""
+    import numpy as np
+    is_single = (support == 1) | (support == 2)  # 1=right-only, 2=left-only (see caller)
+    count = 0
+    run = 0
+    for v in is_single:
+        if v:
+            run += 1
+        else:
+            if run >= min_run:
+                count += 1
+            run = 0
+    if run >= min_run:
+        count += 1
+    return count
+
+
 def summarize(name, result, control_hz, requested_steps):
     import numpy as np
     n = result["steps"]
@@ -87,6 +111,7 @@ def summarize(name, result, control_hz, requested_steps):
     # "right only", "double", "none" -- a real gait alternates repeatedly.
     support = touch_l.astype(int) * 2 + touch_r.astype(int)
     switches = int(np.sum(support[1:] != support[:-1])) if n > 1 else 0
+    genuine_steps = count_genuine_steps(support) if n else 0
     both_off = float(np.mean((~touch_l) & (~touch_r))) if n else 0.0
     fwd_dist = result["pelvis_x"][-1] - result["pelvis_x"][0] if n else 0.0
     print(f"\n--- {name} ---")
@@ -95,6 +120,7 @@ def summarize(name, result, control_hz, requested_steps):
     print(f"  commanded vx: (see env config)   achieved vx: mean={vx.mean():+.3f} "
           f"std={vx.std():.3f} m/s")
     print(f"  support switches (contact-pattern changes): {switches}  "
+          f"genuine steps (single-support >=60ms, i.e. NOT flicker): {genuine_steps}  "
           f"both-feet-airborne fraction: {both_off:.1%}")
     print(f"  joint tracking error: mean={np.mean(result['qpos_err']):.4f} "
           f"max={np.max(result['qpos_err']):.4f} rad")
@@ -107,7 +133,7 @@ def summarize(name, result, control_hz, requested_steps):
     # that as "stepping" would be exactly the false positive the milestone
     # definition warns against (sliding, shuffling, or falling forward).
     survived = (not result["fell"]) and n >= 0.8 * requested_steps
-    is_stepping = survived and switches >= 4 and fwd_dist > 0.02 and not (both_off > 0.5)
+    is_stepping = survived and genuine_steps >= 4 and fwd_dist > 0.02 and not (both_off > 0.5)
     if not survived:
         verdict = "FELL" if result["fell"] else "TIMED OUT EARLY"
     elif is_stepping:
@@ -126,6 +152,7 @@ def summarize(name, result, control_hz, requested_steps):
     print(f"  verdict: {verdict} ({reason})")
     return dict(duration_s=duration_s, fell=result["fell"], fwd_dist=fwd_dist,
                 vx_mean=float(vx.mean()) if n else 0.0, switches=switches,
+                genuine_steps=genuine_steps,
                 qpos_err_mean=float(np.mean(result["qpos_err"])) if n else float("nan"),
                 torque_frac_max=float(np.max(result["torque_frac"])) if n else float("nan"),
                 verdict=verdict)
@@ -137,6 +164,7 @@ def main(argv=None) -> int:
     ap.add_argument("--episode-seconds", type=float, default=6.0)
     ap.add_argument("--gif-out", default=None, help="if given, save a GIF of the forward-walk eval here")
     ap.add_argument("--gif-fps", type=float, default=10.0)
+    ap.add_argument("--out-json", default=None, help="save the full eval report (per-scenario metrics) here")
     args = ap.parse_args(argv)
 
     W, normalizer, env_config = load_policy(args.policy)
@@ -167,6 +195,13 @@ def main(argv=None) -> int:
             print("\n  GIF not written: episode produced no frames")
 
     print(f"\n=== fall rate across {n_trials} eval episodes: {fell_count}/{n_trials} ===")
+
+    if args.out_json:
+        with open(args.out_json, "w") as f:
+            json.dump({"policy_path": args.policy, "env_config": env_config,
+                       "episode_seconds": args.episode_seconds,
+                       "fall_rate": f"{fell_count}/{n_trials}", "scenarios": report}, f, indent=2)
+        print(f"eval report saved -> {args.out_json}")
     return 0
 
 

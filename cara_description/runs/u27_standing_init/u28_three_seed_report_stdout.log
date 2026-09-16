@@ -1,0 +1,50 @@
+=== UNTRAINED policy (zero-mean-init, init_logstd=-3.0), sampled nominal (N=30) ===
+  survival_rate=63.3%  mean_steps=178.4
+  (deterministic nominal == zero action exactly, by construction of zero_mean_init -- not re-tested)
+
+==================== seed0: /home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u27_standing_init/u27_seed0.pt ====================
+  1. deterministic nominal: steps=200/200 fell=False
+  2. sampled nominal (N=30): survival=100.0%  mean_steps=200.0
+  3. perturbed (N=40, reset_qvel_noise_std=6.0, FRESH seeds 800-839):
+     policy: survival=97.5% mean_steps=196.4
+     zero:   survival=82.5% mean_steps=173.6
+     win criterion: policy_steps > zero_steps on the SAME reset, evaluated separately by outcome type:
+       both survived full episode: 33/40
+       SURVIVAL FLIP in policy's favor (policy survived, zero fell): 6
+       SURVIVAL FLIP in zero's favor (zero survived, policy fell): 0
+       both fell, policy lasted longer (time-to-fall only): 1
+       both fell, zero lasted longer (time-to-fall only): 0
+       both fell, tied exactly: 0
+       mean paired step difference (policy-zero): +22.8
+
+==================== seed1: /home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u27_standing_init/u27_seed1.pt ====================
+  1. deterministic nominal: steps=200/200 fell=False
+  2. sampled nominal (N=30): survival=100.0%  mean_steps=200.0
+  3. perturbed (N=40, reset_qvel_noise_std=6.0, FRESH seeds 800-839):
+     policy: survival=95.0% mean_steps=194.2
+     zero:   survival=82.5% mean_steps=173.6
+     win criterion: policy_steps > zero_steps on the SAME reset, evaluated separately by outcome type:
+       both survived full episode: 32/40
+       SURVIVAL FLIP in policy's favor (policy survived, zero fell): 6
+       SURVIVAL FLIP in zero's favor (zero survived, policy fell): 1
+       both fell, policy lasted longer (time-to-fall only): 1
+       both fell, zero lasted longer (time-to-fall only): 0
+       both fell, tied exactly: 0
+       mean paired step difference (policy-zero): +20.6
+
+==================== seed2: /home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u27_standing_init/u27_seed2.pt ====================
+  1. deterministic nominal: steps=200/200 fell=False
+  2. sampled nominal (N=30): survival=100.0%  mean_steps=200.0
+  3. perturbed (N=40, reset_qvel_noise_std=6.0, FRESH seeds 800-839):
+     policy: survival=97.5% mean_steps=196.1
+     zero:   survival=82.5% mean_steps=173.6
+     win criterion: policy_steps > zero_steps on the SAME reset, evaluated separately by outcome type:
+       both survived full episode: 33/40
+       SURVIVAL FLIP in policy's favor (policy survived, zero fell): 6
+       SURVIVAL FLIP in zero's favor (zero survived, policy fell): 0
+       both fell, policy lasted longer (time-to-fall only): 0
+       both fell, zero lasted longer (time-to-fall only): 0
+       both fell, tied exactly: 1
+       mean paired step difference (policy-zero): +22.5
+
+saved -> /home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u27_standing_init/u28_three_seed_report.json

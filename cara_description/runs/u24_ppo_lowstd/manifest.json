@@ -1,0 +1,34 @@
+{
+  "workstream": "U24 -- validation run: reduced initial exploration std, action bounds unchanged",
+  "date": "2026-09-14",
+  "motivation": "U23's bounded diagnostic isolated the obstacle: the untrained policy's deterministic mean already matches the zero-action standing baseline, but sampling noise at the initial std (0.6065, ~72% per-step chance any of 12 joints clips) destroys it in ~21 steps, 100% of the time. Per the given decision rule: reduce initial exploration std first, keep action_range_frac=0.30 (the action bounds) unchanged.",
+  "change": "Added --init-logstd to train_ppo.py's ActorCritic (default -0.5, unchanged for backward compat). This run used --init-logstd -1.0 (std=0.3679, ~8% per-step any-joint-clip chance, down from ~72%) -- action_range_frac was NOT touched.",
+  "budget": {
+    "total_timesteps": 800000,
+    "seeds_run": 1,
+    "rationale": "Same budget scale as U22 (not extended, per instruction) -- a direct, controlled comparison: identical curriculum settings and total steps, the ONLY change is init_logstd.",
+    "wall_time_s": 995.2,
+    "comparable_to": "U22's 946.5s (same order of magnitude, as expected -- no architecture or rollout-size change)"
+  },
+  "curriculum_settings": "Identical to U22: vx_stages=[0.0,0.03,0.06,0.10], advance_window=30, advance_len_frac=0.8, advance_max_fall_rate=0.3, stage_min_steps=100000.",
+  "result": {
+    "outcome": "Still did not advance past stage 0 (desired_vx=0.0) within the 800,000-step budget. Fall rate stayed at 1.0 for the entire run.",
+    "but": "Real, measurable improvement on every tracked metric versus U22's checkpoint (same eval protocol, same episode_seconds=4.0, deterministic mean action) -- not a wash:",
+    "comparison_table_deterministic_eval": {
+      "steps_survived":        {"u22": 41,     "u24": 63,     "change": "+54%"},
+      "total_return":          {"u22": -18.23, "u24": -6.66,  "change": "less negative"},
+      "action_magnitude":      {"u22": 0.5196, "u24": 0.3811, "change": "-27%"},
+      "action_delta_stepwise": {"u22": 0.3588, "u24": 0.1154, "change": "-68% (much smoother)"},
+      "action_clip_rate":      {"u22": "12.8%", "u24": "0.5%", "change": "-96% relative"},
+      "actuator_saturation_mean": {"u22": "87.1%", "u24": "75.8%", "change": "-13%"},
+      "joint_tracking_error_mean": {"u22": "0.0413 rad", "u24": "0.0199 rad", "change": "-52%"},
+      "peak_tilt_deg":         {"u22": 41.5,   "u24": 40.4,   "change": "still crosses the 40deg fall threshold, but barely"}
+    },
+    "training_curve": "Episode length plateaued around ~30-35 steps (of 200) from roughly step 400,000 onward, versus ~26-30 for the original run -- a modest but real upward shift, not a qualitative breakthrough. clipfrac during PPO updates ran noticeably HIGHER through mid-training (~0.20-0.24 vs near-zero for the original run at the same step count) before decaying to 0 by the end (LR annealing) -- consistent with a lower-entropy, more \"confident\" policy producing larger ratio swings per update, not obviously a problem on its own.",
+    "eval_deterministic_full": "standing/forward-walk (identical, both desired_vx=0.0): FELL at 1.26s (63 steps), forward drift +0.107m, 3 genuine steps (single-support >=60ms) before falling -- up from 2 in U22.",
+    "checkpoint": "ppo_lowstd_seed0.pt", "train_log": "ppo_lowstd_seed0_train.log",
+    "eval": "ppo_lowstd_seed0_eval.json",
+    "u23_diagnostic_rerun": "diagnose_after_lowstd.json -- re-ran the full U23 four-controller comparison with this checkpoint as condition 4. Zero-action and untrained-policy results are identical to U23 (same environment, same untrained-network seed) as expected; only condition 4 (trained mean) changed, matching the comparison table above."
+  },
+  "net_assessment": "The exploration-std reduction was the right diagnosis and produced real, consistent improvement across every tracked metric (survival, smoothness, clipping, saturation, tracking error) -- but did not, on its own, solve stage-0 balance within the same bounded budget. Peak tilt (40.4 deg) sits right at the fall threshold, suggesting the policy is now CLOSE to holding stance deterministically but not quite there. This is consistent with the diagnosis being correct but incomplete within this budget -- not evidence the diagnosis was wrong. Candidates for what's next: (a) more budget now that the destructive-exploration problem is substantially reduced (untested whether stage 0 would be cracked given more steps under this SAME lower-std setting); (b) an even lower init_logstd (untested going further than -1.0); (c) proceeding to check step 4 of the original decision sequence (actuator path -- small smooth joint-target ramps) now that exploration is no longer the dominant confound. Not started here -- flagged for the next decision."
+}

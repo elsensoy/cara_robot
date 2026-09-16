@@ -1,0 +1,187 @@
+
+=== action_range_frac=0.30 translated to per-joint radians ===
+joint               lower    upper  offset_scale(rad)  offset_scale(deg)
+l_hip_yaw          -0.790    0.790             0.2370              13.58
+l_hip_roll         -0.520    0.610             0.1695               9.71
+l_hip_pitch        -1.750    1.050             0.4200              24.06
+l_knee_pitch        0.000    2.360             0.3540              20.28
+l_ankle_pitch      -0.870    0.610             0.2220              12.72
+l_ankle_roll       -0.440    0.440             0.1320               7.56
+r_hip_yaw          -0.790    0.790             0.2370              13.58
+r_hip_roll         -0.520    0.610             0.1695               9.71
+r_hip_pitch        -1.750    1.050             0.4200              24.06
+r_knee_pitch        0.000    2.360             0.3540              20.28
+r_ankle_pitch      -0.870    0.610             0.2220              12.72
+r_ankle_roll       -0.440    0.440             0.1320               7.56
+
+initial exploration std (action-space units, all joints): 0.6065
+joint             1-sigma swing (rad)  1-sigma swing (deg)
+l_hip_yaw                      0.1437                 8.24
+l_hip_roll                     0.1028                 5.89
+l_hip_pitch                    0.2547                14.60
+l_knee_pitch                   0.2147                12.30
+l_ankle_pitch                  0.1346                 7.71
+l_ankle_roll                   0.0801                 4.59
+r_hip_yaw                      0.1437                 8.24
+r_hip_roll                     0.1028                 5.89
+r_hip_pitch                    0.2547                14.60
+r_knee_pitch                   0.2147                12.30
+r_ankle_pitch                  0.1346                 7.71
+r_ankle_roll                   0.0801                 4.59
+
+theoretical P(|raw action| > 1.0) per joint per step at init: 9.9%
+theoretical P(at least one of 12 joints clipped) per step at init: 71.5%
+
+--- 1. zero action ---
+  steps: 200  fell: False
+  TOTAL RETURN: 193.00  (components: alive=200.00 vel=-0.70 upright=0.01 effort=0.00 rate=0.00 collision=0.00 fall_penalty=0.00)
+  action magnitude (mean |raw action|): 0.0000
+  action change (mean |Δraw action| step-to-step): 0.0000
+  action clip rate (|raw action|>1.0, fraction of joint-steps): 0.0%
+  target clip rate (joint target outside its limits, fraction of joint-steps): 0.0%
+  actuator saturation: mean=7.6% max=18.3%
+  joint tracking error: mean=0.0010 max=0.0025 rad
+  peak tilt: 0.8 deg
+
+--- 2. untrained policy, deterministic mean ---
+  steps: 200  fell: False
+  TOTAL RETURN: 191.82  (components: alive=200.00 vel=-0.82 upright=0.01 effort=-0.00 rate=-0.00 collision=0.00 fall_penalty=0.00)
+  action magnitude (mean |raw action|): 0.0025
+  action change (mean |Δraw action| step-to-step): 0.0022
+  action clip rate (|raw action|>1.0, fraction of joint-steps): 0.0%
+  target clip rate (joint target outside its limits, fraction of joint-steps): 0.0%
+  actuator saturation: mean=14.5% max=23.5%
+  joint tracking error: mean=0.0040 max=0.0066 rad
+  peak tilt: 0.7 deg
+
+--- 3. untrained policy, sampled (repeat 0) ---
+  steps: 16  fell: True
+  TOTAL RETURN: -7.29  (components: alive=15.00 vel=-1.26 upright=0.83 effort=-4.51 rate=-8.89 collision=0.00 fall_penalty=-10.00)
+  action magnitude (mean |raw action|): 0.4823
+  action change (mean |Δraw action| step-to-step): 0.6791
+  action clip rate (|raw action|>1.0, fraction of joint-steps): 10.4%
+  target clip rate (joint target outside its limits, fraction of joint-steps): 2.1%
+  actuator saturation: mean=100.0% max=100.0%
+  joint tracking error: mean=0.0719 max=0.1014 rad
+  peak tilt: 41.1 deg
+
+--- 3. untrained policy, sampled (repeat 1) ---
+  steps: 18  fell: True
+  TOTAL RETURN: 1.90  (components: alive=17.00 vel=-0.55 upright=1.08 effort=-5.45 rate=-12.13 collision=0.00 fall_penalty=-10.00)
+  action magnitude (mean |raw action|): 0.5057
+  action change (mean |Δraw action| step-to-step): 0.7631
+  action clip rate (|raw action|>1.0, fraction of joint-steps): 12.0%
+  target clip rate (joint target outside its limits, fraction of joint-steps): 2.3%
+  actuator saturation: mean=93.5% max=100.0%
+  joint tracking error: mean=0.0769 max=0.1780 rad
+  peak tilt: 45.0 deg
+
+--- 3. untrained policy, sampled (repeat 2) ---
+  steps: 22  fell: True
+  TOTAL RETURN: -12.47  (components: alive=21.00 vel=-2.40 upright=1.47 effort=-6.36 rate=-12.77 collision=0.00 fall_penalty=-10.00)
+  action magnitude (mean |raw action|): 0.4841
+  action change (mean |Δraw action| step-to-step): 0.6664
+  action clip rate (|raw action|>1.0, fraction of joint-steps): 8.3%
+  target clip rate (joint target outside its limits, fraction of joint-steps): 2.3%
+  actuator saturation: mean=97.2% max=100.0%
+  joint tracking error: mean=0.0691 max=0.1197 rad
+  peak tilt: 41.5 deg
+
+--- 3. untrained policy, sampled (repeat 3) ---
+  steps: 19  fell: True
+  TOTAL RETURN: -7.60  (components: alive=18.00 vel=-1.58 upright=0.59 effort=-5.03 rate=-9.46 collision=0.00 fall_penalty=-10.00)
+  action magnitude (mean |raw action|): 0.4578
+  action change (mean |Δraw action| step-to-step): 0.6326
+  action clip rate (|raw action|>1.0, fraction of joint-steps): 6.1%
+  target clip rate (joint target outside its limits, fraction of joint-steps): 3.1%
+  actuator saturation: mean=98.6% max=100.0%
+  joint tracking error: mean=0.0599 max=0.0883 rad
+  peak tilt: 42.5 deg
+
+--- 3. untrained policy, sampled (repeat 4) ---
+  steps: 20  fell: True
+  TOTAL RETURN: 0.49  (components: alive=19.00 vel=-0.87 upright=0.78 effort=-4.94 rate=-9.83 collision=0.00 fall_penalty=-10.00)
+  action magnitude (mean |raw action|): 0.4387
+  action change (mean |Δraw action| step-to-step): 0.6235
+  action clip rate (|raw action|>1.0, fraction of joint-steps): 5.0%
+  target clip rate (joint target outside its limits, fraction of joint-steps): 1.7%
+  actuator saturation: mean=90.2% max=100.0%
+  joint tracking error: mean=0.0580 max=0.1149 rad
+  peak tilt: 46.0 deg
+
+--- 3. untrained policy, sampled (repeat 5) ---
+  steps: 23  fell: True
+  TOTAL RETURN: 2.86  (components: alive=22.00 vel=-0.96 upright=1.36 effort=-6.13 rate=-12.39 collision=0.00 fall_penalty=-10.00)
+  action magnitude (mean |raw action|): 0.4460
+  action change (mean |Δraw action| step-to-step): 0.6499
+  action clip rate (|raw action|>1.0, fraction of joint-steps): 8.3%
+  target clip rate (joint target outside its limits, fraction of joint-steps): 2.2%
+  actuator saturation: mean=99.3% max=100.0%
+  joint tracking error: mean=0.0591 max=0.0957 rad
+  peak tilt: 44.3 deg
+
+--- 3. untrained policy, sampled (repeat 6) ---
+  steps: 16  fell: True
+  TOTAL RETURN: -5.83  (components: alive=15.00 vel=-1.12 upright=1.08 effort=-4.57 rate=-8.28 collision=0.00 fall_penalty=-10.00)
+  action magnitude (mean |raw action|): 0.5070
+  action change (mean |Δraw action| step-to-step): 0.6582
+  action clip rate (|raw action|>1.0, fraction of joint-steps): 10.9%
+  target clip rate (joint target outside its limits, fraction of joint-steps): 5.7%
+  actuator saturation: mean=95.7% max=100.0%
+  joint tracking error: mean=0.0639 max=0.1191 rad
+  peak tilt: 42.5 deg
+
+--- 3. untrained policy, sampled (repeat 7) ---
+  steps: 26  fell: True
+  TOTAL RETURN: 4.60  (components: alive=25.00 vel=-1.08 upright=1.23 effort=-8.22 rate=-16.01 collision=0.00 fall_penalty=-10.00)
+  action magnitude (mean |raw action|): 0.5191
+  action change (mean |Δraw action| step-to-step): 0.6863
+  action clip rate (|raw action|>1.0, fraction of joint-steps): 9.9%
+  target clip rate (joint target outside its limits, fraction of joint-steps): 3.5%
+  actuator saturation: mean=95.6% max=100.0%
+  joint tracking error: mean=0.0617 max=0.1065 rad
+  peak tilt: 43.6 deg
+
+--- 3. untrained policy, sampled (repeat 8) ---
+  steps: 21  fell: True
+  TOTAL RETURN: -1.65  (components: alive=20.00 vel=-1.19 upright=0.88 effort=-6.07 rate=-12.84 collision=0.00 fall_penalty=-10.00)
+  action magnitude (mean |raw action|): 0.4712
+  action change (mean |Δraw action| step-to-step): 0.6670
+  action clip rate (|raw action|>1.0, fraction of joint-steps): 7.5%
+  target clip rate (joint target outside its limits, fraction of joint-steps): 2.4%
+  actuator saturation: mean=100.0% max=100.0%
+  joint tracking error: mean=0.0630 max=0.1259 rad
+  peak tilt: 41.6 deg
+
+--- 3. untrained policy, sampled (repeat 9) ---
+  steps: 32  fell: True
+  TOTAL RETURN: -29.48  (components: alive=31.00 vel=-5.08 upright=1.09 effort=-8.74 rate=-15.19 collision=0.00 fall_penalty=-10.00)
+  action magnitude (mean |raw action|): 0.4581
+  action change (mean |Δraw action| step-to-step): 0.5869
+  action clip rate (|raw action|>1.0, fraction of joint-steps): 6.5%
+  target clip rate (joint target outside its limits, fraction of joint-steps): 2.1%
+  actuator saturation: mean=97.3% max=100.0%
+  joint tracking error: mean=0.0631 max=0.1337 rad
+  peak tilt: 45.6 deg
+
+--- 3. untrained policy, sampled: aggregate over 10 repeats ---
+  mean return: -5.45  mean steps: 21.3  fall rate: 100.0%
+
+--- 4. trained policy, deterministic mean ---
+  steps: 41  fell: True
+  TOTAL RETURN: -18.23  (components: alive=40.00 vel=-4.90 upright=2.06 effort=-13.75 rate=-7.59 collision=0.00 fall_penalty=-10.00)
+  action magnitude (mean |raw action|): 0.5196
+  action change (mean |Δraw action| step-to-step): 0.3588
+  action clip rate (|raw action|>1.0, fraction of joint-steps): 12.8%
+  target clip rate (joint target outside its limits, fraction of joint-steps): 0.0%
+  actuator saturation: mean=87.1% max=100.0%
+  joint tracking error: mean=0.0413 max=0.0822 rad
+  peak tilt: 41.5 deg
+
+=== decision sequence ===
+1. zero action under training resets: steps=200/200 fell=False  return=193.00  -> holds stance as expected
+   zero-action return (193.00) vs learned-fall return (-18.23): objective correctly favors standing -- the problem is exploration/optimization, not reward
+2. untrained mean: steps=200/200 fell=False  3. untrained sampled: mean_steps=21.3 fall_rate=100.0%  action_clip_rate(sampled, repeat0)=10.4%
+   -> initial MEAN policy stands, but SAMPLING destroys it: reduce initial exploration std (keep action bounds unchanged)
+
+saved -> /tmp/diagnose_stage0.json

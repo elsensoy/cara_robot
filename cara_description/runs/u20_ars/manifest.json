@@ -1,0 +1,41 @@
+{
+  "workstream": "U20 -- first nominal-locomotion training experiment (ARS baseline)",
+  "date": "2026-09-13",
+  "algorithm": "Augmented Random Search (ARS-V2, Mania et al. 2018), numpy-only linear policy",
+  "trainer_script": "cara_description/scripts/train_ars.py",
+  "env_script": "cara_description/scripts/cara_env.py",
+  "note": "Both runs used seed=0 (train_ars.py's default; not overridden) -- single-seed only. Multi-seed comparison is planned for the PPO baseline (U21), not repeated here retroactively.",
+  "runs": {
+    "run1": {
+      "description": "First full-scale run, reward v2 (alive bonus added, w_vel still 1.0 from the original design). Converged to a safe 'never move' local optimum -- see docs/rl_environment_notes.md U20 run log.",
+      "reward_version": "v2_alive+vel1 (pre-dates the reward_version field added later in cara_env.py; w_alive=1.0, w_vel=1.0)",
+      "reward_audit_verdict": "FAIL (10.0% margin of intended behavior over standing -- see reward_audit.py --w-vel 1.0)",
+      "hyperparameters": {
+        "iters": 300, "directions": 16, "top_b": 8, "step_size": 0.015,
+        "noise_std": 0.02, "episode_seconds": 4.0, "seed": 0
+      },
+      "env_config": "run1/env_config.json (extracted from the checkpoint)",
+      "checkpoint": "run1/policy.npz  (contains W, observation-normalizer mean/m2/n, env_config)",
+      "train_log": "run1/train_history.json (per-iteration), run1/train_stdout.log (console)",
+      "eval": "run1/eval.json, run1/eval_stdout.txt",
+      "eval_summary": "standing (vx=0): FELL at 0.54s. forward-walk (vx=0.10, its own trained target): survived full 4s, verdict NOT WALKING (zero forward progress) -- fall rate 1/2.",
+      "wall_time_s": 231.3
+    },
+    "run2": {
+      "description": "Same hyperparameters as run1, reward v3 (w_vel raised 1.0->10.0 after run1's collapse-to-standing was diagnosed). Does not collapse to standing, but does not find a stable gait either -- falls consistently around step 20-30 of a 200-step episode.",
+      "reward_version": "v3_alive+vel10 (matches cara_env.py's current CaraWalkEnvConfig.reward_version default)",
+      "reward_audit_verdict": "PASS (100.8% margin of intended behavior over standing -- see reward_audit.py, default weights)",
+      "hyperparameters": {
+        "iters": 300, "directions": 16, "top_b": 8, "step_size": 0.015,
+        "noise_std": 0.02, "episode_seconds": 4.0, "seed": 0
+      },
+      "env_config": "run2/env_config.json (extracted from the checkpoint)",
+      "checkpoint": "run2/policy.npz  (contains W, observation-normalizer mean/m2/n, env_config)",
+      "train_log": "run2/train_history.json (per-iteration), run2/train_stdout.log (console)",
+      "eval": "run2/eval.json, run2/eval_stdout.txt",
+      "eval_summary": "standing (vx=0): FELL at 0.46s. forward-walk (vx=0.10): FELL at 0.44s. fall rate 2/2. forward_walk_fall.gif shows the actual topple (verified frame-by-frame after two encoder bugs were fixed in gif_writer.py).",
+      "wall_time_s": 98.5
+    }
+  },
+  "net_assessment": "See docs/rl_environment_notes.md U20 section for the full writeup. Neither run meets the 'repeatable forward stepping' milestone. The reward-incentive bugs found along the way (missing alive bonus; vel/alive imbalance) are fixed and audited (reward_audit.py); nothing points at morphology or actuator tracking as the blocker. Preserved here as the ARS baseline before adding a nonlinear PPO baseline (U21) per explicit instruction to keep ARS as the first benchmark rather than spending substantially more compute on it."
+}

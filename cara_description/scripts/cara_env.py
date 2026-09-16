@@ -72,6 +72,16 @@ class Box:
 
 @dataclass
 class CaraWalkEnvConfig:
+    # Bump whenever the reward FORMULA or weights change, and re-run
+    # reward_audit.py before trusting a new training run against it. "v1"
+    # (pre-alive-bonus) and "v2" (alive bonus, w_vel=1.0) both failed the
+    # audit after the fact; "v3" is the first version that passed it. "v4"
+    # (U30) fixes a real sign bug in r_upright: the v3 formula rewarded
+    # tipping/inversion (verified at synthetic tilts: +0.015 at 10deg,
+    # +2.0 fully inverted) opposite of its own "0 upright, -2 tipped"
+    # comment. All U20-U29 checkpoints were trained under v3 -- disclosed,
+    # not retroactively changed.
+    reward_version: str = "v4_upright_sign_fix"
     config_path: str = DEFAULT_CONFIG
     base_pose: str = "stand_nominal"
     control_hz: float = 50.0            # matches the project's stated sim/hardware control rate
@@ -81,6 +91,12 @@ class CaraWalkEnvConfig:
     # OWN [lower, upper] half-range used as the bounded action offset.
     action_range_frac: float = 0.30
     desired_vx: float = 0.10            # m/s, forward -- fixed for now (randomized in step 5)
+    # U30: per-episode desired_vx MIXTURE, same pattern as reset_qvel_noise_bands
+    # -- a tuple of (probability, vx) pairs, one drawn per reset() call and
+    # held CONSTANT for that whole episode (not changed mid-episode). None
+    # (default) falls back to the single desired_vx value above, reproducing
+    # every prior result exactly -- opt-in, like the perturbation bands.
+    desired_vx_bands: tuple | None = None
     fall_tilt_deg: float = 40.0
     fall_height_m: float = 0.15         # pelvis world-Z below this = fallen
     w_alive: float = 1.0
@@ -101,6 +117,22 @@ class CaraWalkEnvConfig:
     w_action_rate: float = 0.01
     w_collision: float = 1.0
     seed: int | None = None
+    # U27: the first reset-perturbation family, per instruction -- "begin
+    # with one perturbation family, such as small initial joint-velocity
+    # disturbances. Expand only after recovery improves." 0.0 (default)
+    # reproduces every prior deterministic-reset result in this project
+    # exactly -- U23 confirmed reset() was fully deterministic and multiple
+    # scripts rely on that; this stays opt-in, never on by default.
+    reset_qvel_noise_std: float = 0.0   # rad/s, applied to each of the 12 actuated joints' initial qvel
+    # U29: broaden the SAME perturbation family (still initial joint-velocity
+    # noise, nothing else) into a per-episode MIXTURE instead of one fixed
+    # magnitude -- "mix nominal resets, previously manageable disturbances,
+    # and a modestly harder band. Preserve some easy episodes so recovery
+    # training does not erase standing." Each tuple is (probability, std).
+    # None (default) falls back to the single reset_qvel_noise_std value
+    # above, reproducing every prior result exactly -- opt-in, like U27's
+    # field was.
+    reset_qvel_noise_bands: tuple | None = None
 
 
 class CaraWalkEnv:
@@ -176,6 +208,14 @@ class CaraWalkEnv:
         available on real hardware."""
         return self.np.array(self.data.qvel[3:6], dtype="float64")
 
+    @property
+    def desired_vx_obs_index(self):
+        """Index of the desired_vx scalar within the observation vector
+        returned by _obs() -- computed from the actual concatenation order
+        below, not a hardcoded magic number a future edit could silently
+        invalidate."""
+        return 2 * self.n_act + 3 + 3
+
     def _obs(self):
         np = self.np
         qpos = np.array([self.data.qpos[7 + self.jidx[n]] for n in self.jn])
@@ -206,14 +246,39 @@ class CaraWalkEnv:
     # ------------------------------------------------------------------ #
     def reset(self, seed: int | None = None) -> tuple[Any, dict]:
         mujoco = self.mujoco
+        np = self.np
         if seed is not None:
-            self._rng = self.np.random.default_rng(seed)
+            self._rng = np.random.default_rng(seed)
         mujoco.mj_resetDataKeyframe(self.model, self.data, self.key_id)
+        if self.cfg.desired_vx_bands is not None:
+            probs = [b[0] for b in self.cfg.desired_vx_bands]
+            vxs = [b[1] for b in self.cfg.desired_vx_bands]
+            self.cfg.desired_vx = vxs[self._rng.choice(len(vxs), p=probs)]
+        perturbed = False
+        if self.cfg.reset_qvel_noise_bands is not None:
+            probs = [b[0] for b in self.cfg.reset_qvel_noise_bands]
+            stds = [b[1] for b in self.cfg.reset_qvel_noise_bands]
+            chosen_std = stds[self._rng.choice(len(stds), p=probs)]
+            self._last_reset_band_std = chosen_std
+            if chosen_std > 0.0:
+                noise = self._rng.normal(0.0, chosen_std, size=self.n_act)
+                for n, dv in zip(self.jn, noise):
+                    self.data.qvel[6 + self.jidx[n]] += dv
+                perturbed = True
+        elif self.cfg.reset_qvel_noise_std > 0.0:
+            self._last_reset_band_std = self.cfg.reset_qvel_noise_std
+            noise = self._rng.normal(0.0, self.cfg.reset_qvel_noise_std, size=self.n_act)
+            for n, dv in zip(self.jn, noise):
+                self.data.qvel[6 + self.jidx[n]] += dv
+            perturbed = True
+        else:
+            self._last_reset_band_std = 0.0
         mujoco.mj_forward(self.model, self.data)
-        self._prev_action = self.np.zeros(self.n_act, dtype="float64")
+        self._prev_action = np.zeros(self.n_act, dtype="float64")
         self._step_count = 0
         self._prev_com_x = float(self.data.subtree_com[0][0])
-        info = {"nominal_pose": self.nominal.copy()}
+        info = {"nominal_pose": self.nominal.copy(), "reset_perturbed": perturbed,
+                "reset_band_std": self._last_reset_band_std}
         return self._obs(), info
 
     def step(self, action) -> tuple[Any, float, bool, bool, dict]:
@@ -266,7 +331,17 @@ class CaraWalkEnv:
             # always preferred to an early, deliberate fall.
             r_alive = 1.0
             r_vel = -abs(vx - self.cfg.desired_vx)
-            r_upright = float(self._projected_gravity()[2] + 1.0)  # 0 upright, -2 fully tipped
+            # U30 sign fix: upright (R=I) gives projected_gravity_z=-1, so
+            # (z+1)=0 there -- correct so far. But fully inverted flips the
+            # body z-axis, giving z=+1, so (z+1)=+2 -- the ORIGINAL formula
+            # (without the leading minus) REWARDED tipping/inversion,
+            # opposite of its own comment ("0 upright, -2 fully tipped").
+            # Verified at synthetic tilts before fixing, not assumed: 10deg
+            # gave +0.0152, 20deg gave +0.0603, 90deg gave +1.0, 180deg gave
+            # +2.0 under the buggy sign -- monotonically REWARDED leaning
+            # further over. Negating restores 0 upright / -2 inverted, i.e.
+            # a real penalty that grows with tilt, matching the comment.
+            r_upright = -float(self._projected_gravity()[2] + 1.0)  # 0 upright, -2 fully tipped
             r_effort = -float(np.mean(action ** 2))
             r_rate = -float(np.mean((action - self._prev_action) ** 2))
             r_collision = -1.0 if collided else 0.0

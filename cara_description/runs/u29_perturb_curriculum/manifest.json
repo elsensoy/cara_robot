@@ -1,0 +1,49 @@
+{
+  "workstream": "U29 -- bounded expansion of the existing joint-velocity perturbation family",
+  "date": "2026-09-16",
+  "scope_note": "Per instruction: these are 3 POLICIES (one per seed) tested on a shared set of 40 reset cases per magnitude, NOT 3x40=120 independent disturbance cases. Reported and interpreted that way throughout.",
+  "frozen_baselines": "U28's final checkpoints (cara_description/runs/u27_standing_init/u27_seed{0,1,2}.pt) preserved untouched and used as both (a) the resume source for U29 training and (b) the 'frozen U28 policy' arm of the 3-way comparison.",
+  "config_unchanged": "Reward (w_action_rate=0.3), action_range_frac=0.30, actuator settings, and architecture (zero_mean_init lineage) all untouched. The reset_qvel_noise distribution is the only thing that changed.",
+  "perturbation_mixture": {
+    "mechanism": "cara_env.py CaraWalkEnvConfig.reset_qvel_noise_bands: a tuple of (probability, std) pairs: reset() samples one band per episode via the seeded RNG. None (default) falls back to the single reset_qvel_noise_std value from U27/U28 -- regression-checked to reproduce every prior deterministic-reset result exactly.",
+    "initial_bands": "0.4 nominal (std=0.0), 0.3 previously-manageable (std=3.0, where zero action itself is ~100% robust per U27's sweep), 0.3 modestly-harder (std=7.0, one step beyond U28's own 6.0 rad/s test point). Easy episodes preserved throughout (the 0.4+0.3=0.7 easy/manageable share never shrinks), per instruction, so recovery training cannot erase standing.",
+    "live_progression": "train_ppo.py's --perturb-curriculum: every 10 iterations (after >=50,000 steps at the current hard-band std), a deterministic-mean survival check over 30 FIXED validation reset seeds (9600-9629, disjoint from the final evaluation's held-out set) gates advancement -- the hard band's std increases by +1.0 rad/s once that check reaches 90%. AsyncVectorEnv.call('set_harder_band_std', ...) propagates the new value live to all 8 workers, same mechanism as the desired_vx curriculum in U22-U24."
+  },
+  "resume_and_budget": {
+    "resumed_from": "u27_seed{0,1,2}.pt (U28 finals) -- EXACT resumption (optimizer state present and restored, per train_ppo.py's resume_was_exact flag)",
+    "budget_per_seed": "400,000 steps, fixed, no automatic extension regardless of whether the curriculum progressed",
+    "wall_time_s": {"seed0": 568, "seed1": 570, "seed2": 566}
+  },
+  "training_curriculum_outcome": {
+    "seed0": "Advanced hard band 7.0 -> 8.0 rad/s at step 163,840 (survival hit 90% at 7.0). Plateaued at 73-83% survival at the new 8.0 std for the remaining ~236k steps -- did not reach 90% at 8.0 within budget.",
+    "seed1": "Stayed at 7.0 rad/s the entire run; survival oscillated 70-86% (never reached the 90% gate).",
+    "seed2": "Stayed at 7.0 rad/s the entire run; survival oscillated 76-83% (never reached the 90% gate)."
+  },
+  "evaluation": {
+    "script": "cara_description/scripts/evaluate_u29.py",
+    "held_out_seeds": "range(2000, 2040), N=40 -- FRESH, never used in U28's own perturbation test (100-139), U28's held-out eval (800-839), or U29's training-time curriculum-gating validation set (9600-9629)",
+    "magnitudes_tested": [0.0, 3.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
+    "by_magnitude_survival_pct": {
+      "note": "zero_action / frozen_U28 / U29, per seed",
+      "seed0": {"0.0": "100/100/100", "3.0": "100/100/100", "5.0": "90/95/100", "6.0": "87.5/95/95",
+                "7.0": "80/90/90", "8.0": "67.5/77.5/80", "9.0": "47.5/70/70", "10.0": "37.5/57.5/65"},
+      "seed1": {"0.0": "100/100/100", "3.0": "100/100/100", "5.0": "90/97.5/100", "6.0": "87.5/95/97.5",
+                "7.0": "80/90/87.5", "8.0": "67.5/77.5/82.5", "9.0": "47.5/75/70", "10.0": "37.5/65/65"},
+      "seed2": {"0.0": "100/100/100", "3.0": "100/100/100", "5.0": "90/97.5/100", "6.0": "87.5/97.5/100",
+                "7.0": "80/87.5/87.5", "8.0": "67.5/72.5/77.5", "9.0": "47.5/67.5/72.5", "10.0": "37.5/60/65"}
+    },
+    "success_criterion_per_seed": {
+      "seed0": {"nominal_preserved": true, "existing_6.0_range_preserved": true, "harder_band_improved_by_5pp_somewhere": true, "overall": "SUCCESS", "deltas_7_to_10": [0.0, 2.5, 0.0, 7.5]},
+      "seed1": {"nominal_preserved": true, "existing_6.0_range_preserved": true, "harder_band_improved_by_5pp_somewhere": false, "overall": "NOT MET", "deltas_7_to_10": [-2.5, 5.0, -5.0, 0.0], "note": "mixed sign, roughly cancels -- no reliable improvement, but no reliable regression either"},
+      "seed2": {"nominal_preserved": true, "existing_6.0_range_preserved": true, "harder_band_improved_by_5pp_somewhere": true, "overall": "SUCCESS", "deltas_8_to_10": [5.0, 5.0, 5.0]}
+    },
+    "overall_verdict": "2 of 3 seeds meet the full success criterion (nominal preserved + existing range preserved + harder band improved). The 3rd seed preserves nominal standing and the existing recovery range but shows no reliable improvement in the harder band -- deltas are small and mixed-sign, not a regression. Per instruction: reporting this as where the improvement ends for that seed, not treating it as a uniform win.",
+    "settling_check": {
+      "method": "For every episode that survived the full 200 steps, mean |tilt| and mean |base angular velocity| were computed over the LAST 20 steps (0.4s).",
+      "initial_binary_threshold_problem": "An initial pass/fail rule (tilt<5deg AND angvel<1.0 rad/s) produced a confusing binary result (e.g. seed1's frozen-U28 nominal case: 0/40 'settled') that looked alarming out of context. Investigated before reporting: the actual tail_tilt was 6.11deg (just over the 5deg cutoff) with tail_angvel=0.056 rad/s (extremely low -- essentially stationary). The threshold, not the behavior, was the problem.",
+      "corrected_finding": "Reported as two SEPARATE continuous quantities instead of one conflated flag. Across ALL trained policies (frozen U28 and U29) and ALL 3 seeds, at every magnitude: tail angular velocity is consistently LOW (0.02-0.8 rad/s, generally lower than zero action's own residual velocity in several cases) -- these are genuinely stopped, not oscillating. But tail TILT is consistently 2.4-6.1 degrees, versus pure zero action's ~0.4 degrees at the same magnitudes. CONCLUSION: survivors are NOT concealing ongoing instability (angular velocity is low and stable) -- but training (both U28 and U29) has shifted the deterministic policy's resting equilibrium to a measurably non-upright pose, a real and disclosed side effect, not a dramatic one.",
+      "per_seed_tail_tilt_deg_at_mag0": {"zero_action": 0.42, "seed0_frozen_u28": 4.68, "seed0_u29": 2.36, "seed1_frozen_u28": 6.11, "seed1_u29": 0.89, "seed2_frozen_u28": 4.56, "seed2_u29": 5.59}
+    }
+  },
+  "net_assessment": "U29's broader-perturbation training preserved nominal standing and the U28-established 6.0 rad/s recovery range in all 3 seeds, and produced a real, if seed-dependent, improvement in the 7-10 rad/s band (2 of 3 seeds clearly better, 1 of 3 roughly a wash with no regression). The perturbation curriculum's own progression (7.0->8.0 in 1 of 3 seeds) shows the mechanism works but budget-limited, consistent gains beyond 8.0 rad/s were not established within the fixed 400k-step budget -- no automatic extension was taken, per instruction. The settling check, once properly calibrated, found no evidence of concealed instability -- survivors genuinely stop moving -- but did surface a real, previously-unmeasured side effect: trained policies settle a few degrees off upright rather than returning to zero action's near-perfect nominal pose. Recommended next per instruction: move toward low-speed walking; this recovery track should not become an open-ended prerequisite."
+}

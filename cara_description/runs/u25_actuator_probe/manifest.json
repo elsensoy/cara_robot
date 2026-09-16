@@ -1,0 +1,34 @@
+{
+  "workstream": "U25 -- small, smooth actuator-response probes (NOT a training run)",
+  "date": "2026-09-14",
+  "motivation": "Before justifying more training budget: does Cara respond predictably to reasonable commands? U24 improved survival/smoothness but left the actuator-path question open.",
+  "script": "cara_description/scripts/probe_actuator_response.py",
+  "method": "Same CaraWalkEnv model, resets (confirmed deterministic), and control timing (50Hz) as every other U19+ script. Four tests: (1) zero-action hold -- per-joint baseline; (2) fast smooth single-joint excursion (100ms ramp, 200ms hold, cubic smoothstep, zero endpoint velocity) and return; (3) same shape with a 400ms ramp; (4) replay of the actual U24 trained policy (deterministic mean), same per-joint instrumentation. Tested l_ankle_pitch, l_knee_pitch, l_hip_pitch individually (all other 11 actuators held at nominal). Excursion amplitude 0.4 (normalized action units) chosen to bracket U24's own mean |action|=0.3811.",
+  "results": {
+    "1_zero_hold": {
+      "l_ankle_pitch": {"saturation": "0.0%", "tracking_err_mean_rad": 0.0016},
+      "l_knee_pitch": {"saturation": "0.0%", "tracking_err_mean_rad": 0.0049},
+      "l_hip_pitch": {"saturation": "0.0%", "tracking_err_mean_rad": 0.0004},
+      "note": "No joint saturates at zero action. Clean baseline."
+    },
+    "2_fast_excursion_100ms_ramp": {
+      "l_ankle_pitch": {"fell": true, "peak_tilt_deg": 41.43, "tracking_err_mean_rad": 0.0187, "saturation": "0.0%", "peak_vel_rad_s": 1.21},
+      "l_knee_pitch":  {"fell": true, "peak_tilt_deg": 40.57, "tracking_err_mean_rad": 0.0140, "saturation": "0.0%", "peak_vel_rad_s": 1.03},
+      "l_hip_pitch":   {"fell": false, "peak_tilt_deg": 6.98, "tracking_err_mean_rad": 0.0237, "saturation": "0.0%", "peak_vel_rad_s": 1.13}
+    },
+    "3_slow_excursion_400ms_ramp": {
+      "l_ankle_pitch": {"fell": true, "peak_tilt_deg": 40.41, "tracking_err_mean_rad": 0.0160, "saturation": "0.0%", "peak_vel_rad_s": 0.35},
+      "l_knee_pitch":  {"fell": true, "peak_tilt_deg": 40.24, "tracking_err_mean_rad": 0.0138, "saturation": "0.0%", "peak_vel_rad_s": 0.39},
+      "l_hip_pitch":   {"fell": false, "peak_tilt_deg": 8.22, "tracking_err_mean_rad": 0.0201, "saturation": "0.0%", "peak_vel_rad_s": 0.38}
+    },
+    "4_u24_replay": {
+      "whole_body": {"steps": 63, "fell": true, "peak_tilt_deg": 40.43, "action_absmean": 0.3811, "action_delta_stepwise": 0.1154},
+      "l_ankle_pitch": {"tracking_err_mean_rad": 0.0391, "tracking_err_max_rad": 0.1990, "saturation": "20.6%", "saturation_longest_run_ms": 140, "peak_vel_rad_s": 6.22},
+      "l_knee_pitch":  {"tracking_err_mean_rad": 0.0191, "saturation": "0.0%", "peak_vel_rad_s": 3.81},
+      "l_hip_pitch":   {"tracking_err_mean_rad": 0.0191, "saturation": "1.6%", "saturation_longest_run_ms": 20, "peak_vel_rad_s": 2.78}
+    }
+  },
+  "key_finding": "Smooth commands (fast OR slow ramps) tracked well on every joint -- 0% saturation in all 6 excursion tests, tracking error 0.014-0.024 rad (~1-1.4 deg). The ankle and knee single-joint excursions DID cause falls (isolated, uncompensated single-joint perturbations with no balance strategy -- expected for this test design, not evidence of an actuator defect: tracking stayed accurate right up to and through the fall). U24's actual replayed commands are categorically different: peak per-joint velocity 2.5-5x HIGHER than even the fast smooth test (ankle: 6.22 vs 1.21 rad/s), tracking error 2-2.5x worse, and REAL saturation appears for the first time (ankle 20.6% of steps, 140ms longest continuous run) -- something none of the smooth tests produced on any joint.",
+  "decision": "Commands track well under smooth, moderate-speed motion; poor tracking and saturation only appear when replaying the actual learned policy, whose commands (2.5-5x higher peak angular velocity, high-frequency step-to-step jitter even in the DETERMINISTIC mean output) are well outside the tested range. Per the given decision rule, this points to 'commands track well but the posture destabilizes Cara: return to policy coordination and reward incentives' -- specifically, nothing in the current reward (w_action_rate=0.01) or architecture is discouraging the high-frequency, high-velocity action pattern the policy has learned, and this appears to be what actually drives saturation/poor tracking, not an actuator/controller-path defect.",
+  "not_done_this_turn": "No fix implemented, no new training run. This was diagnosis only, per the same pattern as U23 -- flagged for the next decision."
+}

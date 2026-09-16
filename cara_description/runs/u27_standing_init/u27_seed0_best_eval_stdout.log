@@ -1,0 +1,17 @@
+
+=== 1. Deterministic policy, nominal reset ===
+  steps=200/200  fell=False  survived_full=True
+  -> Learning PRESERVES the standing solution
+
+=== 2. Sampled policy, nominal reset (30 repeats) ===
+    (this tests ACTION-SAMPLING robustness, not reset/initial-state variation)
+  full-episode survival: 80.0%  fall rate: 20.0%  mean steps: 190.1
+  -> exploration is tolerable at this std
+
+=== 3. Deterministic policy vs. ZERO ACTION, matched perturbed resets (reset_qvel_noise_std=6.0 rad/s, 40 resets) ===
+  learned policy: full-survival=70.0%  mean steps=157.1
+  zero action:    full-survival=67.5%  mean steps=152.9
+  per-reset head-to-head: policy better=9  zero better=3  tied=28
+  -> learned policy shows a real but MODEST recovery edge over zero action
+
+saved -> /home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u27_standing_init/u27_seed0_best_eval.json

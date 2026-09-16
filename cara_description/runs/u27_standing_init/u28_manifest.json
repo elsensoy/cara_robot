@@ -1,0 +1,74 @@
+{
+  "workstream": "U28 -- three-seed reliability check for U27's standing-preservation and recovery results",
+  "date": "2026-09-14",
+  "budget_and_perturbation_range": "Held fixed, as instructed: same 400,000-step budget, same config (zero_mean_init, init_logstd=-3.0, w_action_rate=0.3, desired_vx=0.0), same 6.0 rad/s perturbation magnitude chosen in U27. No disturbance magnitude increases this round.",
+  "correction_from_u27": "U27 reported '9 wins/3 losses' out of 40 head-to-head comparisons alongside a survival-rate difference of only 70.0% vs 67.5% (28 vs 27 successes -- one additional success). That combination was imprecise: the win/loss count mixed TIME-TO-FALL differences (both fell, one lasted a few steps longer) with actual SURVIVAL-OUTCOME differences (one side reached the full episode, the other didn't), which are very different strengths of evidence. U28's evaluate_u28.py reports these separately with the exact win criterion stated: policy_steps > zero_steps on the same reset, broken into (a) both survived, (b) a survival FLIP in either direction, (c) a time-to-fall-only difference when both fell.",
+  "discrepancy_investigation_before_launching_anything": {
+    "question": "training fall_rate near 0 vs. only 80% sampled-eval survival in U27",
+    "method": "Compared U27's checkpoints directly using existing data -- no new training launched for this part.",
+    "finding": "The 80% figure was measured on 'u27_seed0_best.pt', which had been locked in at iteration 5 of 195 (2.6% of the training budget) because the ORIGINAL checkpoint-selection metric (a single deterministic rollout, capped at 200 steps) saturated the moment it first hit the ceiling and never updated again -- even though training continued for 190 more iterations and the ACTUAL policy kept improving. Concretely: 'best' had actor_logstd std~0.049 and obs_norm.count=10,240; the FINAL checkpoint (iteration 195) had std~0.041 (quieter) and obs_norm.count=399,360 (39x more normalization data). Re-evaluating the FINAL checkpoint on the same sampled-nominal test gave 100% survival (0% fall rate), matching the training log's near-zero fall_rate exactly. CONCLUSION: not a real inconsistency in learning -- an artifact of a checkpoint-selection metric that saturates immediately and silently freezes an under-converged early snapshot as 'best.' Fixed before running anything new (see below)."
+  },
+  "checkpoint_selection_fix": {
+    "change": "train_ppo.py now scores periodic checkpoints on validation_eval_score(): mean survival steps over 10 FIXED validation seeds (VALIDATION_TORCH_SEEDS, disjoint from any held-out evaluation seeds) of SAMPLED rollouts from a nominal reset, instead of one deterministic rollout. This is continuous and does not saturate the instant deterministic survival hits the ceiling.",
+    "limitation_found_and_disclosed": "Even 10 validation samples turned out to have too little statistical power to reliably rank checkpoints once survival is already in the 80-100% range (P(10/10 survive | true rate 80%) ~= 11%, not negligible) -- confirmed empirically: seed 0's 'best' and 'final' checkpoints BOTH scored 200.0/200 on the 10-sample validation set despite a real difference (73% vs 100% full survival on a larger, N=30 retroactive check). This pattern held for all 3 seeds: 'best' checkpoints scored 60-97% true survival (N=30) despite passing the 10-sample validation gate; FINAL checkpoints scored 100% for all three, every time.",
+    "resolution": "The FINAL checkpoint (end of the fixed 400k-step budget) was used for all 3 seeds in this report, not the 'best'-labeled checkpoint from any run -- disclosed explicitly, not silently substituted. The validation-score mechanism is a real improvement over the original (it no longer freezes at iteration 5), but its statistical power should be treated as a still-open question, not solved by this fix alone."
+  },
+  "three_seeds_trained": {
+    "config_identical_across_seeds": true,
+    "seed0": {"checkpoint": "u27_seed0.pt (originally trained in U27, reused per instruction to keep U27 as one of the 3 seeds)",
+              "fall_rate_hit_zero_at": "iteration 16/195 (8.2% of budget)", "wall_time_s": 488.4},
+    "seed1": {"checkpoint": "u27_seed1.pt", "fall_rate_hit_zero_at": "iteration 19/195 (9.7% of budget)", "wall_time_s": 547},
+    "seed2": {"checkpoint": "u27_seed2.pt", "fall_rate_hit_zero_at": "iteration 17/195 (8.7% of budget)", "wall_time_s": 549},
+    "reproducibility_of_standing_preservation": "All 3 seeds independently hit fall_rate=0.0 within 8-10% of the fixed budget -- standing preservation is reproducible, not a fluke of one seed."
+  },
+  "evaluation": {
+    "script": "cara_description/scripts/evaluate_u28.py",
+    "untrained_policy_sampled_nominal": {
+      "n": 30, "survival_rate": "63.3%", "mean_steps": 178.4,
+      "note": "Deterministic untrained == zero action exactly (zero_mean_init), not separately tested. This isolates what INITIALIZATION alone (modest exploration std around a zero mean) contributes before any learning."
+    },
+    "per_seed_results": {
+      "seed0": {
+        "deterministic_nominal": "200/200, no fall",
+        "sampled_nominal_N30": {"survival_rate": "100.0%", "mean_steps": 200.0},
+        "perturbed_N40_fresh_seeds_800_839": {
+          "policy": {"survival_rate": "97.5%", "mean_steps": 196.4},
+          "zero_action_same_resets": {"survival_rate": "82.5%", "mean_steps": 173.6},
+          "paired_breakdown": {"both_survived": 33, "survival_flip_policy_favor": 6, "survival_flip_zero_favor": 0,
+                                "time_to_fall_only_policy_longer": 1, "time_to_fall_only_zero_longer": 0, "tied": 0},
+          "mean_paired_step_diff": "+22.8"
+        }
+      },
+      "seed1": {
+        "deterministic_nominal": "200/200, no fall",
+        "sampled_nominal_N30": {"survival_rate": "100.0%", "mean_steps": 200.0},
+        "perturbed_N40_fresh_seeds_800_839": {
+          "policy": {"survival_rate": "95.0%", "mean_steps": 194.2},
+          "zero_action_same_resets": {"survival_rate": "82.5%", "mean_steps": 173.6},
+          "paired_breakdown": {"both_survived": 32, "survival_flip_policy_favor": 6, "survival_flip_zero_favor": 1,
+                                "time_to_fall_only_policy_longer": 1, "time_to_fall_only_zero_longer": 0, "tied": 0},
+          "mean_paired_step_diff": "+20.6"
+        }
+      },
+      "seed2": {
+        "deterministic_nominal": "200/200, no fall",
+        "sampled_nominal_N30": {"survival_rate": "100.0%", "mean_steps": 200.0},
+        "perturbed_N40_fresh_seeds_800_839": {
+          "policy": {"survival_rate": "97.5%", "mean_steps": 196.1},
+          "zero_action_same_resets": {"survival_rate": "82.5%", "mean_steps": 173.6},
+          "paired_breakdown": {"both_survived": 33, "survival_flip_policy_favor": 6, "survival_flip_zero_favor": 0,
+                                "time_to_fall_only_policy_longer": 0, "time_to_fall_only_zero_longer": 0, "tied": 1},
+          "mean_paired_step_diff": "+22.5"
+        }
+      }
+    }
+  },
+  "decision_table_readout": {
+    "standing_reproducible_recovery_small": "PARTIALLY -- standing IS reproducible, but recovery advantage is NOT small this time (see below); does not fire.",
+    "recovery_advantage_reproducible": "FIRES -- all 3 seeds: 95.0-97.5% perturbed-survival vs. 82.5% for zero action on the SAME fresh resets; 6 survival flips in policy's favor per seed (vs. 0-1 the other way); mean paired step advantage +20.6 to +22.8, consistent across seeds. This is a substantially clearer and larger effect than U27's original single-seed test (70.0% vs 67.5%) -- attributable to using the properly-selected FINAL checkpoint (U27's original comparison used the flawed early 'best' checkpoint) and a fresh, larger held-out perturbation test.",
+    "results_vary_substantially_across_seeds": "NO -- survival rates (95-97.5%), flip counts (6, 6, 6 in policy's favor), and mean step differences (+20.6 to +22.8) are remarkably consistent across all 3 independently-trained seeds.",
+    "curves_improve_late_in_training": "Not the deciding factor here given recovery_advantage_reproducible already fires clearly, but noted: all 3 seeds' mean_ep_return continued climbing through the full 400k-step budget even after fall_rate hit 0, suggesting some headroom remains."
+  },
+  "decision": "RECOVERY ADVANTAGE IS REPRODUCIBLE. Per the pre-set decision table: gradually broaden perturbations and retain held-out tests. Not started here -- flagged for the next session's direction.",
+  "not_done_this_turn": "No perturbation magnitude increase (explicitly deferred). No additional seeds beyond 3. No training budget extension."
+}

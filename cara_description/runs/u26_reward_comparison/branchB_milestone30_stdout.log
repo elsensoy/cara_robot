@@ -1,0 +1,40 @@
+NOTE: CaraWalkEnv.reset() is deterministic (confirmed in U23) -- with a
+deterministic policy, 30 'resets' would be one trial repeated 30 times.
+This test uses the policy's OWN LEARNED stochastic sampling instead, across independent repeats.
+
+  repeat  0: steps= 43/200  fell=True
+  repeat  1: steps= 21/200  fell=True
+  repeat  2: steps= 39/200  fell=True
+  repeat  3: steps= 32/200  fell=True
+  repeat  4: steps= 70/200  fell=True
+  repeat  5: steps= 32/200  fell=True
+  repeat  6: steps= 36/200  fell=True
+  repeat  7: steps= 42/200  fell=True
+  repeat  8: steps= 35/200  fell=True
+  repeat  9: steps= 23/200  fell=True
+  repeat 10: steps= 54/200  fell=True
+  repeat 11: steps= 30/200  fell=True
+  repeat 12: steps= 42/200  fell=True
+  repeat 13: steps= 42/200  fell=True
+  repeat 14: steps= 33/200  fell=True
+  repeat 15: steps= 31/200  fell=True
+  repeat 16: steps= 32/200  fell=True
+  repeat 17: steps= 31/200  fell=True
+  repeat 18: steps= 26/200  fell=True
+  repeat 19: steps= 37/200  fell=True
+  repeat 20: steps= 39/200  fell=True
+  repeat 21: steps= 57/200  fell=True
+  repeat 22: steps= 33/200  fell=True
+  repeat 23: steps= 39/200  fell=True
+  repeat 24: steps= 32/200  fell=True
+  repeat 25: steps= 29/200  fell=True
+  repeat 26: steps= 30/200  fell=True
+  repeat 27: steps= 62/200  fell=True
+  repeat 28: steps= 27/200  fell=True
+  repeat 29: steps= 41/200  fell=True
+
+=== MILESTONE: full-episode survival over 30 resets ===
+survived: 0/30 = 0.0%  (gate: >=90%)
+mean steps: 37.3  fall rate: 100.0%
+VERDICT: NOT MET
+saved -> /home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u26_reward_comparison/branchB_milestone30.json

@@ -1,0 +1,858 @@
+{
+  "0.5": {
+    "n": 20,
+    "results": [
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      }
+    ],
+    "survival_rate": 1.0,
+    "mean_steps": 200.0
+  },
+  "1.0": {
+    "n": 20,
+    "results": [
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      }
+    ],
+    "survival_rate": 1.0,
+    "mean_steps": 200.0
+  },
+  "2.0": {
+    "n": 20,
+    "results": [
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      }
+    ],
+    "survival_rate": 1.0,
+    "mean_steps": 200.0
+  },
+  "3.0": {
+    "n": 20,
+    "results": [
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      }
+    ],
+    "survival_rate": 1.0,
+    "mean_steps": 200.0
+  },
+  "4.0": {
+    "n": 20,
+    "results": [
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 53,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 59,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      }
+    ],
+    "survival_rate": 0.9,
+    "mean_steps": 185.6
+  },
+  "5.0": {
+    "n": 20,
+    "results": [
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 66,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 47,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 50,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 78,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      }
+    ],
+    "survival_rate": 0.8,
+    "mean_steps": 172.05
+  },
+  "6.0": {
+    "n": 20,
+    "results": [
+      {
+        "steps": 63,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 60,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 44,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 78,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 45,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 52,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      }
+    ],
+    "survival_rate": 0.7,
+    "mean_steps": 157.1
+  },
+  "8.0": {
+    "n": 20,
+    "results": [
+      {
+        "steps": 51,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 31,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 48,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 87,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 45,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 48,
+        "fell": true,
+        "survived_full": false
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      },
+      {
+        "steps": 200,
+        "fell": false,
+        "survived_full": true
+      }
+    ],
+    "survival_rate": 0.7,
+    "mean_steps": 155.5
+  }
+}

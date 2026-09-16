@@ -1,0 +1,20 @@
+
+=== zero_command (vx=0.0) ===
+  steps=200/200  fell=False  achieved_vx=+0.0101+/-0.0100 m/s  fwd_dist=+0.041m
+  support_switches=5  genuine_swings L=0 R=0
+  foot clearance: L=1.3mm R=2.7mm (floor_ref_z=0.0175m)
+  stance-foot slip: L=50.3mm R=13.5mm
+  joint tracking error: mean=0.0093 rad  actuator saturation: mean=30.6% max=89.6%
+  peak tilt: 3.1 deg
+  VERDICT: STANDING (zero command, as expected)
+
+=== commanded_0.03 (vx=0.03) ===
+  steps=200/200  fell=False  achieved_vx=+0.0138+/-0.0134 m/s  fwd_dist=+0.055m
+  support_switches=7  genuine_swings L=0 R=0
+  foot clearance: L=1.3mm R=2.7mm (floor_ref_z=0.0175m)
+  stance-foot slip: L=15.1mm R=30.0mm
+  joint tracking error: mean=0.0103 rad  actuator saturation: mean=36.0% max=83.2%
+  peak tilt: 4.9 deg
+  VERDICT: SLIDING (forward progress without alternating swing phases)
+
+saved -> /home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u30_walk_command/u30_seed1_eval.json

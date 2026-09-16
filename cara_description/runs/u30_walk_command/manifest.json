@@ -1,0 +1,48 @@
+{
+  "workstream": "U30 -- first locomotion attempt: warm-start from U29, nominal resets, modest forward command",
+  "date": "2026-09-16",
+  "pre_training_reward_fix": {
+    "bug": "r_upright = float(projected_gravity_z + 1.0), commented '0 upright, -2 fully tipped', actually gave 0 at upright and +2 at full inversion -- REWARDED tipping/inversion, opposite of the comment. Verified at synthetic tilts before touching code: 0deg->+0.0, 10deg->+0.0152, 20deg->+0.0603, 90deg->+1.0, 180deg->+2.0.",
+    "fix": "negated to r_upright = -float(projected_gravity_z + 1.0), restoring 0 upright / -2 inverted as the comment always said.",
+    "reward_version": "bumped v3_alive+vel10 -> v4_upright_sign_fix. All U20-U29 checkpoints trained under the buggy v3 sign -- disclosed, not retroactively relabeled.",
+    "reward_audit_rerun": "PASS, margin unchanged (100.8%) -- expected, bug magnitude is tiny at standing-vs-falling scale (~0.001-0.006 raw at U29's own measured 2.4-6.1deg tail tilts). Real and wrong-signed, would compound materially near an actual fall, but per instruction not inferred to single-handedly explain U29's equilibrium-tilt finding.",
+    "note": "This is the reward U30 trained under -- the first workstream to use v4."
+  },
+  "command_normalization_check": {
+    "risk": "desired_vx observation dimension (index 30 of 43) held fixed at 0.0 through ALL of U27-U29 (every standing/recovery run) -- its adaptively-learned variance converges toward the epsilon floor.",
+    "measured_before_training": "U29 seed0 checkpoint: mean=0.0, var=1.25e-14, std=1.12e-7. A raw 0.03 m/s command would normalize to (0.03-0)/1.12e-7 = ~300, clipped to the +/-10 ceiling -- fully saturated, indistinguishable from any other nonzero command.",
+    "fix": "RunningNorm gained fixed_scale_dims (obs_index -> constant): that one dimension is normalized by raw/scale, bypassing the adaptive mean/var entirely, regardless of what the resumed checkpoint's stats say for it. --vx-obs-scale 0.5 (m/s) used for U30 -- documented, not learned.",
+    "verified": "smoke-tested before the real run: fixed_scale_dims={30: 0.5} round-trips correctly through save/load, and correctly overrides the resumed (degenerate) stats rather than inheriting them."
+  },
+  "task_setup": {
+    "resumed_from": "u29_seed{0,1,2}.pt, EXACT resumption (optimizer state present and restored)",
+    "resets": "nominal only -- reset_qvel_noise_bands/std NOT set, the U29 perturbation curriculum removed entirely for this experiment per instruction",
+    "command": "desired_vx_bands=(0.5:0.0, 0.5:0.03) -- one drawn per EPISODE at reset(), held constant within it, per instruction ('keep commands constant within each episode for this first experiment')",
+    "unchanged": "w_action_rate=0.3 (U26's value), action_range_frac=0.30, actuator settings, architecture, and exploration schedule (init_logstd is ignored on resume -- the ACTUAL learned std carries over, continuing to shrink under normal PPO entropy decay, not reset or otherwise touched)",
+    "budget": "400,000 steps per seed, fixed, no automatic extension",
+    "wall_time_s": {"seed0": 511, "seed1": 501, "seed2": 518},
+    "incentive_check": "at vx=0.03, ideal tracking under w_vel=10 gives +0.3/step advantage over standing (0 tracking error vs 0.03 error * 10), before movement penalties -- confirmed as a real, if modest, per-step incentive; NOT treated as proof that stepping would be discovered."
+  },
+  "training_outcome": "All 3 seeds preserved standing throughout (fall_rate stayed near 0.0 for the full 400k-step budget in every seed, consistent with U27-U29's own standing-preservation result). No training-time signal of destabilization requiring an early stop.",
+  "evaluation": {
+    "script": "cara_description/scripts/evaluate_u30.py",
+    "measurements": ["survival + achieved forward speed", "foot clearance / alternating touchdown / stance-foot slip", "zero-command performance", "torque use + joint tracking"],
+    "zero_command_all_seeds": "200/200 steps, no fall, near-zero forward drift (0.011-0.041m over 4s) -- standing retained in every seed, as expected.",
+    "commanded_0.03_results": {
+      "seed0": {"verdict": "STANDING", "achieved_vx": 0.0063, "fwd_dist_m": 0.022, "swing_steps_L": 0, "swing_steps_R": 0, "foot_clearance_mm": {"L": 1.9, "R": 0.9}},
+      "seed1": {"verdict": "SLIDING", "achieved_vx": 0.0138, "fwd_dist_m": 0.055, "swing_steps_L": 0, "swing_steps_R": 0, "foot_clearance_mm": {"L": 1.3, "R": 2.7}, "note": "forward progress WITHOUT any genuine (>=60ms) foot-airborne phase -- weight-shifting/sliding, not stepping"},
+      "seed2": {"verdict": "STANDING", "achieved_vx": -0.0004, "fwd_dist_m": -0.001, "swing_steps_L": 0, "swing_steps_R": 0, "foot_clearance_mm": {"L": 1.8, "R": 1.8}}
+    },
+    "foot_clearance_context": "1-3mm in every seed, every condition -- noise-level vibration, not a real swing-phase lift. Zero genuine swing phases (>=3 consecutive control steps airborne) on EITHER foot, in ANY of the 6 seed x condition combinations.",
+    "torque_and_tracking": "actuator saturation mean 27.5-36.0%, joint tracking error mean 0.008-0.010 rad across all conditions -- unremarkable, well within modeled authority. Movement (what little occurred) was not actuator-constrained.",
+    "milestone_check": "The first walking milestone (several genuine alternating steps with sustained forward progress while upright) is NOT MET, in any of the 3 seeds. Reported plainly, per instruction NOT automatically classified as a balance failure -- standing was retained cleanly in every case; this is a 'stayed standing' outcome, not a fall or instability outcome."
+  },
+  "exploration_and_cost_of_moving_check": {
+    "instruction": "if the policy stays standing, inspect exploration and the cost of moving -- do not just report 'balance failure'",
+    "measured_final_exploration_std": {"seed0": 0.0291, "seed1": 0.0275, "seed2": 0.0290, "units": "normalized action-space units, all 12 joints similar"},
+    "context": "roughly HALF of U27's already-conservative starting std (0.0498 at init_logstd=-3.0), having decayed further through U28's and U29's recovery training, which reinforced smooth/quiet corrections (U26 raised w_action_rate specifically to suppress jitter). At hip_pitch's own offset_scale (0.42 rad), 0.029 normalized-std translates to ~0.012 rad (~0.7 degree) of 1-sigma per-step swing -- far too small for PPO's on-policy sampling to ever produce a clean, deliberate leg lift, regardless of whether the reward would pay for one if sampled.",
+    "conclusion": "The most likely explanation is exploration magnitude, not reward sign or actuator limits: the policy lineage's exploration was deliberately, successfully suppressed across U27-U29 specifically to preserve standing, and that same suppression now appears to be preventing it from ever sampling the kind of large, coordinated leg motion that stepping requires. The +0.3/step tracking incentive exists but cannot be discovered if it is never sampled.",
+    "not_yet_checked": "action-rate/effort penalty magnitude at a hypothetical stepping gait's actual jitter level (would need a scripted-gait probe, similar to U25's actuator-response tests, to measure the REAL cost of a stepping-scale motion against the achievable +0.3/step benefit) -- flagged, not done this session."
+  },
+  "net_assessment": "Standing was retained cleanly in all 3 seeds under both zero and 0.03 m/s commands -- the reward/observation infrastructure fixes (upright sign, command normalization) did their job without destabilizing anything. But no seed discovered genuine stepping; one showed sliding-without-stepping, the other two stayed essentially static regardless of command. The leading, evidence-supported explanation is that exploration std has decayed too far (through three prior training generations optimized specifically for quiet standing/recovery) to ever sample the motion a stepping gait requires -- not a reward-incentive problem (the +0.3/step advantage is real and unchanged) and not an actuator-authority problem (saturation and tracking are unremarkable). This points toward either a deliberate, bounded exploration boost targeted at the walking task specifically, or a fresh initialization strategy for locomotion analogous to U27's for standing -- flagged for the next decision, not started here."
+}
