@@ -1209,3 +1209,109 @@ artifacts (3 resumed checkpoints, training logs, the per-seed evaluation
 script and its full JSON, and the exploration-std measurements) are under
 `cara_description/runs/u30_walk_command/` with `manifest.json` as the
 index.
+
+### Framing correction: U30 was a transfer continuation, not a plain resumption
+
+Optimizer and checkpoint state were fully restored, but changing the reward
+(v3→v4's sign fix) and the command observation representation (the new
+fixed-scale `desired_vx` feature) changes the learning problem itself.
+"Exact resumption" described the mechanics of the restore, not the nature
+of the task — U30 (and everything built on it, including U31 below) is more
+accurately a transfer continuation onto a modified problem.
+
+## U31 — a bounded, probed, command-dependent exploration boost
+
+Explicit framing going in: insufficient exploration is a **hypothesis**,
+not a complete diagnosis. A 0.7° std doesn't make lifting *impossible* (the
+mean can learn larger movements); a lift needs coordinated unloading, not
+just a bigger hip-pitch sample; sliding already earns some velocity reward,
+so the objective doesn't cleanly separate sliding from walking. U31 changes
+exploration only, with a fixed endpoint, specifically to test whether more
+exploration reveals useful stepping *experience* — not to prove more noise
+eventually produces walking.
+
+**Mechanism**: `ActorCritic` gained `command_dependent_std` — the *same*
+`act()` call used for sampling, log-prob computation, and the PPO update's
+recomputed log-prob reads the (already fixed-scale) `desired_vx`
+observation and multiplies the base trainable std by a fixed constant only
+when that feature is nonzero. Zero-command steps are untouched by
+construction, not convention. Verified empirically, not just argued:
+sampled std matched the target multiplier exactly in a standalone check,
+and log-prob recomputed for a stored `(obs, action)` pair from a moving
+episode matched the original sampling-time value exactly
+(`torch.allclose` = `True`). Incidental find while touching this code: a
+pre-existing `.expand_as(mean)` bug that raised on unbatched inputs (never
+hit during real training — rollouts are always batched — but broke direct
+test/probe scripts); fixed via `.view(-1)` + broadcasting, correct for
+both cases.
+
+### Pre-training probes — chosen by behavior, not noise magnitude
+
+`probe_exploration_boost.py`: for each candidate multiplier (1.5×, 2×, 3×
+over each seed's own *learned* std), 20 short sampled rollouts at a fixed
+0.03 m/s command. Looked for longer airborne runs, clearance clearly above
+a 3mm noise floor (from U30's own measured 1.3–2.7mm foot vibration at
+rest), and a genuine supported touchdown afterward — not just "did it fall
+less."
+
+| multiplier | fall rate (3 seeds) | verdict |
+|---|---|---|
+| 1.5× | 0–5% | **PROMISING** — real clearance above floor, some supported landings, no clipping |
+| 2.0× | 15–30% | PROMISING but real, seed-dependent fall risk |
+| 3.0× | 85–95% | **REJECT** — mostly immediate falls |
+
+**Chose 1.5×** — smallest promising setting, consistently across all 3
+seeds independently.
+
+### Training and evaluation
+
+Resumed exactly from each seed's U30 final checkpoint; reward `v4`, action
+bounds, `desired_vx_bands`, `vx_obs_scale`, actuator settings, and
+mechanics all unchanged — exploration structure was the only variable.
+Fixed 400,000-step budget, no automatic extension. Actual exploration level
+now logged every iteration (`moving_std_mean` alongside the base
+`logstd_mean`). Standing preserved throughout in all 3 seeds — no
+destabilization requiring an early stop.
+
+**Evaluated the deterministic policy only** (`evaluate_u30.py`, reused
+as-is — it never samples, so evaluation-time noise cannot manufacture
+apparent steps by construction). Zero-command: standing retained cleanly
+in all 3 seeds. Commanded 0.03 m/s:
+
+| seed | achieved vx | forward dist | swing steps (L/R) | verdict |
+|---|---|---|---|---|
+| 0 | 0.0081 m/s | +0.031m | 0/0 | STANDING |
+| 1 | 0.0066 m/s | +0.027m | 0/0 | STANDING |
+| 2 | 0.0071 m/s | +0.029m | 0/0 | STANDING |
+
+Foot clearance 1.5–2.0mm in every seed/condition — unchanged from U30
+despite the boost *used during training*. Torque and tracking unremarkable
+(29.6–34.9% saturation, ~0.01 rad error) — no sign of clipping or
+instability in the learned policy. **Milestone not met in any seed.**
+
+### Decision-table mapping — the nuanced case, not a clean row
+
+Exploration *did* produce useful lift-and-land experience during the
+probes (1–4 of 20 repeats per foot per seed at 1.5× showed real clearance
+with a genuine supported landing) — this isn't the "mostly falls or
+jitter" row. But the deterministic policy after 400k steps shows neither
+stepping *nor* sliding — it shows standing, with negligible forward
+progress. **The useful exploratory experience existed but was never
+consolidated into learned behavior.** Closest fit: *"standing remains
+dominant and useful lifts remain absent"* — true of what was actually
+*learned*, even though raw exploration occasionally found something real.
+
+This matches the caveat given going into the experiment: a rare,
+uncoordinated 3–6-step airborne excursion inside a 200-step trajectory
+contributes only a small, noisy fraction of that trajectory's return, and
+nothing about independent per-step Gaussian sampling makes that specific
+excursion systematically reproducible from the same states again. **Per
+instruction, this points toward a coordinated-movement prior, demonstration
+initialization, or a structurally different (temporally coherent)
+exploration method such as gSDE — not further scaling of independent
+per-step noise.** A separate implementation change, not stacked into this
+experiment; not started here. All artifacts (3 resumed checkpoints,
+training logs with the new exploration-level logging, the pre-training
+probe script and its full per-seed JSON, and the deterministic evaluation)
+are under `cara_description/runs/u31_exploration_boost/` with
+`manifest.json` as the index.

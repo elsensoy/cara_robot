@@ -1,0 +1,25 @@
+
+=== multiplier 1.5x ===
+  fall_rate=5.0%  mean_clip_frac=0.0%  mean|delta_action|=0.0853
+  max clearance: L=6.2mm R=29.9mm (noise floor 3mm)
+  max airborne run: L=6 R=5 control-steps (120/100ms)
+  promising repeats (clearance>floor AND supported landing): L=3/20 R=3/20
+  VERDICT: PROMISING
+
+=== multiplier 2.0x ===
+  fall_rate=20.0%  mean_clip_frac=0.0%  mean|delta_action|=0.0964
+  max clearance: L=31.0mm R=36.8mm (noise floor 3mm)
+  max airborne run: L=20 R=8 control-steps (400/160ms)
+  promising repeats (clearance>floor AND supported landing): L=2/20 R=3/20
+  VERDICT: PROMISING
+
+=== multiplier 3.0x ===
+  fall_rate=85.0%  mean_clip_frac=0.0%  mean|delta_action|=0.1182
+  max clearance: L=54.8mm R=66.3mm (noise floor 3mm)
+  max airborne run: L=14 R=31 control-steps (280/620ms)
+  promising repeats (clearance>floor AND supported landing): L=4/20 R=6/20
+  VERDICT: REJECT: mostly immediate falls
+
+=== choice: smallest PROMISING multiplier ===
+  chosen: 1.5
+saved -> /home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u31_exploration_boost/probe_seed1.json

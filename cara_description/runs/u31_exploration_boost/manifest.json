@@ -1,0 +1,55 @@
+{
+  "workstream": "U31 -- bounded, command-dependent exploration boost, probed before training",
+  "date": "2026-09-16",
+  "framing_correction": "U30 is described as a TRANSFER CONTINUATION, not a plain resumption: changing the reward (v3->v4 sign fix) and the command observation representation (fixed-scale desired_vx) changes the learning problem even though optimizer and checkpoint state were fully restored. Carried into how U31 is framed too -- this is a further transfer step on top of that, not a clean continuation of a fixed task.",
+  "preserved_checkpoints": "U30 final checkpoints (u30_seed{0,1,2}.pt) untouched -- used only as U31's resume source.",
+  "mechanism": {
+    "design": "ActorCritic gained command_dependent_std: the SAME act() call used for sampling, log-prob computation, AND the PPO update's recomputed log-prob reads the desired_vx observation feature (index 30, already on a fixed documented scale from U30) and multiplies the base (trainable) std by a FIXED constant whenever that feature is nonzero. Zero-command steps are never touched -- multiplier=1 there by construction, not by convention.",
+    "verified_before_use": "empirically confirmed (not just structurally argued): sampled empirical std matched the target (1.5x/2x) exactly in a standalone test, and log-prob recomputed for a stored (obs, action) pair from a moving episode matched the original sampling-time log-prob exactly (torch.allclose=True) -- the 'same distribution for sampling, log-prob, and updates' requirement holds by construction, not by discipline.",
+    "incidental_fix": "found and fixed a pre-existing bug in ActorCritic.act() while touching this code: .expand_as(mean) raised for unbatched (single-observation) inputs. Never manifested during real training (rollouts are always batched across 8 envs) but broke direct-call test/probe scripts. Fixed via .view(-1) + broadcasting, which is correct for both batched and unbatched x."
+  },
+  "pre_training_probes": {
+    "script": "cara_description/scripts/probe_exploration_boost.py",
+    "method": "For each candidate multiplier (1.5x, 2x, 3x over each seed's own LEARNED std), 20 short SAMPLED rollouts at a fixed 0.03 m/s command, using the real command_dependent_std mechanism (not external noise). Measured per foot: max airborne-run length, max clearance above a 3mm noise floor (from U30's own measured 1.3-2.7mm foot vibration at rest), and whether the best airborne run ended in a genuine (>=60ms) SUPPORTED touchdown -- not just an airborne blip.",
+    "results_by_seed": {
+      "seed0": {"1.5x": {"fall_rate": "0.0%", "max_clearance_mm": {"L": 3.9, "R": 6.6}, "promising_repeats": "2/20, 4/20"},
+                "2.0x": {"fall_rate": "15.0%", "max_clearance_mm": {"L": 20.3, "R": 9.9}, "promising_repeats": "2/20, 2/20"},
+                "3.0x": {"fall_rate": "95.0%", "verdict": "REJECT: mostly immediate falls"}},
+      "seed1": {"1.5x": {"fall_rate": "5.0%", "max_clearance_mm": {"L": 6.2, "R": 29.9}, "promising_repeats": "3/20, 3/20"},
+                "2.0x": {"fall_rate": "20.0%", "max_clearance_mm": {"L": 31.0, "R": 36.8}, "promising_repeats": "2/20, 3/20"},
+                "3.0x": {"fall_rate": "85.0%", "verdict": "REJECT: mostly immediate falls"}},
+      "seed2": {"1.5x": {"fall_rate": "0.0%", "max_clearance_mm": {"L": 4.4, "R": 16.6}, "promising_repeats": "1/20, 2/20"},
+                "2.0x": {"fall_rate": "30.0%", "max_clearance_mm": {"L": 28.5, "R": 31.7}, "promising_repeats": "4/20, 3/20"},
+                "3.0x": {"fall_rate": "95.0%", "verdict": "REJECT: mostly immediate falls"}}
+    },
+    "chosen_multiplier": 1.5,
+    "chosen_because": "Smallest promising setting, consistently across all 3 seeds independently: 0-5% fall rate (not 'mostly immediate falls'), 0% action clipping, real clearance clearly above the measured noise floor, with some (1-4 of 20) genuine supported landings after the best airborne run -- not just jitter. 2.0x was also promising but carried real, seed-dependent fall risk (15-30%); chose the smaller, safer option per 'choose the smallest promising setting.'"
+  },
+  "training": {
+    "resumed_from": "u30_seed{0,1,2}.pt, exact resumption (optimizer state restored)",
+    "unchanged": "reward v4, action_range_frac=0.30, desired_vx_bands=(0.5:0.0,0.5:0.03), vx_obs_scale=0.5, actuator settings, mechanics, normalization -- exploration structure was the ONLY change",
+    "budget": "400,000 steps per seed, fixed, no automatic extension",
+    "wall_time_s": {"seed0": 522, "seed1": 522, "seed2": 535},
+    "logged_exploration_level": "every training iteration's history row now includes moving_std_mean (base learned std * 1.5) alongside the existing base logstd_mean/min/max -- the actual exploration level used on moving-command steps is now directly traceable, not just inferred.",
+    "outcome": "standing preserved throughout all 3 seeds (fall_rate near 0.0 for the full budget, small transient blips only) -- no destabilization requiring an early stop."
+  },
+  "evaluation": {
+    "script": "cara_description/scripts/evaluate_u30.py (reused as-is -- it already evaluates the DETERMINISTIC mean policy only, never samples, so 'steps caused only by evaluation-time noise' cannot appear in these numbers by construction)",
+    "zero_command_all_seeds": "200/200 steps, no fall, near-zero drift (-0.017 to -0.005m) in all 3 seeds -- standing retained.",
+    "commanded_0.03_results": {
+      "seed0": {"achieved_vx": 0.0081, "fwd_dist_m": 0.031, "swing_steps_L": 0, "swing_steps_R": 0, "verdict": "STANDING"},
+      "seed1": {"achieved_vx": 0.0066, "fwd_dist_m": 0.027, "swing_steps_L": 0, "swing_steps_R": 0, "verdict": "STANDING"},
+      "seed2": {"achieved_vx": 0.0071, "fwd_dist_m": 0.029, "swing_steps_L": 0, "swing_steps_R": 0, "verdict": "STANDING"}
+    },
+    "foot_clearance_deterministic": "1.5-2.0mm in every seed/condition -- still noise-level, unchanged from U30 despite the exploration boost used DURING training.",
+    "torque_and_tracking": "actuator saturation 29.6-34.9% mean, joint tracking error ~0.009-0.010 rad -- unremarkable, no sign of clipping or instability in the learned (deterministic) policy.",
+    "milestone_check": "NOT MET in any of the 3 seeds. Zero genuine (>=60ms) swing phases on either foot, in any seed, under either command."
+  },
+  "decision_table_mapping": {
+    "genuine_steps_persist_in_deterministic_eval": "NO",
+    "exploration_produces_useful_lifts_but_learning_selects_sliding": "PARTIAL -- exploration DID produce some useful lift-and-land experience in the pre-training probes (1-4 of 20 repeats per foot per seed at 1.5x showed real clearance with a supported landing), but the deterministic policy after 400k steps of training on top of that exploration shows NEITHER stepping NOR sliding -- it shows STANDING, with negligible forward progress (0.027-0.031m). The useful exploratory experience existed but was not consolidated into learned behavior.",
+    "larger_noise_mainly_causes_falls_or_jitter_no_useful_lifts": "NO -- 1.5x specifically had low fall rate and genuine (if rare) useful lifts in the probes; this describes 3.0x, which was correctly rejected before training.",
+    "standing_remains_dominant_useful_lifts_absent": "YES, for what the training actually learned -- closest match. Useful lifts were not absent from raw exploration (they appeared, rarely, in probes) but ARE absent from the consolidated deterministic policy."
+  },
+  "net_assessment": "The closest fit is the fourth row: standing remains dominant and useful lifts remain absent from the LEARNED policy, even though the exploration mechanism itself (verified structurally correct and empirically probed before committing to it) occasionally produced real lift-and-land experience. This is consistent with the caveat given going into this experiment: 'larger independent noise may never efficiently discover a coordinated step' -- a rare, uncoordinated 3-6-step airborne excursion out of a 200-step trajectory contributes only a small, noisy fraction of that trajectory's return, and nothing about independent per-step Gaussian sampling makes that specific excursion systematically reproducible from the same states again. Per instruction, this points toward considering a coordinated-movement prior or demonstration initialization, or a structurally different (temporally coherent) exploration method such as gSDE, rather than further scaling of independent per-step noise -- a separate implementation change, not stacked into this experiment. Not started here -- flagged for the next decision."
+}

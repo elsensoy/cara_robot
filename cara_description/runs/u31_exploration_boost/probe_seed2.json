@@ -1,0 +1,42 @@
+{
+  "1.5": {
+    "fall_rate": 0.0,
+    "clip_rate": 0.0,
+    "jitter": 0.08636387145465416,
+    "max_clearance_l_m": 0.004439753266374594,
+    "max_clearance_r_m": 0.0166186666370788,
+    "max_airborne_l_steps": 3,
+    "max_airborne_r_steps": 8,
+    "n_promising_l": 1,
+    "n_promising_r": 2,
+    "promising": true,
+    "verdict": "PROMISING"
+  },
+  "2.0": {
+    "fall_rate": 0.3,
+    "clip_rate": 0.0,
+    "jitter": 0.0996991647584196,
+    "max_clearance_l_m": 0.028500475470232288,
+    "max_clearance_r_m": 0.03173969261412282,
+    "max_airborne_l_steps": 9,
+    "max_airborne_r_steps": 9,
+    "n_promising_l": 4,
+    "n_promising_r": 3,
+    "promising": true,
+    "verdict": "PROMISING"
+  },
+  "3.0": {
+    "fall_rate": 0.95,
+    "clip_rate": 0.0,
+    "jitter": 0.12269951964440037,
+    "max_clearance_l_m": 0.03492713009504479,
+    "max_clearance_r_m": 0.03788060174096358,
+    "max_airborne_l_steps": 11,
+    "max_airborne_r_steps": 12,
+    "n_promising_l": 6,
+    "n_promising_r": 3,
+    "promising": true,
+    "verdict": "REJECT: mostly immediate falls"
+  },
+  "chosen_multiplier": 1.5
+}

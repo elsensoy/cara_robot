@@ -195,8 +195,22 @@ def perturb_band_survival(env, agent, obs_norm, max_steps, band_std):
 
 
 class ActorCritic(nn.Module):
-    def __init__(self, obs_dim, act_dim, init_logstd=-0.5, zero_mean_init=False):
+    def __init__(self, obs_dim, act_dim, init_logstd=-0.5, zero_mean_init=False,
+                 command_dependent_std=False, desired_vx_obs_idx=None, std_boost_multiplier=1.0):
         super().__init__()
+        # U31: exploration boost is CONDITIONAL on the observation itself
+        # (whether the desired_vx feature is nonzero), computed fresh every
+        # call to act() -- not a separate noise source added externally.
+        # This is what guarantees the SAME distribution is used for
+        # sampling, log-prob, and the PPO update's recomputed log-prob: all
+        # three go through this one act() method, driven only by x.
+        # std_boost_multiplier is a fixed constant (not trainable) chosen
+        # from U31's pre-training probes -- the base actor_logstd stays a
+        # trainable nn.Parameter as before, so if it keeps shrinking during
+        # training, the boosted (moving) std shrinks proportionally too.
+        self.command_dependent_std = command_dependent_std
+        self.desired_vx_obs_idx = desired_vx_obs_idx
+        self.std_boost_multiplier = std_boost_multiplier
         self.critic = nn.Sequential(
             layer_init(nn.Linear(obs_dim, 64)), nn.Tanh(),
             layer_init(nn.Linear(64, 64)), nn.Tanh(),
@@ -236,7 +250,19 @@ class ActorCritic(nn.Module):
 
     def act(self, x, action=None):
         mean = self.actor_mean(x)
-        std = torch.exp(self.actor_logstd.expand_as(mean))
+        # .view(-1) + broadcasting (not .expand_as(mean), which raises for
+        # unbatched x -- e.g. shape (obs_dim,) rather than (batch,obs_dim))
+        # handles both batched and unbatched x correctly.
+        std = torch.exp(self.actor_logstd.view(-1))
+        if self.command_dependent_std and self.desired_vx_obs_idx is not None:
+            # The desired_vx observation is fed through a FIXED scale (see
+            # RunningNorm.fixed_scale_dims), so a zero command normalizes to
+            # exactly 0.0 and any nonzero command normalizes to something
+            # nonzero -- a reliable, cheap "is this a moving episode" signal
+            # read directly off the network's own input, no separate state.
+            is_moving = (x[..., self.desired_vx_obs_idx].abs() > 1e-6).float().unsqueeze(-1)
+            multiplier = 1.0 + is_moving * (self.std_boost_multiplier - 1.0)
+            std = std * multiplier
         dist = Normal(mean, std)
         if action is None:
             action = dist.sample()
@@ -352,13 +378,16 @@ def train(args):
     act_dim = envs.single_action_space.shape[0]
     device = torch.device("cpu")
 
-    agent = ActorCritic(obs_dim, act_dim, init_logstd=args.init_logstd,
-                         zero_mean_init=args.zero_mean_init).to(device)
-    optimizer = torch.optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
     # desired_vx lives at this fixed index in the observation vector (see
     # CaraWalkEnv.desired_vx_obs_index) -- computed the same way here since
     # no single-env instance exists yet at this point in train().
     desired_vx_obs_idx = 2 * act_dim + 3 + 3
+    agent = ActorCritic(obs_dim, act_dim, init_logstd=args.init_logstd,
+                         zero_mean_init=args.zero_mean_init,
+                         command_dependent_std=args.command_dependent_std,
+                         desired_vx_obs_idx=desired_vx_obs_idx,
+                         std_boost_multiplier=args.std_boost_multiplier).to(device)
+    optimizer = torch.optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
     fixed_scale_dims = {desired_vx_obs_idx: args.vx_obs_scale} if args.vx_obs_scale is not None else None
     obs_norm = RunningNorm(obs_dim, fixed_scale_dims=fixed_scale_dims)
 
@@ -551,6 +580,11 @@ def train(args):
                    logstd_max=float(logstd_now.max()),
                    pg_loss=float(pg_loss.item()), v_loss=float(v_loss.item()),
                    clipfrac=float(np.mean(clipfracs)), elapsed_s=round(elapsed, 1))
+        if args.command_dependent_std:
+            # The base logstd above is the UNBOOSTED (zero-command) std; log
+            # the actual moving-episode std too, since that's the exploration
+            # level this whole experiment is about.
+            row["moving_std_mean"] = float(np.exp(logstd_now).mean() * args.std_boost_multiplier)
         if args.curriculum:
             row["stage_idx"] = stage_idx
             row["desired_vx"] = vx_stages[stage_idx]
@@ -587,9 +621,10 @@ def train(args):
                                      perturb_hard_std_at_save=perturb_hard_std if args.perturb_curriculum else None
                                      ), best_path)
 
+        moving_std_note = f"  moving_std={row['moving_std_mean']:.4f}" if args.command_dependent_std else ""
         print(f"iter {it:4d}/{num_iterations}  step={global_step:8d}  "
               f"ep_return={row['mean_ep_return']:8.2f}  ep_len={row['mean_ep_length']:6.1f}  "
-              f"fall_rate={row['fall_rate']}  logstd={row['logstd_mean']:+.3f}  "
+              f"fall_rate={row['fall_rate']}  logstd={row['logstd_mean']:+.3f}{moving_std_note}  "
               f"clipfrac={row['clipfrac']:.2f}  t={elapsed:6.1f}s{stage_note}{eval_note}")
 
         if (args.curriculum and stage_idx < len(vx_stages) - 1
@@ -747,6 +782,15 @@ def build_argparser():
                           "in m/s -- required whenever introducing a nonzero command into a policy "
                           "whose obs_norm only ever saw desired_vx=0.0 (see RunningNorm docstring). "
                           "None disables (uses the ordinary adaptive normalization for that dimension too).")
+    ap.add_argument("--command-dependent-std", action="store_true",
+                     help="U31: multiply exploration std by --std-boost-multiplier on moving-command "
+                          "steps only (zero-command steps keep the ordinary, unboosted std). The SAME "
+                          "act() call handles sampling, log-prob, and the PPO update's recomputed "
+                          "log-prob, so there is no separate/inconsistent noise source.")
+    ap.add_argument("--std-boost-multiplier", type=float, default=1.0,
+                     help="U31: multiplier applied to the base (learned) std when command_dependent_std "
+                          "is on and the episode's command is nonzero. Chosen from short pre-training "
+                          "probes (probe_exploration_boost.py), not guessed.")
     return ap
 
 
