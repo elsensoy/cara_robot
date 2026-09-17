@@ -1,0 +1,25 @@
+{
+  "seed": 4000,
+  "run_a": {
+    "fell": true,
+    "fell_decision": 300,
+    "peak_tilt": 43.617480985678014
+  },
+  "run_b": {
+    "fell": true,
+    "fell_decision": 302,
+    "peak_tilt": 44.90973887418363
+  },
+  "ref_ey_nominal_mm": 13.82094791764902,
+  "pre_latch_bitexact": true,
+  "verdict": "BOTH FAIL at essentially the same point -- latch correction alone is insufficient; the biased latch is not the (sole) cause.",
+  "kick_velocity_check": {
+    "requested_kick_qvel1": 0.008,
+    "qvel1_before": -0.0021318881339632036,
+    "qvel1_after": 0.005885685635995286,
+    "achieved_qvel1_delta": 0.00801757376995849,
+    "com_y_velocity_estimate_before_kick_step": -0.002078635534120965,
+    "com_y_velocity_estimate_after_kick_step": -0.0020514841536541095,
+    "note": "finite-difference estimate of d(com_y)/dt across the single substep the kick was applied in; compares the requested qvel[1] increment to the resulting whole-body CoM-y velocity change."
+  }
+}

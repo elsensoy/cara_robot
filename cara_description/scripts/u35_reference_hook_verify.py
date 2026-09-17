@@ -96,15 +96,27 @@ def _gait_balance_gains(config_path):
 
 
 def run_recorded(module, config_path, n_steps, reference_offset_fn=None,
-                  kick_substep=None, kick_qvel_y=0.0, geom=None, schedule=None):
+                  kick_substep=None, kick_qvel_y=0.0, geom=None, schedule=None,
+                  track_actuators=None, track_contact_stance=None, jn=None):
     """Runs module.run(...) (gait.py or gait_frozen_baseline.py) with
     mujoco.mj_step monkeypatched (non-invasive; module source untouched by
     this wrapper) to record qpos/ctrl every substep, and -- only when geom
-    and schedule are supplied -- ey and foot-touch per substep too. Restores
-    mj_step afterward regardless of outcome."""
+    and schedule are supplied -- ey and foot-touch per substep too.
+
+    track_actuators: optional list of joint names -- also records
+    actuator_force and whether it saturates model.actuator_forcerange
+    (same check gait.py's own M["sat"] uses), plus whether ctrl itself
+    saturates actuator_ctrlrange, for just these actuators (kept selective
+    to bound memory over long runs).
+    track_contact_stance: optional dict step_idx -> stance prefix ("l_"/"r_")
+    -- when the current substep's phase_at().step_idx matches, records the
+    peak normal contact force between that stance foot and the floor.
+
+    Restores mj_step afterward regardless of outcome."""
     import mujoco
     orig = mujoco.mj_step
     rec = {"substep": 0, "qpos": [], "ctrl": [], "rows": []}
+    aid_cache = {}
 
     def wrapped(model, data):
         i = rec["substep"]
@@ -119,6 +131,31 @@ def run_recorded(module, config_path, n_steps, reference_offset_fn=None,
                 stance = gait.OTHER[info["lead"]]
                 row["ey"] = float(data.subtree_com[0][1] - data.geom_xpos[geom["foot_gid"][stance]][1])
                 row["touch"] = _foot_touch(data, geom["floor_gid"], geom["foot_gid"])
+            if track_actuators:
+                if not aid_cache:
+                    for n in track_actuators:
+                        aid_cache[n] = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, n)
+                for n in track_actuators:
+                    aidx = aid_cache[n]
+                    force = float(data.actuator_force[aidx])
+                    frange = model.actuator_forcerange[aidx]
+                    crange = model.actuator_ctrlrange[aidx]
+                    ctrl_val = float(data.ctrl[aidx])
+                    row[f"force_{n}"] = force
+                    row[f"force_sat_{n}"] = bool(abs(force) >= frange[1] - 0.02)
+                    row[f"ctrl_clip_{n}"] = bool(ctrl_val <= crange[0] + 1e-9 or ctrl_val >= crange[1] - 1e-9)
+            if track_contact_stance is not None and info["step_idx"] in track_contact_stance:
+                stance_p = track_contact_stance[info["step_idx"]]
+                peak_f = 0.0
+                fgid = geom["foot_gid"][stance_p]
+                for ci in range(data.ncon):
+                    c = data.contact[ci]
+                    pair = {c.geom1, c.geom2}
+                    if geom["floor_gid"] in pair and fgid in pair:
+                        result = np.zeros(6)
+                        mujoco.mj_contactForce(model, data, ci, result)
+                        peak_f = max(peak_f, abs(float(result[0])))
+                row["contact_force_n"] = peak_f
             rec["rows"].append(row)
         orig(model, data)
         rec["substep"] = i + 1
@@ -142,6 +179,23 @@ def peak_tilt_deg(qpos_trace):
         roll, pitch = _quat_rpy(q[3:7])
         peaks.append(math.degrees(max(abs(roll), abs(pitch))))
     return max(peaks)
+
+
+FALL_TILT_DEG = 40.0  # matches CaraResidualEnv/cara_env's own fall threshold -- use this for
+                       # pass/fail comparisons; tilt values seen AFTER this point (up to 180deg,
+                       # a collapsed/inverted pose) describe post-failure motion, not a graded signal.
+
+
+def first_exceed_40deg(qpos_trace, dt=DT):
+    """Returns (fell: bool, substep_idx or None, time_s or None) for the FIRST
+    substep at which tilt exceeds FALL_TILT_DEG -- the reportable failure
+    point, instead of a 180deg post-collapse peak that adds no diagnostic
+    value once the robot has already tipped over."""
+    for i, q in enumerate(qpos_trace):
+        roll, pitch = _quat_rpy(q[3:7])
+        if math.degrees(max(abs(roll), abs(pitch))) > FALL_TILT_DEG:
+            return True, i, i * dt
+    return False, None, None
 
 
 # --------------------------------------------------------------------- #

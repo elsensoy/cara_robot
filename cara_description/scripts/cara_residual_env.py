@@ -143,12 +143,19 @@ class _TeacherThread:
     target to the main thread and wait for the residual-combined command
     to apply for the next DECISION_RATIO physics steps."""
 
-    def __init__(self, config_path, n_steps, limit_fn, fall_tilt_deg, fall_height_m):
+    def __init__(self, config_path, n_steps, limit_fn, fall_tilt_deg, fall_height_m, reference_offset_fn=None):
         self.to_teacher = queue.Queue(maxsize=1)
         self.from_teacher = queue.Queue(maxsize=1)
         self.limit_fn = limit_fn
         self.fall_tilt_deg = fall_tilt_deg
         self.fall_height_m = fall_height_m
+        # U35 -- optional, zero-default pass-through to gait.py's own
+        # reference_offset_fn hook (see gait.py). Not used by any residual-
+        # joint-space RL path; exists so a diagnostic script can force the
+        # teacher's latched balance reference to a chosen value while a
+        # residual-noise episode replays through this same, already-verified
+        # decision loop, instead of re-implementing it in parallel.
+        self.reference_offset_fn = reference_offset_fn
         self.substep = 0
         self.held_residual = np.zeros(1)  # resized on first decision
         self.model = None
@@ -199,7 +206,8 @@ class _TeacherThread:
         outcome = ("done", None)
         try:
             import gait
-            gait.run(config_path, n_steps, view=False, json_path=None, baseline_path=None)
+            gait.run(config_path, n_steps, view=False, json_path=None, baseline_path=None,
+                     reference_offset_fn=self.reference_offset_fn)
         except _Fell as e:
             outcome = ("fell", e)
         except _Stopped:
@@ -252,6 +260,14 @@ class CaraResidualEnvConfig:
     # Residual bound (rad), same for every joint initially -- chosen from
     # probes (see U34's probe script), NOT copied from action_range_frac.
     residual_bound_rad: float = 0.02
+    # U35 -- optional, zero-default pass-through to gait.py's reference-
+    # offset hook, purely for diagnostics (e.g. the latch-causality test):
+    # lets a script force the teacher's balance reference to a chosen value
+    # WHILE an ordinary residual-noise episode replays through this same
+    # env, instead of re-implementing the decision loop separately. No
+    # training path sets this; default None reproduces prior behaviour
+    # exactly.
+    reference_offset_fn: object = None
 
 
 class CaraResidualEnv:
@@ -356,7 +372,8 @@ class CaraResidualEnv:
         self._prev_com_x = 0.0
         self._substep_at_decision = 0
         self._teacher = _TeacherThread(self.cfg.config_path, self.cfg.n_steps, self._limit_fn,
-                                        self.cfg.fall_tilt_deg, self.cfg.fall_height_m)
+                                        self.cfg.fall_tilt_deg, self.cfg.fall_height_m,
+                                        reference_offset_fn=self.cfg.reference_offset_fn)
         msg, payload = self._teacher.first_decision()
         assert msg == "decision", "teacher ended before its first decision point -- something is wrong with the setup"
         self._pending_raw_target = payload
