@@ -1,0 +1,26 @@
+{
+  "seed": 4000,
+  "run_a": {
+    "fell": true,
+    "fell_decision": 300,
+    "peak_tilt": 43.617480985678014
+  },
+  "run_b": {
+    "fell": true,
+    "fell_decision": 302,
+    "peak_tilt": 44.90973887418363
+  },
+  "ref_ey_nominal_mm": 13.82094791764902,
+  "pre_latch_bitexact": true,
+  "verdict": "BOTH FAIL at essentially the same point -- latch correction alone is insufficient; the biased latch is not the (sole) cause.",
+  "kick_velocity_check": {
+    "v_com_y_before": -0.002051484502583778,
+    "v_com_y_after": 0.005948515497416222,
+    "v_com_y_delta": 0.008,
+    "qvel1_before": -0.002101886836931438,
+    "qvel1_after": 0.005898113163068562,
+    "qvel1_delta": 0.008,
+    "requested_kick_qvel1": 0.008,
+    "note": "instantaneous v_com = J_com(q).qdot via mj_jacSubtreeCom, evaluated before/after modifying qvel[1] at the SAME q (no physics advanced) -- not a cross-substep finite difference."
+  }
+}

@@ -146,7 +146,18 @@ def run_recorded(module, config_path, n_steps, reference_offset_fn=None,
                     row[f"ctrl_clip_{n}"] = bool(ctrl_val <= crange[0] + 1e-9 or ctrl_val >= crange[1] - 1e-9)
             if track_contact_stance is not None and info["step_idx"] in track_contact_stance:
                 stance_p = track_contact_stance[info["step_idx"]]
-                peak_f = 0.0
+                # SUM simultaneous contacts, not max -- a foot can rest on several
+                # contact points (e.g. corners of a box collision geom) at once, and
+                # the load-bearing quantity is their total normal force, not the
+                # single largest point. An earlier version took max() here, which
+                # undercounts total stance-foot load whenever more than one contact
+                # point is active. Still lags data.qpos/data.ctrl by one substep in
+                # this row (contacts/forces here are computed by the PRECEDING
+                # mj_step call's constraint solve, read before this call's own
+                # orig(model, data) runs) -- a well-defined quantity, just not
+                # synchronized to the same instant as the ctrl value in this row;
+                # not fixed here, disclosed instead.
+                total_f = 0.0
                 fgid = geom["foot_gid"][stance_p]
                 for ci in range(data.ncon):
                     c = data.contact[ci]
@@ -154,8 +165,8 @@ def run_recorded(module, config_path, n_steps, reference_offset_fn=None,
                     if geom["floor_gid"] in pair and fgid in pair:
                         result = np.zeros(6)
                         mujoco.mj_contactForce(model, data, ci, result)
-                        peak_f = max(peak_f, abs(float(result[0])))
-                row["contact_force_n"] = peak_f
+                        total_f += abs(float(result[0]))
+                row["contact_force_n"] = total_f
             rec["rows"].append(row)
         orig(model, data)
         rec["substep"] = i + 1

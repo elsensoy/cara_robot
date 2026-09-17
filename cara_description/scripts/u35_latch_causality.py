@@ -114,51 +114,72 @@ def run_with_residual_seed(seed, std, bound, max_decisions, reference_offset_fn=
 
 
 def measure_kick_com_velocity(kick_qvel_y, kick_substep):
-    """Addendum: directly measures the ACHIEVED change in whole-body CoM y-
-    velocity from a data.qvel[1] += kick, instead of assuming it equals the
-    kick. Uses the same one-time-kick technique as the earlier (superseded)
-    causal-latch attempt, purely to characterize what that intervention
-    actually did physically."""
+    """Addendum: directly measures the change in whole-body CoM y-velocity
+    from a data.qvel[1] += kick, instead of assuming it equals the kick.
+
+    FIXED (was wrong): the original version read data.subtree_com
+    immediately before/after mj_step(model, data). MuJoCo's mj_step computes
+    all derived/kinematic quantities (including subtree_com) from the qpos
+    AS IT STANDS AT THE START of that call (mj_step1/mj_fwdPosition), THEN
+    integrates qpos/qvel forward (mj_step2) -- so data.subtree_com read
+    right after mj_step returns still reflects the PRE-integration
+    configuration, not the state resulting from that step's own physics.
+    Reading it again one substep later is comparing kinematics that are
+    perpetually one mj_step call behind data.qpos/qvel. That finite
+    difference measured motion preceding the kick, not its effect.
+
+    Correct approach (no physics advanced): compute the instantaneous
+    v_com = J_com(q) . qdot via mj_jacSubtreeCom, evaluated at the SAME q
+    before and after modifying qvel. mj_kinematics + mj_comPos are called
+    explicitly first to refresh xpos/subtree_com for the qpos CURRENTLY in
+    data (they too would otherwise lag by one mj_step call), so the
+    Jacobian is evaluated at a configuration consistent with the qvel it is
+    dotted against."""
     import mujoco
     import gait
 
+    result = {}
     orig = mujoco.mj_step
-    com_y_before = {}
-    com_y_after = {}
     substep = {"n": 0}
 
     def w(model, data):
         i = substep["n"]
-        if i == kick_substep - 1:
-            com_y_before["pre_kick_com_y"] = float(data.subtree_com[0][1])
-            com_y_before["pre_kick_qvel1"] = float(data.qvel[1])
         if i == kick_substep:
-            data.qvel[1] += kick_qvel_y
-            com_y_before["at_kick_com_y"] = float(data.subtree_com[0][1])
+            mujoco.mj_kinematics(model, data)
+            mujoco.mj_comPos(model, data)
+            jacp = np.zeros((3, model.nv))
+            mujoco.mj_jacSubtreeCom(model, data, jacp, 0)  # body 0 = worldbody; subtree_com[0] = whole robot
+            v_com_before = jacp @ data.qvel
+            qvel1_before = float(data.qvel[1])
+
+            data.qvel[1] += kick_qvel_y  # same q, so the SAME jacp still applies exactly -- no re-evaluation needed
+
+            v_com_after = jacp @ data.qvel
+            qvel1_after = float(data.qvel[1])
+
+            result["v_com_y_before"] = float(v_com_before[1])
+            result["v_com_y_after"] = float(v_com_after[1])
+            result["v_com_y_delta"] = float(v_com_after[1] - v_com_before[1])
+            result["qvel1_before"] = qvel1_before
+            result["qvel1_after"] = qvel1_after
+            result["qvel1_delta"] = qvel1_after - qvel1_before
         orig(model, data)
         substep["n"] = i + 1
-        if i == kick_substep:
-            com_y_after["post_kick_com_y"] = float(data.subtree_com[0][1])
-            com_y_after["post_kick_qvel1"] = float(data.qvel[1])
 
     mujoco.mj_step = w
     try:
         gait.run(gait.DEFAULT_CONFIG, 1, False, None, None)
-    except Exception:
-        pass
     finally:
         mujoco.mj_step = orig
 
-    dt = DT
-    v_com_y_before_kick = (com_y_before.get("at_kick_com_y", float("nan")) - com_y_before.get("pre_kick_com_y", float("nan"))) / dt
-    v_com_y_after_kick = (com_y_after.get("post_kick_com_y", float("nan")) - com_y_before.get("at_kick_com_y", float("nan"))) / dt
-    return dict(requested_kick_qvel1=kick_qvel_y,
-                qvel1_before=com_y_before.get("pre_kick_qvel1"), qvel1_after=com_y_after.get("post_kick_qvel1"),
-                achieved_qvel1_delta=com_y_after.get("post_kick_qvel1", float("nan")) - com_y_before.get("pre_kick_qvel1", float("nan")),
-                com_y_velocity_estimate_before_kick_step=v_com_y_before_kick,
-                com_y_velocity_estimate_after_kick_step=v_com_y_after_kick,
-                note="finite-difference estimate of d(com_y)/dt across the single substep the kick was applied in; "
-                     "compares the requested qvel[1] increment to the resulting whole-body CoM-y velocity change.")
+    if not result:
+        raise RuntimeError(f"kick_substep={kick_substep} was never reached (n_steps=1 run ended earlier than expected) "
+                            f"-- not silently returning an incomplete measurement.")
+
+    result["requested_kick_qvel1"] = kick_qvel_y
+    result["note"] = ("instantaneous v_com = J_com(q).qdot via mj_jacSubtreeCom, evaluated before/after "
+                       "modifying qvel[1] at the SAME q (no physics advanced) -- not a cross-substep finite difference.")
+    return result
 
 
 def main(argv=None) -> int:
@@ -177,6 +198,9 @@ def main(argv=None) -> int:
     print(f"  seed={seed} fell at decision {fell_decision} ({fell_decision*10*DT:.2f}s), "
           f"reason={info.get('done_reason')}")
 
+    # This nominal-latch value is specific to n_steps=1, step_idx=0 (the only step this
+    # script ever simulates) -- it is NOT a general-purpose "the nominal latch" constant
+    # and would need recomputing for any other step_idx/n_steps configuration.
     print("\n=== nominal (zero-residual) latch for this step ===")
     ref_ey_nominal = get_nominal_latch(n_steps=1)
     print(f"  ref_ey_nominal = {ref_ey_nominal*1e3:+.3f} mm")
@@ -194,13 +218,24 @@ def main(argv=None) -> int:
                                     reference_offset_fn=substitute_nominal)
     print(f"  fell={run_b['fell']} at decision {run_b['fell_decision']}  peak_tilt={run_b['peak_tilt']:.2f}deg")
 
+    # NOTE ON SCOPE: this compares qpos sampled once per DECISION (every 10 substeps,
+    # i.e. 50Hz) -- it verifies equivalence AT those sampling points, not at every one
+    # of the 2750 physics substeps (500Hz) leading up to the latch. It is not a full
+    # substep-resolution state/controller-history equivalence check (that would need
+    # per-substep instrumentation inside _TeacherThread, which does not currently
+    # exist). What DOES support substep-level equivalence, by construction rather than
+    # by this check alone: reference_offset_fn is only ever invoked from inside
+    # ss_step, which gait.py never calls during phase A or the settle loop -- so up
+    # through decision 275 (phase-B onset), Run A and Run B execute the IDENTICAL code
+    # path regardless of reference_offset_fn's value, and with the same seed/RNG draws
+    # and deterministic physics, they cannot differ. The decision-level check below is
+    # confirming that construction, not the sole evidence for it.
     n = min(len(run_a["qpos_trace"]), len(run_b["qpos_trace"]))
-    # everything up to (not including) the latch decision must match bit-for-bit
     b_onset_decision = 275  # step_idx=0 phase-B onset, decisions (see phase_schedule/phase boundary table)
     pre_latch_n = min(n, b_onset_decision + 1)
     pre_latch_diff = float(np.max(np.abs(run_a["qpos_trace"][:pre_latch_n] - run_b["qpos_trace"][:pre_latch_n])))
     print(f"\n  sanity: runs A and B identical through decision {pre_latch_n-1} "
-          f"(pre-latch + latch instant)? max diff = {pre_latch_diff:.3e} "
+          f"(pre-latch + latch instant), AT 50Hz DECISION-LEVEL SAMPLES? max diff = {pre_latch_diff:.3e} "
           f"({'OK' if pre_latch_diff == 0.0 else 'UNEXPECTED -- investigate'})")
 
     if not run_a["fell"]:

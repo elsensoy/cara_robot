@@ -37,6 +37,17 @@ every mj_step() call, using the SAME non-invasive monkeypatch technique as
 U32/U33. This is the only way to get bidirectional, per-substep control
 over an unmodified, deeply-nested blocking call.
 
+Constraint (per external code review): the mujoco.mj_step monkeypatch is a
+module-level attribute swap, not scoped to one instance -- only ONE
+_TeacherThread/CaraResidualEnv may be actively stepping per PROCESS.
+Creating a second one (or leaving a prior one un-stopped) while another is
+running would have both threads racing to install/read/restore
+mujoco.mj_step, silently corrupting whichever one loses the race. Every
+script in this project creates exactly one CaraResidualEnv at a time and
+calls close()/stop() before creating the next -- this constraint has not
+yet caused an observed bug, but is a real, disclosed limitation of the
+technique, not something this module enforces at runtime.
+
 Privileged-state disclosure (per instruction): gait.py's own control law
 reads `data.subtree_com` (the exact rigid-body center of mass) every
 substep for its lateral balance trim. This is a genuinely privileged
@@ -72,6 +83,19 @@ CONTROL_HZ = 1.0 / (DT * DECISION_RATIO)
 class _Fell(Exception):
     def __init__(self, tilt_deg, height_m, reason):
         self.tilt_deg, self.height_m, self.reason = tilt_deg, height_m, reason
+
+
+class _TeacherError(Exception):
+    """Wraps an unexpected exception raised inside gait.run() (anything other
+    than _Fell or _Stopped) so the caller can distinguish a crashed teacher
+    thread from a genuinely completed episode. Without this, _run()'s
+    finally block would still send the pre-initialized ("done", None)
+    outcome after an uncaught exception, indistinguishable from a real
+    natural completion -- found by external code review, not caught by any
+    test here, since no test happened to trigger an exception outside _Fell
+    or _Stopped."""
+    def __init__(self, original_exc):
+        self.original_exc = original_exc
 
 
 class _Stopped(Exception):
@@ -212,6 +236,10 @@ class _TeacherThread:
             outcome = ("fell", e)
         except _Stopped:
             outcome = ("stopped", None)
+        except Exception as e:  # noqa: BLE001 -- deliberately broad: ANY other exception from
+            # gait.run() must not fall through to the pre-initialized ("done", None) outcome,
+            # which would look like a normal episode completion to the caller.
+            outcome = ("error", _TeacherError(e))
         finally:
             mujoco.mj_step = self._orig_mj_step
             try:
@@ -375,6 +403,8 @@ class CaraResidualEnv:
                                         self.cfg.fall_tilt_deg, self.cfg.fall_height_m,
                                         reference_offset_fn=self.cfg.reference_offset_fn)
         msg, payload = self._teacher.first_decision()
+        if msg == "error":
+            raise payload.original_exc
         assert msg == "decision", "teacher ended before its first decision point -- something is wrong with the setup"
         self._pending_raw_target = payload
         self._prev_com_x = float(self._teacher.data.qpos[0])
@@ -388,6 +418,8 @@ class CaraResidualEnv:
         self._substep_at_decision += DECISION_RATIO
 
         msg, payload = self._teacher.submit(combined)
+        if msg == "error":
+            raise payload.original_exc
         data_after = self._teacher.data  # valid regardless of msg: mj_step already ran for this decision's substeps
 
         com_x = float(data_after.qpos[0])

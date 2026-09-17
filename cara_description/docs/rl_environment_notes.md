@@ -1642,3 +1642,198 @@ since no actor exists yet. All artifacts (the environment module, the
 threading-bug writeup, the equivalence check, and the full probe data) are
 under `cara_description/runs/u34_residual_env/` with `manifest.json` as
 the index.
+
+## U35 — reference-offset hook: an exploration-preservation check, a new gait.py hook, and its limits
+
+### Pre-budget check: does sampled residual exploration preserve the nominal gait?
+
+Explicit prerequisite before spending any training budget on U34's
+teacher-vs-teacher+residual comparison, citing U27's lesson directly:
+conflating "recovery from the policy's own disruptive exploration" with
+"recovery from an external disturbance" would measure the wrong thing.
+
+**Thread-leak bug found and fixed first.** Abandoning a `CaraResidualEnv`
+episode before `gait.py`'s scripted walk finishes naturally (any
+early-truncated probe) left `_TeacherThread` blocked forever on
+`queue.get()` — a leaked daemon thread (and its own full `MjModel`/`MjData`)
+per un-closed episode. Across ~30 short probe episodes in one process this
+accumulated enough overhead to make the process appear to hang. Fixed: a
+`_Stopped` exception + `_STOP_SENTINEL`, a new `_TeacherThread.stop()`,
+wired into both `CaraResidualEnv.reset()` (cleans up the *previous*
+episode's thread) and `close()`.
+
+**Full 47.3s horizon: 0% survival at every tested std** (0.0005–0.05 rad,
+8–10 trials each) — even the smallest, near-negligible noise (0.0005 rad)
+eventually causes a fall, with mean survival in the 350–620-decision range
+regardless of magnitude in that band — pointing at episode *length*
+(accumulation over a long horizon), not noise magnitude, as the dominant
+factor, and motivating a truncated-window test at more standard
+RL-episode timescales.
+
+**Truncated windows tell a different, more precise story**: 1.0–4.0s
+windows (50/100/200 decisions, phase A) show **100% survival at every
+tested std**, peak tilt under 3°. A 9.5s window (475 decisions, reaching
+into phase B) drops to 50–90% survival — but not monotonically with std
+(0.002 rad did *better* than both 0.0005 and 0.01 rad), the signature of a
+timing/luck effect rather than a magnitude-scaling one. Follow-up
+localization (per-trial fall decision + phase lookup) confirms it: falls
+cluster tightly at decisions ~275–345 — 0.5–1.4s after entering **phase B**
+(the lift/weight-transfer-onto-single-leg-stance phase) — regardless of
+std. **Not a long-horizon accumulation artifact** (phase A alone survives
+4.0s at 100%); a narrow, magnitude-insensitive fragility right at the
+phase-A→B transition.
+
+**Mechanism identified by source inspection**: `gait.py`'s U9 lateral
+roll-trim latches its balance reference (`st["ref_ey"] = ey`, the
+CoM-to-stance-foot lateral offset) from a **single instantaneous sample**
+at the very first controller update of phase B, then regulates against
+that fixed reference for the rest of the step. A perturbation landing on
+that one sample biases the whole step's trim.
+
+**Decision**: per the user's own explicit stop-condition ("if nominal
+sampled behavior is too fragile even at very small residuals, stop direct
+ankle-offset exploration"), this was treated as met. Direct ankle-offset
+residual learning (U34's architecture) is paused. Per the same
+instruction, the next architectural option is corrections to the teacher's
+balance reference or parameters — not another round of shrinking
+joint-offset bounds.
+
+### gait.py's first source change: an explicit, optional reference-offset hook
+
+Treating `gait.py` as a hard, unmodified gate was an experimental-isolation
+choice for this project, not a permanent requirement, per explicit
+instruction — and there is no non-invasive way to reach `st["ref_ey"]` (a
+plain local Python float, never crossing any boundary the existing
+`mj_step` monkeypatch can intercept, unlike `data.ctrl`). So `gait.py`
+gained one minimal, explicit, zero-default parameter:
+
+```python
+run(config, n_steps, view, json_path, baseline_path, reference_offset_fn=None)
+```
+
+Inside `ss_step`: `ref_ey_effective = st["ref_ey"] + _ref_offset_fn(st["ref_ey"])`,
+`dy = ey - ref_ey_effective` — the stored latch itself is *never*
+overwritten (kept separate from the offset so "offset back to zero" has an
+unambiguous meaning); `KPA`/`KDA`/`KPH` untouched. Units/sign, from `ey`'s
+own definition (`ey = com_y - stance_foot_y`, world-frame Y/lateral axis,
+metres): a positive offset raises the effective reference, which reduces
+the trim's correction for a +Y CoM excursion and increases it for a -Y
+one. `gait_frozen_baseline.py` — a byte-for-byte copy taken immediately
+before this edit — is kept as an independent ground truth, not used by any
+production path.
+
+**Zero-offset equivalence: PASS, bit-for-bit.** 23,650 substeps compared
+against the frozen baseline, 19-dim qpos, max diff 0.0 on both qpos and
+ctrl — the hook's default reproduces the pre-hook teacher exactly.
+
+### Two early diagnostics, both superseded by confound fixes
+
+A velocity-kick-based causal-latch test (kick `data.qvel[1]` 40ms before
+the phase-B latch, compare the perturbed run's own latch against a
+nominal-latch substitution) came back **inconclusive**: every kick
+magnitude tested either fully absorbed (≤0.004 m/s) or produced an
+immediate, catastrophic 180° tip-over (≥0.008 m/s) — no intermediate
+regime where the disturbance was survivable-but-degraded, so the intended
+comparison had nothing to compare. Superseded because the disturbance
+mechanism (an external velocity kick) didn't match the problem that
+actually motivated this work (the residual-noise falls above).
+
+A sustained, whole-step constant reference-offset probe (one leg only,
+±0.2–1.0mm, held through the whole step rather than briefly) found **all
+positive offsets fail, all negative offsets survive** — the same *shape*
+of asymmetry U34's constant-ankle-bias probe produced, which later turned
+out to be a whole-episode confound rather than a fundamental sign effect
+once tested as brief, phase-indexed, both-leg pulses. Flagged as
+unresolved rather than trusted, and superseded by the redesigned test
+below.
+
+### Redesigned per instruction: separate "does the interface have authority" from "does it explain the failure"
+
+Two independent, purpose-built tests, plus a rerun of the causal-latch
+idea using the actual original failure instead of an external kick.
+
+**Bounded 12-case phase-indexed pulse test**
+(`u35_phase_indexed_reference_pulses.py`) — no external disturbance: 2
+stance legs (step_idx=0/stance=`r_`, step_idx=1/stance=`l_`) × 3 timings
+(early single support, mid single support, before touchdown) × 2 signs
+(±0.2mm world-Y, amplitude not expanded beyond this), each a brief (~0.2s)
+smoothstep-on/hold/off pulse, run through the *rest* of the walk.
+toward/away labelled from the data (sign of offset vs. sign of that leg's
+own baseline latch — step0/`r_` latches at +13.821mm, step1/`l_` at
+-14.987mm, confirming the natural sign flips between legs).
+
+**Result: 10/12 safe** — tracking error ~2.4–2.7mm, no actuator
+saturation, contact-force deltas under 20N, no 40° exceedance. **2/12
+failed, both at the early timing, both at the same raw world-Y sign** on
+opposite legs (step0/`r_` "away" and step1/`l_` "toward") — since the
+identical raw sign fails regardless of the toward/away label, the danger
+is **not** explained by toward/away at all; something tied to world
+direction specifically at the early-single-support instant is
+responsible. **The interface itself is not generally fragile** — one
+narrow, direction-specific exception, not a global problem.
+
+**Latch-causality test using the actual original failure**
+(`u35_latch_causality.py`), not a kick: found seed=4000 (std=0.0005 rad
+residual noise, same mechanism as the survival sweep above) reproducibly
+falls at decision 300 (43.62° tilt). Two matched runs from that seed — Run
+A (normal latch) vs. Run B (identical residual draws, reference forced to
+the undisturbed run's own latch value for the whole step) — verified
+bit-identical through decision 275 before being allowed to diverge. **Both
+fail, within 2 decisions of each other** (300 vs. 302, 43.62° vs. 44.91°).
+Per the pre-agreed outcome rule: **latch correction alone is
+insufficient.**
+
+### External code review: 5 measurement defects found, verified, and resolved
+
+A source-only review (no execution) of the diagnostic scripts found 5
+concrete defects. Each was independently re-verified against the actual
+current source rather than accepted at face value:
+
+| # | finding | verified? | where it lives | action |
+|---|---|---|---|---|
+| 1 | kick CoM-velocity measurement reads `subtree_com` immediately around `mj_step`, which lags the true post-integration state by one call — the finite difference measures motion preceding the kick, not its effect | **confirmed** | live code (`u35_latch_causality.py` addendum) | **fixed**: instantaneous `v_com = J_com(q)·qdot` via `mj_jacSubtreeCom`, evaluated at the same `q` before/after modifying `qvel`, no physics advanced; bare `except Exception: pass` removed |
+| 2 | reported "tracking error" is `\|ey\|`, not `dy = ey - ref_ey_effective` | confirmed, but confined to the already-superseded sustained-offset probe | superseded diagnostic | test4's own `dy` computation re-verified correct; not affected |
+| 3 | trim-law consistency check compares misaligned arrays (`offset_trace` indexed from phase-B onset vs. `delta_ctrl` indexed from simulation start) | confirmed, exact mechanism as described | superseded diagnostic | that check is retracted; test4 never attempted a trim-law identity check at all (its `peak_delta_ctrl_*` are honestly-labeled, correctly-aligned rollout differences, not an algebra verification) |
+| 4 | `gait.py`'s own `MILESTONE MET`/`M`-based safety tracking (`M["tilt"/"margin"/"slip"/"sat"/"stance_corners"]`) skips phase B's lift ramp and phase D's post-place hold (`ss_step(..., record=False)` returns before updating `M`), and skips phases A and E entirely (no `ss_step` call at all) | **confirmed** by direct re-read of `gait.py` | pre-existing, unmodified by this workstream | documented, not changed — every pass/fail verdict actually relied on in this workstream (tests 1, 4, 5) came from independent external tilt tracking over the full qpos trace, never from `gait.py`'s internal `M`, so this gap doesn't undermine those results; it does mean "regression check: MILESTONE MET" only ever guaranteed agreement on the portions `M` covers |
+| 5 | contact-force aggregation takes `max()` over simultaneous stance-foot/floor contacts instead of summing them, undercounting total load | **confirmed** | live code (shared `run_recorded()`) | **fixed** (now sums); test4's own contact-force numbers were computed with the buggy version and are marked unreliable pending a future rerun — the "touch_after_step0 checks either foot" part of this finding applies to the superseded probe, which had that field; test4 never included one |
+
+**Rerun, as instructed, of only the nominal-reference/seed-4000 pair** (not
+test4, and not a new architecture): the core Run-A-vs-Run-B result is
+unchanged (still both fail, 300 vs. 302 decisions, pre-latch decision-level
+diff still exactly 0.0) — it never depended on any of the 5 findings. The
+kick-velocity addendum, however, **reverses**: corrected measurement gives
+`v_com_y_delta = 0.008` m/s, matching the requested `qvel[1]` kick (0.008
+m/s) almost exactly — not the spurious ~0.03mm/s the buggy finite-difference
+reported. At this instant (quasi-static gait, near-zero joint velocities),
+a floating-base linear-velocity kick transfers essentially fully to
+whole-body CoM velocity; the general caveat that prompted the check (the
+two are not generally identical) stands, but doesn't apply here.
+
+### Decision: neither extreme of the pre-agreed three-way rule applies cleanly
+
+- Test4 rules out the *premise* of "even brief corrections remain
+  extremely fragile" — they don't; 10/12 configurations are safe,
+  symmetric, and non-saturating.
+- Test5 rules out the *premise* of "retain the interface and calibrate the
+  disturbance task" or "fix the latch deterministically" — the single
+  strongest possible reference-based intervention (exact nominal-latch
+  substitution) still fails to rescue the actual motivating failure.
+
+**Decision: stop treating reference-level correction as the fix for this
+fragility.** Not proceeding to disturbance calibration, a residual-policy
+architecture, or PPO on this interface for that purpose. Per the
+fragility rule's prescribed next step (even though its premise doesn't
+fully hold here): review the teacher's transition robustness directly —
+characterize what else differs between the nominal and
+residual-noise-perturbed trajectories at and after the phase-B latch
+(candidate: joint/CoM velocities, momentum, or contact state at the
+liftoff instant) that a reference-only correction structurally cannot
+reach, before choosing the next intervention point. Not started this
+session.
+
+All artifacts (the frozen `gait.py` baseline, the hook-verification script
+and its raw JSON, the 12-case pulse script and result, the
+latch-causality script and both its pre- and post-fix results, and the
+full external-review disposition) are under
+`cara_description/runs/u35_reference_hook/` with `manifest.json` as the
+index.
