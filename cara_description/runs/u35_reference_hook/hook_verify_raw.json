@@ -1,0 +1,60 @@
+{
+  "test1_zero_offset_equivalence": true,
+  "test2_causal_latch": null,
+  "test3_small_smooth_offset_probe": {
+    "+0.2mm": {
+      "peak_offset_mm": 0.2,
+      "tracking_dy_peak_mm": 255.3929955202385,
+      "touch_after_step0": true,
+      "tilt_trial_deg": 179.99987545096147,
+      "tilt_baseline_deg": 4.391522897031262,
+      "exit_code": 1,
+      "predicted_vs_observed_ctrl_max_err": 22.337868876711664
+    },
+    "-0.2mm": {
+      "peak_offset_mm": 0.2,
+      "tracking_dy_peak_mm": 49.999999999999986,
+      "touch_after_step0": true,
+      "tilt_trial_deg": 4.4077205701855044,
+      "tilt_baseline_deg": 4.391522897031262,
+      "exit_code": 0,
+      "predicted_vs_observed_ctrl_max_err": 0.03105078700165117
+    },
+    "+0.5mm": {
+      "peak_offset_mm": 0.5,
+      "tracking_dy_peak_mm": 191.34495998961464,
+      "touch_after_step0": true,
+      "tilt_trial_deg": 179.99995478388783,
+      "tilt_baseline_deg": 4.391522897031262,
+      "exit_code": 1,
+      "predicted_vs_observed_ctrl_max_err": 9.651451236757307
+    },
+    "-0.5mm": {
+      "peak_offset_mm": 0.5,
+      "tracking_dy_peak_mm": 49.999999999999986,
+      "touch_after_step0": true,
+      "tilt_trial_deg": 4.41830367387392,
+      "tilt_baseline_deg": 4.391522897031262,
+      "exit_code": 0,
+      "predicted_vs_observed_ctrl_max_err": 0.04033638021402917
+    },
+    "+1.0mm": {
+      "peak_offset_mm": 1.0,
+      "tracking_dy_peak_mm": 255.70601373884182,
+      "touch_after_step0": true,
+      "tilt_trial_deg": 179.998473315366,
+      "tilt_baseline_deg": 4.391522897031262,
+      "exit_code": 1,
+      "predicted_vs_observed_ctrl_max_err": 22.441380160763746
+    },
+    "-1.0mm": {
+      "peak_offset_mm": 1.0,
+      "tracking_dy_peak_mm": 49.999999999999986,
+      "touch_after_step0": true,
+      "tilt_trial_deg": 4.433579323825316,
+      "tilt_baseline_deg": 4.391522897031262,
+      "exit_code": 0,
+      "predicted_vs_observed_ctrl_max_err": 0.0618255516868695
+    }
+  }
+}

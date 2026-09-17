@@ -1,0 +1,365 @@
+=== zero-residual reference (for peak-tilt comparison) ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+
+  step  lead  advance   place ss margin  ss tilt  ss slip   τ% end tilt  verdict
+  ------------------------------------------------------------------------------
+     1    l_   30.7mm   5.3mm     5.6mm    2.2°    4.3mm  76    0.9°  PASS
+     2    r_   26.6mm   5.9mm     4.5mm    2.7°    3.9mm  76    0.9°  PASS
+
+  footwork (world x, mm -- shows each foot swinging past the other):
+  step swing foot   from x  -> to x   travel  peak lift  stance foot x         pelvis x
+     1          l      15       42      27     10.1mm            15      -1 ->   32
+     2          r      14       68      54     10.1mm            42      32 ->   58
+
+  final hold 3s: tilt 0.9°, COM drift 0.1 mm, 4 corners/foot  [OK]
+  total COM advance over 2 steps: 57 mm (steps: 31, 27 mm; commanded stride 24 mm/step)
+
+==========================================================================
+MILESTONE MET: Cara walks 2 quasi-static steps forward (57 mm), alternating legs, and ends standing.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  completed=True peak_tilt=4.39deg fwd=+0.0583m
+
+=== pulse +0.01 rad on r_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+
+  step  lead  advance   place ss margin  ss tilt  ss slip   τ% end tilt  verdict
+  ------------------------------------------------------------------------------
+     1    l_   30.7mm   5.4mm     5.6mm    2.2°    4.3mm  76    0.9°  PASS
+     2    r_   26.6mm   5.9mm     4.5mm    2.7°    3.9mm  76    0.9°  PASS
+
+  footwork (world x, mm -- shows each foot swinging past the other):
+  step swing foot   from x  -> to x   travel  peak lift  stance foot x         pelvis x
+     1          l      15       42      27     10.1mm            15      -1 ->   32
+     2          r      14       68      54     10.1mm            42      32 ->   58
+
+  final hold 3s: tilt 0.9°, COM drift 0.1 mm, 4 corners/foot  [OK]
+  total COM advance over 2 steps: 57 mm (steps: 31, 27 mm; commanded stride 24 mm/step)
+
+==========================================================================
+MILESTONE MET: Cara walks 2 quasi-static steps forward (57 mm), alternating legs, and ends standing.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  completed=True  peak_tilt=4.39deg (during-window=2.09)  resumed_support=True  fwd=+0.0583m
+
+=== pulse -0.01 rad on r_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+
+  step  lead  advance   place ss margin  ss tilt  ss slip   τ% end tilt  verdict
+  ------------------------------------------------------------------------------
+     1    l_   30.7mm   5.3mm     5.5mm    2.2°    4.3mm  76    0.9°  PASS
+     2    r_   26.6mm   5.9mm     4.5mm    2.7°    3.9mm  76    0.9°  PASS
+
+  footwork (world x, mm -- shows each foot swinging past the other):
+  step swing foot   from x  -> to x   travel  peak lift  stance foot x         pelvis x
+     1          l      15       42      27     10.1mm            15      -1 ->   32
+     2          r      14       68      54     10.1mm            42      32 ->   58
+
+  final hold 3s: tilt 0.9°, COM drift 0.1 mm, 4 corners/foot  [OK]
+  total COM advance over 2 steps: 57 mm (steps: 31, 27 mm; commanded stride 24 mm/step)
+
+==========================================================================
+MILESTONE MET: Cara walks 2 quasi-static steps forward (57 mm), alternating legs, and ends standing.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  completed=True  peak_tilt=4.39deg (during-window=2.09)  resumed_support=True  fwd=+0.0583m
+
+=== pulse +0.02 rad on r_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+
+  step  lead  advance   place ss margin  ss tilt  ss slip   τ% end tilt  verdict
+  ------------------------------------------------------------------------------
+     1    l_   30.7mm   5.4mm     5.6mm    2.2°    4.3mm  76    0.9°  PASS
+     2    r_   26.6mm   5.8mm     4.5mm    2.7°    4.0mm  76    0.9°  PASS
+
+  footwork (world x, mm -- shows each foot swinging past the other):
+  step swing foot   from x  -> to x   travel  peak lift  stance foot x         pelvis x
+     1          l      15       42      27     10.1mm            15      -1 ->   32
+     2          r      14       68      54     10.1mm            42      32 ->   58
+
+  final hold 3s: tilt 0.9°, COM drift 0.1 mm, 4 corners/foot  [OK]
+  total COM advance over 2 steps: 57 mm (steps: 31, 27 mm; commanded stride 24 mm/step)
+
+==========================================================================
+MILESTONE MET: Cara walks 2 quasi-static steps forward (57 mm), alternating legs, and ends standing.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  completed=True  peak_tilt=4.41deg (during-window=2.09)  resumed_support=True  fwd=+0.0582m
+
+=== pulse -0.02 rad on r_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+
+  step  lead  advance   place ss margin  ss tilt  ss slip   τ% end tilt  verdict
+  ------------------------------------------------------------------------------
+     1    l_   30.7mm   5.3mm     5.4mm    2.2°    4.3mm  76    0.9°  PASS
+     2    r_   26.6mm   5.9mm     4.5mm    2.7°    3.9mm  76    0.9°  PASS
+
+  footwork (world x, mm -- shows each foot swinging past the other):
+  step swing foot   from x  -> to x   travel  peak lift  stance foot x         pelvis x
+     1          l      15       42      27     10.1mm            15      -1 ->   32
+     2          r      14       68      54     10.1mm            42      32 ->   58
+
+  final hold 3s: tilt 0.9°, COM drift 0.1 mm, 4 corners/foot  [OK]
+  total COM advance over 2 steps: 57 mm (steps: 31, 27 mm; commanded stride 24 mm/step)
+
+==========================================================================
+MILESTONE MET: Cara walks 2 quasi-static steps forward (57 mm), alternating legs, and ends standing.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  completed=True  peak_tilt=4.39deg (during-window=2.09)  resumed_support=True  fwd=+0.0583m
+
+=== pulse +0.05 rad on r_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+
+  step  lead  advance   place ss margin  ss tilt  ss slip   τ% end tilt  verdict
+  ------------------------------------------------------------------------------
+     1    l_   30.6mm   5.4mm     5.6mm    2.2°    4.3mm  77    0.9°  PASS
+     2    r_   26.6mm   5.8mm     4.4mm    2.7°    4.0mm  76    0.9°  PASS
+
+  footwork (world x, mm -- shows each foot swinging past the other):
+  step swing foot   from x  -> to x   travel  peak lift  stance foot x         pelvis x
+     1          l      15       42      27     10.2mm            15      -1 ->   32
+     2          r      14       68      54     10.1mm            42      32 ->   58
+
+  final hold 3s: tilt 0.9°, COM drift 0.1 mm, 4 corners/foot  [OK]
+  total COM advance over 2 steps: 57 mm (steps: 31, 27 mm; commanded stride 24 mm/step)
+
+==========================================================================
+MILESTONE MET: Cara walks 2 quasi-static steps forward (57 mm), alternating legs, and ends standing.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  completed=True  peak_tilt=4.43deg (during-window=2.09)  resumed_support=True  fwd=+0.0582m
+
+=== pulse -0.05 rad on r_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+
+  step  lead  advance   place ss margin  ss tilt  ss slip   τ% end tilt  verdict
+  ------------------------------------------------------------------------------
+     1    l_   30.7mm   5.3mm     4.8mm    2.2°    4.3mm  77    0.9°  PASS
+     2    r_   26.6mm   5.8mm     4.5mm    2.7°    3.9mm  76    0.9°  PASS
+
+  footwork (world x, mm -- shows each foot swinging past the other):
+  step swing foot   from x  -> to x   travel  peak lift  stance foot x         pelvis x
+     1          l      15       42      27     10.4mm            15      -1 ->   32
+     2          r      14       68      54     10.1mm            42      32 ->   58
+
+  final hold 3s: tilt 0.9°, COM drift 0.1 mm, 4 corners/foot  [OK]
+  total COM advance over 2 steps: 57 mm (steps: 31, 27 mm; commanded stride 24 mm/step)
+
+==========================================================================
+MILESTONE MET: Cara walks 2 quasi-static steps forward (57 mm), alternating legs, and ends standing.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  completed=True  peak_tilt=4.40deg (during-window=2.09)  resumed_support=True  fwd=+0.0583m
+
+=== pulse +0.1 rad on r_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+
+  step  lead  advance   place ss margin  ss tilt  ss slip   τ% end tilt  verdict
+  ------------------------------------------------------------------------------
+     1    l_   30.6mm   5.4mm     5.6mm    2.2°    4.7mm  79    0.9°  PASS
+     2    r_   26.7mm   5.8mm     4.4mm    2.8°    4.0mm  76    0.9°  PASS
+
+  footwork (world x, mm -- shows each foot swinging past the other):
+  step swing foot   from x  -> to x   travel  peak lift  stance foot x         pelvis x
+     1          l      15       42      27     10.6mm            15      -1 ->   32
+     2          r      14       68      54     10.1mm            42      32 ->   58
+
+  final hold 3s: tilt 0.9°, COM drift 0.1 mm, 4 corners/foot  [OK]
+  total COM advance over 2 steps: 57 mm (steps: 31, 27 mm; commanded stride 24 mm/step)
+
+==========================================================================
+MILESTONE MET: Cara walks 2 quasi-static steps forward (57 mm), alternating legs, and ends standing.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  completed=True  peak_tilt=4.48deg (during-window=2.09)  resumed_support=True  fwd=+0.0583m
+
+=== pulse -0.1 rad on r_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+  completed=False  peak_tilt=38.51deg (during-window=5.12)  resumed_support=True  fwd=+0.0172m  FELL: fell:height
+
+=== pulse +0.15 rad on r_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+  completed=False  peak_tilt=42.34deg (during-window=15.60)  resumed_support=True  fwd=-0.1795m  FELL: fell:tilt
+
+=== pulse -0.15 rad on r_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+  completed=False  peak_tilt=40.79deg (during-window=9.91)  resumed_support=True  fwd=-0.1478m  FELL: fell:tilt
+
+=== pulse +0.01 rad on l_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+
+  step  lead  advance   place ss margin  ss tilt  ss slip   τ% end tilt  verdict
+  ------------------------------------------------------------------------------
+     1    l_   30.7mm   5.3mm     5.6mm    2.2°    4.3mm  76    0.9°  PASS
+     2    r_   26.6mm   5.9mm     4.5mm    2.7°    3.9mm  76    0.9°  PASS
+
+  footwork (world x, mm -- shows each foot swinging past the other):
+  step swing foot   from x  -> to x   travel  peak lift  stance foot x         pelvis x
+     1          l      15       42      27     10.1mm            15      -1 ->   32
+     2          r      14       68      54     10.1mm            42      32 ->   58
+
+  final hold 3s: tilt 0.9°, COM drift 0.1 mm, 4 corners/foot  [OK]
+  total COM advance over 2 steps: 57 mm (steps: 31, 27 mm; commanded stride 24 mm/step)
+
+==========================================================================
+MILESTONE MET: Cara walks 2 quasi-static steps forward (57 mm), alternating legs, and ends standing.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  completed=True  peak_tilt=4.39deg (during-window=1.99)  resumed_support=True  fwd=+0.0583m
+
+=== pulse -0.01 rad on l_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+
+  step  lead  advance   place ss margin  ss tilt  ss slip   τ% end tilt  verdict
+  ------------------------------------------------------------------------------
+     1    l_   30.7mm   5.3mm     5.6mm    2.2°    4.3mm  76    0.9°  PASS
+     2    r_   26.6mm   5.9mm     4.5mm    2.7°    3.9mm  76    0.9°  PASS
+
+  footwork (world x, mm -- shows each foot swinging past the other):
+  step swing foot   from x  -> to x   travel  peak lift  stance foot x         pelvis x
+     1          l      15       42      27     10.1mm            15      -1 ->   32
+     2          r      14       68      54     10.1mm            42      32 ->   58
+
+  final hold 3s: tilt 0.9°, COM drift 0.1 mm, 4 corners/foot  [OK]
+  total COM advance over 2 steps: 57 mm (steps: 31, 27 mm; commanded stride 24 mm/step)
+
+==========================================================================
+MILESTONE MET: Cara walks 2 quasi-static steps forward (57 mm), alternating legs, and ends standing.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  completed=True  peak_tilt=4.39deg (during-window=1.99)  resumed_support=True  fwd=+0.0583m
+
+=== pulse +0.02 rad on l_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+
+  step  lead  advance   place ss margin  ss tilt  ss slip   τ% end tilt  verdict
+  ------------------------------------------------------------------------------
+     1    l_   30.7mm   5.3mm     5.6mm    2.2°    4.3mm  76    0.9°  PASS
+     2    r_   26.6mm   5.8mm     4.5mm    2.7°    3.9mm  77    0.9°  PASS
+
+  footwork (world x, mm -- shows each foot swinging past the other):
+  step swing foot   from x  -> to x   travel  peak lift  stance foot x         pelvis x
+     1          l      15       42      27     10.1mm            15      -1 ->   32
+     2          r      14       68      54     10.1mm            42      32 ->   58
+
+  final hold 3s: tilt 0.9°, COM drift 0.1 mm, 4 corners/foot  [OK]
+  total COM advance over 2 steps: 57 mm (steps: 31, 27 mm; commanded stride 24 mm/step)
+
+==========================================================================
+MILESTONE MET: Cara walks 2 quasi-static steps forward (57 mm), alternating legs, and ends standing.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  completed=True  peak_tilt=4.39deg (during-window=1.99)  resumed_support=True  fwd=+0.0583m
+
+=== pulse -0.02 rad on l_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+
+  step  lead  advance   place ss margin  ss tilt  ss slip   τ% end tilt  verdict
+  ------------------------------------------------------------------------------
+     1    l_   30.7mm   5.3mm     5.6mm    2.2°    4.3mm  76    0.9°  PASS
+     2    r_   26.6mm   5.9mm     4.3mm    2.7°    3.9mm  76    0.9°  PASS
+
+  footwork (world x, mm -- shows each foot swinging past the other):
+  step swing foot   from x  -> to x   travel  peak lift  stance foot x         pelvis x
+     1          l      15       42      27     10.1mm            15      -1 ->   32
+     2          r      14       68      54     10.1mm            42      32 ->   58
+
+  final hold 3s: tilt 0.9°, COM drift 0.1 mm, 4 corners/foot  [OK]
+  total COM advance over 2 steps: 57 mm (steps: 31, 27 mm; commanded stride 24 mm/step)
+
+==========================================================================
+MILESTONE MET: Cara walks 2 quasi-static steps forward (57 mm), alternating legs, and ends standing.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  completed=True  peak_tilt=4.39deg (during-window=1.99)  resumed_support=True  fwd=+0.0583m
+
+=== pulse +0.05 rad on l_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+
+  step  lead  advance   place ss margin  ss tilt  ss slip   τ% end tilt  verdict
+  ------------------------------------------------------------------------------
+     1    l_   30.7mm   5.3mm     5.6mm    2.2°    4.3mm  76    0.9°  PASS
+     2    r_   26.6mm   5.8mm     4.5mm    2.7°    3.9mm  77    0.9°  PASS
+
+  footwork (world x, mm -- shows each foot swinging past the other):
+  step swing foot   from x  -> to x   travel  peak lift  stance foot x         pelvis x
+     1          l      15       42      27     10.1mm            15      -1 ->   32
+     2          r      14       68      54     10.2mm            42      32 ->   58
+
+  final hold 3s: tilt 0.9°, COM drift 0.1 mm, 4 corners/foot  [OK]
+  total COM advance over 2 steps: 57 mm (steps: 31, 27 mm; commanded stride 24 mm/step)
+
+==========================================================================
+MILESTONE MET: Cara walks 2 quasi-static steps forward (57 mm), alternating legs, and ends standing.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  completed=True  peak_tilt=4.39deg (during-window=1.99)  resumed_support=True  fwd=+0.0583m
+
+=== pulse -0.05 rad on l_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+
+  step  lead  advance   place ss margin  ss tilt  ss slip   τ% end tilt  verdict
+  ------------------------------------------------------------------------------
+     1    l_   30.7mm   5.3mm     5.6mm    2.2°    4.3mm  76    0.9°  PASS
+     2    r_   26.6mm   5.9mm     3.8mm    2.7°    3.9mm  77    0.9°  FAIL: COM-outside
+
+  footwork (world x, mm -- shows each foot swinging past the other):
+  step swing foot   from x  -> to x   travel  peak lift  stance foot x         pelvis x
+     1          l      15       42      27     10.1mm            15      -1 ->   32
+     2          r      14       68      54     10.4mm            42      32 ->   58
+
+  final hold 3s: tilt 0.9°, COM drift 0.1 mm, 4 corners/foot  [OK]
+  total COM advance over 2 steps: 57 mm (steps: 31, 27 mm; commanded stride 24 mm/step)
+
+==========================================================================
+MILESTONE NOT MET: a step fails; see above.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  completed=True  peak_tilt=4.39deg (during-window=1.99)  resumed_support=True  fwd=+0.0583m
+
+=== pulse +0.1 rad on l_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+
+  step  lead  advance   place ss margin  ss tilt  ss slip   τ% end tilt  verdict
+  ------------------------------------------------------------------------------
+     1    l_   30.7mm   5.3mm     5.6mm    2.2°    4.3mm  76    0.9°  PASS
+     2    r_   26.6mm   5.9mm -1000000000000.0mm    2.7°    4.6mm 100    0.9°  FAIL: COM-outside,torque,stance-lifting
+
+  footwork (world x, mm -- shows each foot swinging past the other):
+  step swing foot   from x  -> to x   travel  peak lift  stance foot x         pelvis x
+     1          l      15       42      27     10.1mm            15      -1 ->   32
+     2          r      14       69      54     10.6mm            42      32 ->   58
+
+  final hold 3s: tilt 0.9°, COM drift 0.1 mm, 4 corners/foot  [OK]
+  total COM advance over 2 steps: 57 mm (steps: 31, 27 mm; commanded stride 24 mm/step)
+
+==========================================================================
+MILESTONE NOT MET: a step fails; see above.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  completed=True  peak_tilt=4.39deg (during-window=1.99)  resumed_support=True  fwd=+0.0582m
+
+=== pulse -0.1 rad on l_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+  completed=False  peak_tilt=43.46deg (during-window=7.19)  resumed_support=True  fwd=+0.0785m  FELL: fell:tilt
+
+=== pulse +0.15 rad on l_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+  completed=False  peak_tilt=43.26deg (during-window=12.13)  resumed_support=True  fwd=+0.1291m  FELL: fell:tilt
+
+=== pulse -0.15 rad on l_ankle_roll at its own stance-C window ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+  completed=False  peak_tilt=41.42deg (during-window=5.30)  resumed_support=True  fwd=-0.1425m  FELL: fell:tilt
+
+=== summary: largest magnitude where BOTH signs completed AND resumed support ===
+  r_ankle_roll: bidirectionally OK at [0.01, 0.02, 0.05] rad
+  l_ankle_roll: bidirectionally OK at [0.01, 0.02, 0.05] rad
+
+saved -> /home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u34_residual_env/phase_pulse_result.json

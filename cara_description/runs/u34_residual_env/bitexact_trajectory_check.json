@@ -1,0 +1,10 @@
+{
+  "u34_trace_len": 2366,
+  "native_trace_len": 2365,
+  "aligned_n": 2365,
+  "max_abs_diff": 0.0,
+  "mean_abs_diff": 0.0,
+  "bit_identical": true,
+  "qpos_dim": 19,
+  "note": "full 19-dim qpos compared at every decision boundary, not just summary metrics"
+}

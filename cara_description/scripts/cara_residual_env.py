@@ -74,6 +74,22 @@ class _Fell(Exception):
         self.tilt_deg, self.height_m, self.reason = tilt_deg, height_m, reason
 
 
+class _Stopped(Exception):
+    """Raised inside the teacher thread when the environment is closed (or
+    abandoned) before gait.py's own scripted walk finishes naturally --
+    without this, a truncated/early-abandoned episode leaves the thread
+    blocked forever on queue.get(), leaking one daemon thread (and its own
+    full MjModel/MjData) per un-closed episode. Caught closing over 30
+    short probe episodes in a single process: each leaked thread stayed
+    alive (blocked, not spinning) for the rest of the process's life,
+    and the accumulating memory/model overhead made later episodes far
+    slower and eventually made the whole process appear to hang."""
+    pass
+
+
+_STOP_SENTINEL = object()
+
+
 def _quat_rpy(q):
     """Identical formula to cara_env.py's _quat_rpy -- cross-checked once
     (U33) against that file so termination/tilt reporting stays consistent
@@ -151,6 +167,8 @@ class _TeacherThread:
         if i % DECISION_RATIO == 0:
             self.from_teacher.put(("decision", raw_target))
             combined = self.to_teacher.get()  # blocks for the RL step() call
+            if combined is _STOP_SENTINEL:
+                raise _Stopped()
             # Only the RESIDUAL portion is held for the next DECISION_RATIO
             # substeps -- the teacher's own contribution keeps updating
             # every substep below, via raw_target. Holding the full
@@ -184,9 +202,14 @@ class _TeacherThread:
             gait.run(config_path, n_steps, view=False, json_path=None, baseline_path=None)
         except _Fell as e:
             outcome = ("fell", e)
+        except _Stopped:
+            outcome = ("stopped", None)
         finally:
             mujoco.mj_step = self._orig_mj_step
-            self.from_teacher.put(outcome)
+            try:
+                self.from_teacher.put_nowait(outcome)
+            except queue.Full:
+                pass  # a stop() call already drained/isn't waiting on this queue
 
     def first_decision(self):
         return self.from_teacher.get()
@@ -196,6 +219,21 @@ class _TeacherThread:
         and return the teacher's NEXT raw target (or a terminal marker)."""
         self.to_teacher.put(combined_target)
         return self.from_teacher.get()
+
+    def stop(self):
+        """Unblock and terminate the teacher thread cleanly if the episode
+        is being abandoned before gait.py's own scripted walk finishes
+        naturally (e.g. a truncated probe, or a new reset() before this one
+        ended) -- without this, the thread leaks, blocked forever on
+        queue.get(). Safe to call multiple times or after natural
+        completion (the thread has already exited by then; put_nowait
+        above simply finds no one listening)."""
+        if self._thread.is_alive():
+            try:
+                self.to_teacher.put_nowait(_STOP_SENTINEL)
+            except queue.Full:
+                pass
+            self._thread.join(timeout=2.0)
 
 
 @dataclass
@@ -311,6 +349,8 @@ class CaraResidualEnv:
         return obs, info
 
     def reset(self, seed=None):
+        if self._teacher is not None:
+            self._teacher.stop()  # clean up a previous episode's thread if it was never closed
         self._prev_residual = np.zeros(self.n_act)
         self._prev_combined = None
         self._prev_com_x = 0.0
@@ -387,4 +427,5 @@ class CaraResidualEnv:
         return obs, float(reward), terminated, truncated, info
 
     def close(self):
-        pass
+        if self._teacher is not None:
+            self._teacher.stop()

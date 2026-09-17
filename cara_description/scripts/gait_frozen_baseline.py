@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""U11 -- chain the U10 step into a short walk.
+"""FROZEN BASELINE (U35, 2026-09-17) -- byte-for-byte copy of gait.py as it
+stood immediately before U35's reference-offset hook was added, kept solely
+as an independent ground truth for equivalence checks. Not imported by any
+production path; never edit this file to add features -- if it needs to
+change, that means the "frozen" comparison has stopped serving its purpose.
+
+U11 -- chain the U10 step into a short walk.
 
 U10 (`step_once.py`) took ONE forward step from rest and stopped.  U11 repeats
 it, alternating legs, so Cara actually walks a few steps forward.
@@ -52,7 +58,7 @@ OTHER = {"l_": "r_", "r_": "l_"}
 C_TOP = 0.035
 
 
-def run(config, n_steps, view, json_path, baseline_path, reference_offset_fn=None):
+def run(config, n_steps, view, json_path, baseline_path):
     try:
         import mujoco
         import numpy as np
@@ -95,24 +101,6 @@ def run(config, n_steps, view, json_path, baseline_path, reference_offset_fn=Non
     KPA = float(bal.get("kp_ankle_roll", 50.0))
     KDA = float(bal.get("kd_ankle_roll", 10.0))
     KPH = float(bal.get("kp_hip_roll", 15.0))
-
-    # U35 -- optional, zero-default hook for an external controller to nudge
-    # the U9 lateral roll-trim's latched balance reference (see ss_step
-    # below). Units/sign, from the definition of ey in ss_step:
-    #   ey = com_y - stance_foot_y   (world-frame Y/lateral axis, metres)
-    # reference_offset_fn(ref_ey) is called at every controller update
-    # (i.e. every ss_step call, ~500 Hz) with the step's already-latched
-    # st["ref_ey"] (metres, same convention), and returns an offset (metres,
-    # same convention) that is ADDED to it to form the effective reference
-    # the trim regulates dy against -- it never overwrites the stored latch
-    # itself. A positive offset raises the effective reference, which (since
-    # dy = ey - ref_ey_effective) reduces the trim's correction for a given
-    # +Y CoM excursion and increases it for a -Y one, relative to the
-    # unmodified teacher. Defaults to no offset: baseline behaviour, and the
-    # dy computed here, are then bit-for-bit identical to before this hook
-    # existed (see gait_frozen_baseline.py).
-    _ref_offset_fn = reference_offset_fn if reference_offset_fn is not None else (lambda ref_ey: 0.0)
-
     acc = gc.get("accept", {}) or {}
     PLACE_TOL = float(acc.get("place_tol", 0.012))
     MIN_MARGIN = float(acc.get("min_support_margin", 0.004))
@@ -272,8 +260,7 @@ def run(config, n_steps, view, json_path, baseline_path, reference_offset_fn=Non
             ey = float(com[1] - sf[1])
             if st["ref_ey"] is None:
                 st["ref_ey"] = ey
-            ref_ey_effective = st["ref_ey"] + _ref_offset_fn(st["ref_ey"])
-            dy = ey - ref_ey_effective
+            dy = ey - st["ref_ey"]
             vy = (float(com[1]) - st["pcy"]) / dt
             st["pcy"] = float(com[1])
             sfn = -SIDE[stance]
