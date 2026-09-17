@@ -1315,3 +1315,330 @@ training logs with the new exploration-level logging, the pre-training
 probe script and its full per-seed JSON, and the deterministic evaluation)
 are under `cara_description/runs/u31_exploration_boost/` with
 `manifest.json` as the index.
+
+## U32 — demonstration-validation experiment (not a training run)
+
+U31 established that occasional lift-and-land experience existed but never
+became deterministic stepping — it did not isolate *why*. A demonstration
+gives a concrete stepping trajectory to test three live explanations
+(insufficient coordinated experience, weak credit assignment, a reward that
+prefers standing/sliding) against. Deliverable, per instruction: **one
+verified, correctly-scored stepping demonstration through the RL
+interface** — not another training campaign.
+
+**Method**: `gait.py` (U10/U11's quasi-static stepping controller) run
+**completely unmodified** — `mujoco.mj_step` was monkeypatched (not
+`gait.py`'s source) to record `data.ctrl` before every physics substep,
+preserving it as an untouched generator/validator. Recorded 23,650
+physics substeps (500Hz) over a 2-step walk, downsampled to CaraWalkEnv's
+50Hz control rate (every 10th substep), converted to normalized actions
+via `a_j = (q_target,j - q_nominal,j) / offset_scale_j` using
+**CaraWalkEnv's own** nominal pose and `offset_scale` — not `gait.py`'s
+internal values. `gait.py`'s own milestone: **MET** (2 steps, 57mm
+advance, ends standing at 0.9° tilt) — under its native 500Hz, continuous,
+unbounded control path.
+
+**Two disclosures made before scoring anything**, per instruction:
+
+1. **Speed mismatch, computed and disclosed up front, not discovered
+   after the fact.** `gait.py`'s own timing (≈21.4s/step, quasi-static by
+   design) implies an average speed of ≈0.0011 m/s if the walk completed —
+   about **2.7% of the 0.03 m/s command**. Not assumed to satisfy it.
+2. **Out-of-range targets, reported explicitly, never silently
+   clipped-and-hidden.** 3,764 of 28,380 joint-timesteps (13.26%) had
+   `|a_j|>1` *before* clipping — concentrated on `ankle_roll` (up to 1.98×)
+   and `knee_pitch`/`ankle_pitch` (up to 1.48×/-1.66×) — `gait.py`'s own
+   U9 lateral-roll balance trim and knee-swing terms, computed continuously
+   at 500Hz in the original controller, asking for more than
+   `action_range_frac=0.30` allows through this interface.
+
+### Result: invalid demonstration — the controller cannot step through this interface
+
+Replayed through a real `CaraWalkEnv` (its own termination applies —
+earlier success under `gait.py`'s native path does not carry over). **Fell
+at control step 764 of 2365 (15.3s in), peak tilt 43.0°** — past
+`CaraWalkEnv`'s own 40° threshold, a real termination under this
+environment's own rules, not a judgment call. Zero genuine swing phases on
+either foot before falling; net forward progress was **-0.195m** (backward,
+not forward) over the time it survived.
+
+**Specific dependency identified, not just "it failed"**: in the 65
+control steps immediately preceding the fall, *every single step* has at
+least one out-of-range action. `r_ankle_roll` sits pegged at `a=+1.76`
+(76% beyond the ±1 bound) continuously for at least the last 280ms before
+the fall. The controller's balance-correction strategy needs roughly 1.76×
+more ankle-roll authority than `action_range_frac=0.30` provides *and*
+updates faster than every 20ms — gets clipped, under-corrects, tips over.
+This is the specific interface dependency: `gait.py`'s U9 lateral-roll
+trim (`kp_ankle_roll=50`, `kd_ankle_roll=10`, recomputed every 2ms) needs
+both more range and faster update-rate authority than a 50Hz,
+±30%-of-joint-range action interface provides.
+
+**Scored anyway, for diagnostic value** (not as a usable teacher signal,
+since it's invalid): demo return **422.96** vs. zero action's **1654.66**
+and the existing sliding policy's **562.19**, same command and duration
+(764 steps, 15.3s, `desired_vx=0.03`). Dominated by a large effort penalty
+(-216.75, from near-constantly-saturated corrective actions) plus the real
+fall penalty (-10.0) — consistent with, not independent proof of, the
+clipping-driven-fall explanation: an invalid, saturating demonstration
+should score poorly under a reward that penalizes both effort and falling,
+regardless of any deeper objective-mismatch question.
+
+**Decision-table outcome: row 3 — "the old controller cannot step through
+this interface" → identify the specific dependency; do not train on an
+invalid demonstration.** Done. No behavior cloning, no policy
+initialization, no further PPO this session — that step is explicitly
+gated on a *valid* demonstration, which this is not. Two live options for
+the next decision, neither started: give `ankle_roll` more action
+authority specifically (raise its own `action_range_frac`, or a per-joint
+override) and re-attempt this same replay; or look for/construct a
+different demonstration whose balance strategy fits within the existing
+±1 bound. All artifacts (the monkeypatch-based extraction script, the full
+out-of-range and reward-component data, `gait.py`'s own untouched output)
+are under `cara_description/runs/u32_demo_validate/` with `manifest.json`
+as the index.
+
+### U32 correction: two accounting bugs, caught before interpreting the numbers
+
+**Bug 1 — episode-length mismatch.** Zero action and the sliding-policy
+comparison never fall, so they ran the *full* 2,365-step recorded length
+instead of matching the demo's own 764-step survived length — producing a
+zero-action return of 1654.66, which is **impossible** under this reward
+for a 764-step episode (max ≈765 with `alive=+1`/step and every other term
+nonpositive). Fixed: all three replays now truncate to the demo's actual
+survived length via an explicit `max_steps`.
+
+**Bug 2 — stale reward weight.** The comparison environment was built
+without `w_action_rate`, silently defaulting to `CaraWalkEnvConfig`'s bare
+`0.01` instead of the `0.3` every checkpoint from U26 onward — including
+the sliding-policy checkpoint being compared against — was actually
+trained under. Fixed: `w_action_rate=0.3` passed explicitly.
+
+**Bug 3 — component display invited a real misreading.** The printed
+"reward component breakdown" showed *raw* (pre-weight) sums — e.g.
+`effort=-216.75` — under a bare header, which reads as "effort dominates
+the return." Its actual *weighted* contribution (`w_effort=0.01`) is only
+**-2.17**. Fixed: the breakdown now shows raw sum, weight, and weighted
+contribution side by side, plus a reconstructed total that must equal (and
+does: 422.96) the reported return.
+
+**Corrected comparison** (764 steps, 15.3s, `desired_vx=0.03`, all three
+now genuinely matched): demo **422.96**, zero action **533.98**, sliding
+policy **561.40** — all in the same plausible range, not the
+order-of-magnitude-inflated 1654.66 originally reported. The demo still
+scores below both, but now clearly dominated by the **weighted**
+velocity-tracking penalty (-326.19, from the already-disclosed speed
+mismatch) and the fall penalty (-10.0) — not effort, which the original
+mislabeled breakdown wrongly suggested.
+
+## U33 — separating range from update rate
+
+U32's evidence established **range violations**, not that the teacher
+necessarily requires 500Hz specifically — frequency and clipping changed
+together in that single downsampled-and-clipped replay, so their
+individual effects were confounded.
+
+**Corrected methodology**: `gait.py`'s own control law (still unmodified
+source) run **online**, closed-loop, against the *actual* live state at
+each of 4 conditions — never replaying commands recorded on a different
+state trajectory, since a fall in one condition changes what the others
+would see next. Same `mujoco.mj_step` monkeypatch technique as U32, but
+now intercepting every physics substep: at "decision boundaries" (every
+Nth call — 1 for 500Hz, 10 for 50Hz) the freshly-computed, live-state
+target is captured and clipped per that condition's bounds; on
+intermediate calls (50Hz conditions), `data.ctrl` is overwritten with the
+held target *before* the real physics step — so `gait.py`'s own feedback
+(the U9 lateral-roll trim reads live `data.subtree_com` every call)
+genuinely reacts to what actually happened under the held target, not to
+a fixed script. Termination (`CaraWalkEnv`'s own 40°/0.15m rule) checked
+once per decision boundary via a raised-and-caught sentinel — confirmed
+before use to compute roll/pitch with the exact same formula as
+`cara_env.py`'s own `_quat_rpy`, not a reimplementation that might
+silently diverge.
+
+| condition | result |
+|---|---|
+| 500Hz / native targets (reference) | **Survived** all 47.3s, peak tilt 4.4° |
+| 500Hz / RL bounds (range alone) | **Fell** at 7.5s, tilt 40.1° |
+| 50Hz / native targets (rate alone) | **Fell** at 6.1s, tilt 42.0° |
+| 50Hz / RL bounds (both — true closed-loop U32) | **Fell** at 8.5s, tilt 42.0° |
+
+The reference condition survived cleanly, matching `gait.py`'s own
+reported success — no need to reconcile replay conditions before drawing
+a conclusion. **Both isolated changes cause failure independently.** Per
+the pre-set decision rule: *this teacher depends on both range and rate —
+widening ankle range alone will not transfer it.* All three failing
+conditions cross 40° only marginally (40.1–42.0°, not a catastrophic full
+topple) at broadly similar times (6.1–8.5s) — reading as the same
+underlying marginal instability triggered from slightly different angles,
+not three distinct failure modes.
+
+**One more confirmation of why this rigor mattered**: the true closed-loop
+50Hz/RL-bounds replay falls *sooner* (8.5s) than U32's naive
+resample-and-clip of a fixed 500Hz trajectory (15.3s) — and with **positive**
+forward progress (+0.144m) right up to the fall, versus U32's net
+*backward* drift (-0.195m). The two numbers genuinely differ, confirming
+the concern that motivated this experiment: replaying commands recorded
+on a different (500Hz, unclipped) state trajectory is a distinct source of
+mismatch from true 50Hz closed-loop behavior, not merely a proxy for it.
+
+**Net assessment, stated per instruction**: this measures what *this*
+controller requires, not that all possible walking policies need its
+authority — and 1.76× the normalized bound (from U32) means exceeding a
+*provisional policy restriction*, not necessarily physical actuator
+capability. Given range and rate are each independently necessary for
+this teacher's specific balance strategy, expanding `ankle_roll`'s
+`action_range_frac` alone would not be expected to make it transfer.
+Per the instruction's own guidance for this outcome: **stop expanding
+bounds; consider retaining the teacher's fast balance feedback underneath
+a slower learned controller** — a hierarchical design, not a bigger
+single 50Hz policy. Not started here. No ankle-roll expansion attempted
+(correctly unwarranted given the result), no PPO, no behavior cloning.
+All artifacts (the online-replay script, full per-condition JSON, and the
+corrected U32 outputs) are under `cara_description/runs/u33_rate_vs_range/`
+and the updated `cara_description/runs/u32_demo_validate/`, each indexed
+by their own `manifest.json`.
+
+## U34 — CaraResidualEnv: a separate residual-RL environment
+
+U33 established that this teacher depends on both range and update rate —
+not that ankle-roll expansion alone would help. Architectural response:
+`q_target(t) = limit(q_teacher(x_t, z_t) + dq_RL(t))` — the complete
+teacher retained at 500Hz, a learned correction accepted at 50Hz, the
+residual bound applying only to `dq_RL`, never to the combined command
+(re-clipping the combined signal to `CaraWalkEnv`'s nominal-centered ±1
+bound would recreate U32/U33's demonstrated failure). **Integration only —
+no PPO this session.** `cara_env.py`/`CaraWalkEnv` stays completely
+untouched, regression-checked after this work (self-test and
+`reward_audit.py` both still pass unchanged) — the new module,
+`cara_residual_env.py`, is entirely separate.
+
+**Mechanism**: `gait.py`'s `run()`/`walk()` are deeply nested closures with
+no external pause hook, and extracting only the balance loop would
+introduce another untested controller (per instruction) — so the *entire*
+teacher runs unmodified, in a background thread, synchronized with the
+main thread at every `mujoco.mj_step()` call via a producer/consumer queue
+pair (the same non-invasive monkeypatch technique as U32/U33). Only the
+**residual** is held between the 10 physics substeps of one policy
+decision — the teacher's own contribution is re-read fresh every substep
+(it rewrites `data.ctrl` every call regardless), preserving its intended
+500Hz reactivity between policy decisions.
+
+**A real bug, caught by the equivalence check before trusting anything
+else**: an earlier version held the *entire combined* signal constant
+between decisions, silently degrading the teacher itself to 50Hz too. This
+wasn't caught by inspection — it was caught because milestone 1 (below)
+reproduced U33's **50Hz/native failure** (fell at decision 303, tilt 42.0°)
+instead of U33's 500Hz/native success, an unambiguous signal given U33's
+numbers were already on record. Fixed by holding only
+`combined_at_decision − raw_teacher_at_decision` (the residual) between
+decisions, re-summing it with the teacher's freshly-recomputed target every
+substep.
+
+### Milestone 1 — zero-residual equivalence: PASSED
+
+Required matching the full 47.3s trial — actual steps, progress, stopping,
+peak tilt, not just survival — with all teacher state reset correctly
+(satisfied by construction: a fresh background thread and fresh
+`gait.run()` call on every `reset()`, no state leakage possible).
+
+| | U33's 500Hz/native reference | U34, zero residual |
+|---|---|---|
+| survived | all 23,650 substeps (47.3s) | all 2,365 decisions (47.3s) |
+| peak tilt | 4.3915° | 4.39° |
+| forward distance | +0.058269m | +0.0583m |
+
+`gait.py`'s own printed report (a side effect of the background thread's
+call) shows the *identical* result to its native run: step 1 `l_` PASS,
+step 2 `r_` PASS, 57mm total advance, MILESTONE MET. One disclosed
+resolution caveat: U34 samples tilt once per 50Hz decision, U33's 500Hz
+condition sampled every substep — a true peak between U34's sample points
+could be missed. The near-identical values suggest it doesn't matter for
+this benign reference trial, but it's a real difference, not assumed away.
+
+### Milestone 2 — residual-bound probes: informative, not clean
+
+`probe_residual_bound.py` applied a **constant** residual (same value,
+whole episode) to one joint pair at a time (`ankle_roll`, `hip_roll`), at
+several magnitudes and both signs. Result was **asymmetric and mostly
+fragile**, not a tidy symmetric safe zone: `ankle_roll` at +0.003 to
++0.005 rad survived cleanly (peak tilt slightly *better* than the
+zero-residual reference: 3.77–3.99° vs 4.39°) — but the **negative**
+direction failed at *every* tested magnitude, from -0.001 rad up to
+-0.05 rad. `hip_roll` showed the same one-sided pattern.
+
+**Why, not just what**: a temporally-constant bias inevitably opposes the
+teacher's own alternating balance correction (U9's trim sign flips with
+which foot is currently stance) during roughly half the gait cycle. This
+probe measures a **worst case** — a residual with the wrong sign for the
+current phase — not what a phase-aware learned policy would actually do.
+It bounds how large a phase-*blind* offset can be before it's unsafe in
+its worse-case sign; it does not, by itself, establish what a
+phase-*conditioned* policy could safely use.
+
+**Chosen default: `residual_bound_rad = 0.005`** — the largest magnitude
+where at least one sign survived cleanly with a real, interpretable,
+non-destabilizing effect. Deliberately conservative, and disclosed as a
+starting point for the not-yet-run PPO experiment, not a final answer —
+the true safe range for a context-aware residual is very likely larger.
+A phase-conditional probe (flipping sign with the teacher's own
+stance-side convention) would test this more fairly; not built this
+session.
+
+### Milestone 3 — controller context exposed to the policy
+
+65-dimensional observation: **30d proprioception** (12 joint pos + 12
+joint vel + 3 projected gravity + 3 base angular velocity — ordinary
+IMU/encoder quantities, not privileged); **10d controller context** (8-way
+one-hot gait phase — computed via exact arithmetic on the physics-substep
+counter against `gait.py`'s own scripted phase durations read from the
+YAML config, cross-checked once against U33's own recorded 23,650-substep
+total, not extracted from any internal hook that doesn't exist — plus 2
+foot-contact booleans from actual simulated contact, not the scripted lead
+leg); **24d teacher/residual context** (12 current teacher targets + 12
+previous applied residuals); **1d** commanded speed.
+
+**Privileged-state disclosure, as instructed**: `gait.py`'s own control
+law (unchanged) reads `data.subtree_com` — the exact rigid-body center of
+mass — every substep for its lateral trim. Genuinely privileged: real
+hardware would need a full CAD mass model plus forward kinematics (or a
+dynamic estimator), not a direct sensor reading. Swing/stance foot
+position (`data.geom_xpos`) is approximable via forward kinematics from
+joint encoders; base orientation is an ordinary IMU quantity. This
+dependency belongs to the *teacher* (retained unchanged, per instruction)
+— it doesn't appear directly in the policy's own observation, but the
+teacher's resulting targets (which the policy does see) are downstream of
+it.
+
+### Milestone 4 — reward accounting kept at 50Hz
+
+Reward computed exactly once per `env.step()` call (once per 10 physics
+substeps), using the state *after* those substeps complete — structurally
+cannot be multiplied by the teacher's internal update count, since the
+teacher's substep-level activity lives entirely inside the background
+thread and never triggers a separate reward evaluation. `effort` measures
+the **combined** command's deviation from nominal (total commanded
+motion, logged and weighted); `residual_rate` penalizes the **residual's**
+own step-to-step change only, normalized by `residual_bound_rad` — kept
+separate, per instruction, rather than conflated into one term.
+`info["total_commanded_motion"]` also exposed directly as an unweighted
+measurement.
+
+### Hardware dependency recorded, not resolved
+
+Retaining 500Hz feedback in simulation does not establish that eventual
+sensors and servos can support a 500Hz control loop. If this architecture
+is carried toward hardware, the *teacher's* control rate — not just the
+RL policy's 50Hz — is a real requirement to validate separately during
+actuator/controller selection.
+
+**Not done this session** (correctly, per instruction): no PPO, no
+behavior cloning, no teacher-only-vs-teacher+residual comparison under a
+disturbance family (that's RL's first objective, gated on this integration
+milestone). No reuse of U31's actor outputs as residuals (their actions
+have a different meaning). Residual actor's zero-mean initialization is a
+design note for the not-yet-built training script, not implemented here
+since no actor exists yet. All artifacts (the environment module, the
+threading-bug writeup, the equivalence check, and the full probe data) are
+under `cara_description/runs/u34_residual_env/` with `manifest.json` as
+the index.

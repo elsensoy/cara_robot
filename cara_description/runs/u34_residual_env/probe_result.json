@@ -1,0 +1,144 @@
+{
+  "results": {
+    "reference": {
+      "steps": 2365,
+      "total": 2365,
+      "survived": true,
+      "peak_tilt_deg": 4.391404914276327,
+      "fwd_dist_m": 0.0582686542995538,
+      "fell_reason": "done"
+    },
+    "ankle_roll_+0.005": {
+      "steps": 2365,
+      "total": 2365,
+      "survived": true,
+      "peak_tilt_deg": 3.7681266443797887,
+      "fwd_dist_m": 0.057851391627928836,
+      "fell_reason": "done"
+    },
+    "ankle_roll_-0.005": {
+      "steps": 325,
+      "total": 2365,
+      "survived": false,
+      "peak_tilt_deg": 41.73203308861789,
+      "fwd_dist_m": 0.007803124727381565,
+      "fell_reason": "fell:tilt"
+    },
+    "ankle_roll_+0.01": {
+      "steps": 652,
+      "total": 2365,
+      "survived": false,
+      "peak_tilt_deg": 42.78204238179894,
+      "fwd_dist_m": -0.18350160520449962,
+      "fell_reason": "fell:tilt"
+    },
+    "ankle_roll_-0.01": {
+      "steps": 668,
+      "total": 2365,
+      "survived": false,
+      "peak_tilt_deg": 40.654368355726696,
+      "fwd_dist_m": -0.17689802944834238,
+      "fell_reason": "fell:tilt"
+    },
+    "ankle_roll_+0.02": {
+      "steps": 304,
+      "total": 2365,
+      "survived": false,
+      "peak_tilt_deg": 44.14472848446736,
+      "fwd_dist_m": -0.009539933545083082,
+      "fell_reason": "fell:tilt"
+    },
+    "ankle_roll_-0.02": {
+      "steps": 674,
+      "total": 2365,
+      "survived": false,
+      "peak_tilt_deg": 42.02113925250494,
+      "fwd_dist_m": -0.18170958271222099,
+      "fell_reason": "fell:tilt"
+    },
+    "ankle_roll_+0.05": {
+      "steps": 304,
+      "total": 2365,
+      "survived": false,
+      "peak_tilt_deg": 44.14472848446736,
+      "fwd_dist_m": -0.009539933545083082,
+      "fell_reason": "fell:tilt"
+    },
+    "ankle_roll_-0.05": {
+      "steps": 674,
+      "total": 2365,
+      "survived": false,
+      "peak_tilt_deg": 42.02113925250494,
+      "fwd_dist_m": -0.18170958271222099,
+      "fell_reason": "fell:tilt"
+    },
+    "hip_roll_+0.005": {
+      "steps": 2365,
+      "total": 2365,
+      "survived": true,
+      "peak_tilt_deg": 5.749426284465904,
+      "fwd_dist_m": 0.05835123575530576,
+      "fell_reason": "done"
+    },
+    "hip_roll_-0.005": {
+      "steps": 300,
+      "total": 2365,
+      "survived": false,
+      "peak_tilt_deg": 44.96644359882726,
+      "fwd_dist_m": -0.00020353023750446995,
+      "fell_reason": "fell:tilt"
+    },
+    "hip_roll_+0.01": {
+      "steps": 1500,
+      "total": 2365,
+      "survived": false,
+      "peak_tilt_deg": 42.662200592461836,
+      "fwd_dist_m": 0.062385737316383603,
+      "fell_reason": "fell:tilt"
+    },
+    "hip_roll_-0.01": {
+      "steps": 663,
+      "total": 2365,
+      "survived": false,
+      "peak_tilt_deg": 42.614450097631874,
+      "fwd_dist_m": -0.19832044306466523,
+      "fell_reason": "fell:tilt"
+    },
+    "hip_roll_+0.02": {
+      "steps": 649,
+      "total": 2365,
+      "survived": false,
+      "peak_tilt_deg": 40.724127044014494,
+      "fwd_dist_m": -0.19006617698819078,
+      "fell_reason": "fell:tilt"
+    },
+    "hip_roll_-0.02": {
+      "steps": 659,
+      "total": 2365,
+      "survived": false,
+      "peak_tilt_deg": 41.0710693280939,
+      "fwd_dist_m": -0.18185007651954033,
+      "fell_reason": "fell:tilt"
+    },
+    "hip_roll_+0.05": {
+      "steps": 649,
+      "total": 2365,
+      "survived": false,
+      "peak_tilt_deg": 40.724127044014494,
+      "fwd_dist_m": -0.19006617698819078,
+      "fell_reason": "fell:tilt"
+    },
+    "hip_roll_-0.05": {
+      "steps": 659,
+      "total": 2365,
+      "survived": false,
+      "peak_tilt_deg": 41.0710693280939,
+      "fwd_dist_m": -0.18185007651954033,
+      "fell_reason": "fell:tilt"
+    }
+  },
+  "chosen_largest_surviving_magnitude": {
+    "ankle_roll": null,
+    "hip_roll": null
+  }
+}

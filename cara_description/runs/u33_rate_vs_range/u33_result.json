@@ -1,0 +1,54 @@
+{
+  "500Hz_native": {
+    "rate_hz": 500,
+    "bounds_mode": "native",
+    "label": "500Hz / native teacher targets (reference under replay conditions)",
+    "survived": true,
+    "fell_at_decision_step": null,
+    "fell_at_time_s": null,
+    "fell_reason": null,
+    "fell_tilt_deg": null,
+    "total_decision_steps": 23650,
+    "peak_tilt_deg": 4.391522897031262,
+    "fwd_dist_m": 0.0582686542995538
+  },
+  "500Hz_rl": {
+    "rate_hz": 500,
+    "bounds_mode": "rl",
+    "label": "500Hz / current RL bounds (isolates restricted authority)",
+    "survived": false,
+    "fell_at_decision_step": 3768,
+    "fell_at_time_s": 7.536,
+    "fell_reason": "tilt",
+    "fell_tilt_deg": 40.14533627867667,
+    "total_decision_steps": 3768,
+    "peak_tilt_deg": 40.14533627867667,
+    "fwd_dist_m": -0.01962256391501331
+  },
+  "50Hz_native": {
+    "rate_hz": 50,
+    "bounds_mode": "native",
+    "label": "50Hz / native teacher targets (isolates slower updates)",
+    "survived": false,
+    "fell_at_decision_step": 303,
+    "fell_at_time_s": 6.06,
+    "fell_reason": "tilt",
+    "fell_tilt_deg": 41.99723009686536,
+    "total_decision_steps": 303,
+    "peak_tilt_deg": 41.99723009686536,
+    "fwd_dist_m": -0.01819017447280569
+  },
+  "50Hz_rl": {
+    "rate_hz": 50,
+    "bounds_mode": "rl",
+    "label": "50Hz / current RL bounds (reproduces U32)",
+    "survived": false,
+    "fell_at_decision_step": 427,
+    "fell_at_time_s": 8.54,
+    "fell_reason": "tilt",
+    "fell_tilt_deg": 42.008639699681126,
+    "total_decision_steps": 427,
+    "peak_tilt_deg": 42.008639699681126,
+    "fwd_dist_m": 0.14412962456003306
+  }
+}

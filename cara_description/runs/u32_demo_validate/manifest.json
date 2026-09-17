@@ -1,0 +1,43 @@
+{
+  "workstream": "U32 -- demonstration-validation experiment (NOT a training run)",
+  "date": "2026-09-16",
+  "question": "Can the U10/U11 quasi-static stepping controller (gait.py, unmodified) produce a valid, well-scored demonstration through CaraWalkEnv's actual RL interface -- same model, position actuators, 50Hz action rate, action bounds?",
+  "method": {
+    "extraction": "gait.py's own walk() was run completely unmodified -- mujoco.mj_step was monkeypatched (not gait.py's source) to record data.ctrl before every physics substep, non-invasively. gait.py itself remains an untouched generator/validator.",
+    "gait_own_result": "gait.py's own milestone: MET (exit 0). 2 steps, alternating l_/r_, 57mm total advance, ends standing (0.9deg tilt, 0.1mm drift).",
+    "downsampling": "recorded 23,650 physics substeps (500Hz) downsampled to CaraWalkEnv's 50Hz control rate (every 10th substep, matching CaraWalkEnv.substeps=10) -> 2,365 control-step targets.",
+    "conversion": "a_j = (q_target,j - q_nominal,j) / offset_scale_j, using CaraWalkEnv's OWN nominal pose and offset_scale (not gait.py's internal values).",
+    "n_steps_used": 2,
+    "n_steps_rationale": "minimum needed to show leg alternation (l_ then r_); gait.py's own default is 4 but the per-step duration (21.4s, quasi-static by design) makes n_steps=2 (47.3s total) already a substantial bounded replay -- chosen for tractability, disclosed, not gait.py's own validated default."
+  },
+  "disclosures_required_by_instruction": {
+    "speed_mismatch": "MASSIVE and disclosed, not assumed to satisfy 0.03 m/s. gait.py's own timing (ramp=4s, swing=4s per phase, ~21.4s/step, stride=24mm) implies an average speed of ~0.0011 m/s if the full walk completed -- about 2.7% of the 0.03 m/s command. This was computed and disclosed BEFORE running the replay, not discovered after.",
+    "out_of_range_targets": "3,764 of 28,380 joint-timesteps (13.26%) had |a_j|>1 BEFORE clipping -- reported explicitly, not silently clipped. Concentrated on l_ankle_roll (up to 1.98), r_ankle_roll (up to 1.94), l/r_knee_pitch (up to 1.48), r_ankle_pitch (up to -1.66). These are gait.py's own U9 lateral-roll balance-trim and knee-swing terms, computed continuously at 500Hz in the original controller -- exceeding what action_range_frac=0.30 allows through this interface."
+  },
+  "result": {
+    "outcome": "INVALID DEMONSTRATION -- the controller does NOT step successfully through this interface, despite its own validated milestone under its native (500Hz, continuous, unbounded) control path.",
+    "fell_at_control_step": 764,
+    "fell_at_time_s": 15.28,
+    "of_total_control_steps": 2365,
+    "peak_tilt_deg": 43.03,
+    "note": "43.03deg exceeds CaraWalkEnv's own 40deg fall threshold -- a real termination under this environment's own rules, not a borderline judgment call.",
+    "specific_dependency_identified": "In the 65 control steps immediately preceding the fall (steps 700-764), EVERY SINGLE STEP has at least one out-of-range action. r_ankle_roll is pegged at a=+1.76 (76% beyond the +/-1 bound) continuously for at least the last 14 steps (280ms) before the fall -- the controller's balance-correction strategy is asking for roughly 1.76x more ankle-roll authority than action_range_frac=0.30 provides, gets clipped, and the resulting under-correction directly precedes the tip-over past 40deg. This is the specific, identified interface dependency: gait.py's U9 lateral-roll balance trim (kp_ankle_roll=50, kd_ankle_roll=10, computed fresh every 2ms physics substep) needs both MORE range and FASTER update-rate authority than a 50Hz, +/-30%-of-joint-range action interface provides.",
+    "forward_progress": "-0.195m (net BACKWARD, not forward) over the 15.3s it survived -- the clipped, degraded balance correction did not merely fail to step, it actively destabilized net position.",
+    "genuine_swing_phases": "0 on either foot -- through this interface, no genuine (>=60ms) airborne phase was ever achieved before falling."
+  },
+  "scoring_under_current_reward_v4": {
+    "note": "Computed and reported for completeness/diagnostic value even though the demonstration is invalid -- per instruction, this scoring is still informative for understanding the reward's behavior, just not usable as a valid teacher signal.",
+    "CORRECTED": "Two accounting bugs were found (by external review) and fixed in u32_demo_validate.py AFTER this file was first written; the corrected numbers below supersede the original 422.96/1654.66/562.19 figures.",
+    "bug_1_episode_length_mismatch": "zero-action and the sliding-policy comparison originally ran the FULL 2365-step recorded length (since they never fall), not the demo's own 764-step survived length -- producing 1654.66 for zero action, which is impossible under this reward for a 764-step episode (max ~765 with alive=+1/step and all other terms nonpositive). Fixed: all three replays now truncate to n=764 (the demo's actual survived length) via a max_steps parameter.",
+    "bug_2_stale_reward_weight": "the comparison environment was built without w_action_rate, silently defaulting to CaraWalkEnvConfig's bare 0.01 instead of 0.3 (used for every checkpoint trained U26 onward, including the sliding-policy checkpoint compared against here). Fixed: w_action_rate=0.3 passed explicitly.",
+    "bug_3_component_display_ambiguity": "the printed 'reward component breakdown' showed RAW (pre-weight) component sums (e.g. effort=-216.75) under a bare header, inviting the reasonable misreading that this raw sum was dominating the return. Its actual WEIGHTED contribution (w_effort=0.01) is only -2.17. Fixed: breakdown now shows raw sum, weight, and weighted contribution side by side, plus a reconstructed total that must match (and does: 422.96) the reported return.",
+    "demo_return": 422.96,
+    "zero_action_return_same_duration": 533.98,
+    "sliding_policy_return_same_duration": 561.40,
+    "duration_and_command": "764 control steps (15.3s), desired_vx=0.03 -- SAME command and duration for all three, now genuinely enforced",
+    "demo_reward_components_weighted": {"alive": 763.0, "vel": -326.19, "upright": -1.68, "effort": -2.17, "rate": -0.002, "collision": 0.0, "fall_penalty": -10.0},
+    "interpretation": "With the accounting fixed, all three returns are in the same plausible range for a 764-step episode (422-561), not the order-of-magnitude-inflated 1654.66 originally reported. The demo still scores below both zero action and the sliding policy over the same window -- now clearly dominated by the WEIGHTED velocity-tracking penalty (-326.19, from the large, sustained speed mismatch already disclosed above) and the fall penalty (-10.0), not effort as the original mislabeled breakdown suggested. This is CONSISTENT with (not proof of) the clipping-driven-fall explanation, and correctly attributes the score gap primarily to the disclosed speed mismatch plus the fall, not to effort."
+  },
+  "decision_table_outcome": "Row 3: 'The old controller cannot step through this interface' -> Identify the specific interface or controller dependency; do not train on an invalid demonstration.",
+  "not_done_this_turn": "No behavior cloning, no policy initialization from this demonstration, no further PPO. Per instruction, this was the deliverable: one verified (here, verified INVALID) demonstration through the actual interface, with the specific dependency identified -- not a training campaign. Two live options for the next decision, neither started: (a) give the ankle_roll joint more action authority specifically (raise its own action_range_frac, or add a per-joint override) and re-attempt this same replay; (b) look for or construct a different demonstration whose balance strategy fits within the existing +/-1 action bound. Flagged, not chosen unilaterally."
+}

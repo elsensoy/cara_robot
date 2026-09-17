@@ -1,0 +1,9 @@
+{
+  "steps": 2365,
+  "total": 2365,
+  "terminated": false,
+  "truncated": true,
+  "peak_tilt_deg": 4.391404914276327,
+  "fwd_dist_m": 0.0582686542995538,
+  "final_phase": "done"
+}

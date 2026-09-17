@@ -1,0 +1,74 @@
+=== zero-residual reference ===
+
+
+
+
+MILESTONE MET: Cara walks 2 quasi-static steps forward (57 mm), alternating legs, and ends standing.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  steps=2365/2365 survived=True peak_tilt=4.39deg fwd_dist=+0.0583m
+
+=== residual +0.005 rad on ['l_ankle_roll', 'r_ankle_roll'] (constant, whole episode) ===
+
+
+
+
+MILESTONE MET: Cara walks 2 quasi-static steps forward (57 mm), alternating legs, and ends standing.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  steps=2365/2365 survived=True peak_tilt=3.77deg (-0.62 vs ref)  fwd_dist=+0.0579m (-0.0004 vs ref)
+
+=== residual -0.005 rad on ['l_ankle_roll', 'r_ankle_roll'] (constant, whole episode) ===
+  steps=325/2365 survived=False peak_tilt=41.73deg (+37.34 vs ref)  fwd_dist=+0.0078m (-0.0505 vs ref)  FELL: fell:tilt
+
+=== residual +0.01 rad on ['l_ankle_roll', 'r_ankle_roll'] (constant, whole episode) ===
+  steps=652/2365 survived=False peak_tilt=42.78deg (+38.39 vs ref)  fwd_dist=-0.1835m (-0.2418 vs ref)  FELL: fell:tilt
+
+=== residual -0.01 rad on ['l_ankle_roll', 'r_ankle_roll'] (constant, whole episode) ===
+  steps=668/2365 survived=False peak_tilt=40.65deg (+36.26 vs ref)  fwd_dist=-0.1769m (-0.2352 vs ref)  FELL: fell:tilt
+
+=== residual +0.02 rad on ['l_ankle_roll', 'r_ankle_roll'] (constant, whole episode) ===
+  steps=304/2365 survived=False peak_tilt=44.14deg (+39.75 vs ref)  fwd_dist=-0.0095m (-0.0678 vs ref)  FELL: fell:tilt
+
+=== residual -0.02 rad on ['l_ankle_roll', 'r_ankle_roll'] (constant, whole episode) ===
+  steps=674/2365 survived=False peak_tilt=42.02deg (+37.63 vs ref)  fwd_dist=-0.1817m (-0.2400 vs ref)  FELL: fell:tilt
+
+=== residual +0.05 rad on ['l_ankle_roll', 'r_ankle_roll'] (constant, whole episode) ===
+  steps=304/2365 survived=False peak_tilt=44.14deg (+39.75 vs ref)  fwd_dist=-0.0095m (-0.0678 vs ref)  FELL: fell:tilt
+
+=== residual -0.05 rad on ['l_ankle_roll', 'r_ankle_roll'] (constant, whole episode) ===
+  steps=674/2365 survived=False peak_tilt=42.02deg (+37.63 vs ref)  fwd_dist=-0.1817m (-0.2400 vs ref)  FELL: fell:tilt
+
+=== residual +0.005 rad on ['l_hip_roll', 'r_hip_roll'] (constant, whole episode) ===
+
+
+
+
+MILESTONE NOT MET: a step fails; see above.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  steps=2365/2365 survived=True peak_tilt=5.75deg (+1.36 vs ref)  fwd_dist=+0.0584m (+0.0001 vs ref)
+
+=== residual -0.005 rad on ['l_hip_roll', 'r_hip_roll'] (constant, whole episode) ===
+  steps=300/2365 survived=False peak_tilt=44.97deg (+40.58 vs ref)  fwd_dist=-0.0002m (-0.0585 vs ref)  FELL: fell:tilt
+
+=== residual +0.01 rad on ['l_hip_roll', 'r_hip_roll'] (constant, whole episode) ===
+  steps=1500/2365 survived=False peak_tilt=42.66deg (+38.27 vs ref)  fwd_dist=+0.0624m (+0.0041 vs ref)  FELL: fell:tilt
+
+=== residual -0.01 rad on ['l_hip_roll', 'r_hip_roll'] (constant, whole episode) ===
+  steps=663/2365 survived=False peak_tilt=42.61deg (+38.22 vs ref)  fwd_dist=-0.1983m (-0.2566 vs ref)  FELL: fell:tilt
+
+=== residual +0.02 rad on ['l_hip_roll', 'r_hip_roll'] (constant, whole episode) ===
+  steps=649/2365 survived=False peak_tilt=40.72deg (+36.33 vs ref)  fwd_dist=-0.1901m (-0.2483 vs ref)  FELL: fell:tilt
+
+=== residual -0.02 rad on ['l_hip_roll', 'r_hip_roll'] (constant, whole episode) ===
+  steps=659/2365 survived=False peak_tilt=41.07deg (+36.68 vs ref)  fwd_dist=-0.1819m (-0.2401 vs ref)  FELL: fell:tilt
+
+=== residual +0.05 rad on ['l_hip_roll', 'r_hip_roll'] (constant, whole episode) ===
+  steps=649/2365 survived=False peak_tilt=40.72deg (+36.33 vs ref)  fwd_dist=-0.1901m (-0.2483 vs ref)  FELL: fell:tilt
+
+=== residual -0.05 rad on ['l_hip_roll', 'r_hip_roll'] (constant, whole episode) ===
+  steps=659/2365 survived=False peak_tilt=41.07deg (+36.68 vs ref)  fwd_dist=-0.1819m (-0.2401 vs ref)  FELL: fell:tilt
+
+=== summary: largest magnitude that survived, per joint pair ===
+  ankle_roll: none survived
+  hip_roll: none survived
+
+saved -> /home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u34_residual_env/probe_result.json

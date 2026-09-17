@@ -1,0 +1,1231 @@
+{
+  "gait_exit_code": 0,
+  "n_physics_steps": 23650,
+  "n_control_steps": 2365,
+  "demo_duration_s": 47.3,
+  "out_of_range_count": 3764,
+  "out_of_range_entries": [
+    {
+      "control_step": 258,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0004489114443655,
+      "raw_target": -0.13205925631065626
+    },
+    {
+      "control_step": 258,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0004489114443655,
+      "raw_target": 0.13205925631065626
+    },
+    {
+      "control_step": 259,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.002768100692793,
+      "raw_target": -0.1323653892914487
+    },
+    {
+      "control_step": 259,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.002768100692793,
+      "raw_target": 0.1323653892914487
+    },
+    {
+      "control_step": 260,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.004958602130893,
+      "raw_target": -0.13265453548127787
+    },
+    {
+      "control_step": 260,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.004958602130893,
+      "raw_target": 0.13265453548127787
+    },
+    {
+      "control_step": 261,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0070188837609229,
+      "raw_target": -0.13292649265644182
+    },
+    {
+      "control_step": 261,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0070188837609229,
+      "raw_target": 0.13292649265644182
+    },
+    {
+      "control_step": 262,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.008947413585141,
+      "raw_target": -0.13318105859323862
+    },
+    {
+      "control_step": 262,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.008947413585141,
+      "raw_target": 0.13318105859323862
+    },
+    {
+      "control_step": 263,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0107426596058053,
+      "raw_target": -0.13341803106796632
+    },
+    {
+      "control_step": 263,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0107426596058053,
+      "raw_target": 0.13341803106796632
+    },
+    {
+      "control_step": 264,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.012403089825174,
+      "raw_target": -0.13363720785692296
+    },
+    {
+      "control_step": 264,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.012403089825174,
+      "raw_target": 0.13363720785692296
+    },
+    {
+      "control_step": 265,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0139271722455045,
+      "raw_target": -0.1338383867364066
+    },
+    {
+      "control_step": 265,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0139271722455045,
+      "raw_target": 0.1338383867364066
+    },
+    {
+      "control_step": 266,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0153133748690555,
+      "raw_target": -0.13402136548271534
+    },
+    {
+      "control_step": 266,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0153133748690555,
+      "raw_target": 0.13402136548271534
+    },
+    {
+      "control_step": 267,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0165601656980847,
+      "raw_target": -0.1341859418721472
+    },
+    {
+      "control_step": 267,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0165601656980847,
+      "raw_target": 0.1341859418721472
+    },
+    {
+      "control_step": 268,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0176660127348502,
+      "raw_target": -0.13433191368100023
+    },
+    {
+      "control_step": 268,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0176660127348502,
+      "raw_target": 0.13433191368100023
+    },
+    {
+      "control_step": 269,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0186293839816096,
+      "raw_target": -0.13445907868557247
+    },
+    {
+      "control_step": 269,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0186293839816096,
+      "raw_target": 0.13445907868557247
+    },
+    {
+      "control_step": 270,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0194487474406213,
+      "raw_target": -0.13456723466216203
+    },
+    {
+      "control_step": 270,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0194487474406213,
+      "raw_target": 0.13456723466216203
+    },
+    {
+      "control_step": 271,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0201225711141435,
+      "raw_target": -0.13465617938706695
+    },
+    {
+      "control_step": 271,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0201225711141435,
+      "raw_target": 0.13465617938706695
+    },
+    {
+      "control_step": 272,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0206493230044338,
+      "raw_target": -0.13472571063658526
+    },
+    {
+      "control_step": 272,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0206493230044338,
+      "raw_target": 0.13472571063658526
+    },
+    {
+      "control_step": 273,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0210274711137501,
+      "raw_target": -0.13477562618701502
+    },
+    {
+      "control_step": 273,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0210274711137501,
+      "raw_target": 0.13477562618701502
+    },
+    {
+      "control_step": 274,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.021255483444351,
+      "raw_target": -0.13480572381465433
+    },
+    {
+      "control_step": 274,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.021255483444351,
+      "raw_target": 0.13480572381465433
+    },
+    {
+      "control_step": 275,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 275,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0213318279984938,
+      "raw_target": 0.13481580129580117
+    },
+    {
+      "control_step": 276,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 276,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.1247461148146556,
+      "raw_target": 0.14846648715553454
+    },
+    {
+      "control_step": 277,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 278,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 278,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.032382167326071,
+      "raw_target": 0.13627444608704137
+    },
+    {
+      "control_step": 279,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 280,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 280,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0026704742399664,
+      "raw_target": 0.13235250259967557
+    },
+    {
+      "control_step": 281,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 282,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 283,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 284,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 285,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 286,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 287,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 288,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 289,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 290,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 291,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 292,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 293,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 294,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 295,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 296,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 297,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 298,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 299,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 300,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 301,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 302,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 303,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 304,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 305,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 306,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 307,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 308,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 309,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 310,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 310,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0093781106589816,
+      "raw_target": 0.1332379106069856
+    },
+    {
+      "control_step": 311,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 311,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0213740177861657,
+      "raw_target": 0.13482137034777386
+    },
+    {
+      "control_step": 312,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 312,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0336470825206863,
+      "raw_target": 0.1364414148927306
+    },
+    {
+      "control_step": 313,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 313,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.043920250181919,
+      "raw_target": 0.1377974730240133
+    },
+    {
+      "control_step": 314,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 314,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0542415747614138,
+      "raw_target": 0.13915988786850664
+    },
+    {
+      "control_step": 315,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 315,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0699027407168427,
+      "raw_target": 0.14122716177462324
+    },
+    {
+      "control_step": 316,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 316,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.0879038711268871,
+      "raw_target": 0.14360331098874912
+    },
+    {
+      "control_step": 317,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 317,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.104953506221621,
+      "raw_target": 0.14585386282125398
+    },
+    {
+      "control_step": 318,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 318,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.1196556964096804,
+      "raw_target": 0.14779455192607782
+    },
+    {
+      "control_step": 319,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 319,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.1345355099205763,
+      "raw_target": 0.14975868730951608
+    },
+    {
+      "control_step": 320,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 320,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.154749068355088,
+      "raw_target": 0.15242687702287164
+    },
+    {
+      "control_step": 321,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 321,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.1782240935093249,
+      "raw_target": 0.15552558034323088
+    },
+    {
+      "control_step": 322,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 322,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.200422787638849,
+      "raw_target": 0.15845580796832806
+    },
+    {
+      "control_step": 323,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 323,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.2193678430884611,
+      "raw_target": 0.16095655528767688
+    },
+    {
+      "control_step": 324,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 324,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.2391386494022771,
+      "raw_target": 0.1635663017211006
+    },
+    {
+      "control_step": 325,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 325,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.2651346882894507,
+      "raw_target": 0.1669977788542075
+    },
+    {
+      "control_step": 326,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 326,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.2930192048830291,
+      "raw_target": 0.17067853504455985
+    },
+    {
+      "control_step": 327,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 327,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.3184072568694527,
+      "raw_target": 0.17402975790676775
+    },
+    {
+      "control_step": 328,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 328,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.3432738944007294,
+      "raw_target": 0.1773121540608963
+    },
+    {
+      "control_step": 329,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 329,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.3675489026629983,
+      "raw_target": 0.1805164551515158
+    },
+    {
+      "control_step": 330,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 330,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.3959717876455953,
+      "raw_target": 0.18426827596921858
+    },
+    {
+      "control_step": 331,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 331,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.4236915537099613,
+      "raw_target": 0.1879272850897149
+    },
+    {
+      "control_step": 332,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 332,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.4514406732765033,
+      "raw_target": 0.19159016887249844
+    },
+    {
+      "control_step": 333,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 333,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.4767239252123447,
+      "raw_target": 0.1949275581280295
+    },
+    {
+      "control_step": 334,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 334,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.5045438989994913,
+      "raw_target": 0.19859979466793284
+    },
+    {
+      "control_step": 335,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 335,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.532567716228088,
+      "raw_target": 0.20229893854210762
+    },
+    {
+      "control_step": 336,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 336,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.5585803354703796,
+      "raw_target": 0.20573260428209011
+    },
+    {
+      "control_step": 337,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 337,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.5836344570949137,
+      "raw_target": 0.2090397483365286
+    },
+    {
+      "control_step": 338,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 338,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.605273418480382,
+      "raw_target": 0.21189609123941044
+    },
+    {
+      "control_step": 339,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 339,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.6223342277734982,
+      "raw_target": 0.2141481180661018
+    },
+    {
+      "control_step": 340,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 340,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.62281536539165,
+      "raw_target": 0.21421162823169781
+    },
+    {
+      "control_step": 341,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 341,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.7159866782286852,
+      "raw_target": 0.22651024152618646
+    },
+    {
+      "control_step": 342,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 342,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.6349842172049946,
+      "raw_target": 0.2158179166710593
+    },
+    {
+      "control_step": 343,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 343,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.7466851649328492,
+      "raw_target": 0.2305624417711361
+    },
+    {
+      "control_step": 344,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 344,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.6658110729832545,
+      "raw_target": 0.2198870616337896
+    },
+    {
+      "control_step": 345,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 345,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.725493161507502,
+      "raw_target": 0.22776509731899028
+    },
+    {
+      "control_step": 346,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 346,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.7469557867301928,
+      "raw_target": 0.23059816384838547
+    },
+    {
+      "control_step": 347,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 347,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.7252075481144649,
+      "raw_target": 0.22772739635110936
+    },
+    {
+      "control_step": 348,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 348,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.714997683115902,
+      "raw_target": 0.22637969417129908
+    },
+    {
+      "control_step": 349,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 349,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.7922809264460444,
+      "raw_target": 0.23658108229087788
+    },
+    {
+      "control_step": 350,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 350,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.7230799362832736,
+      "raw_target": 0.22744655158939212
+    },
+    {
+      "control_step": 351,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 351,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.7826631639343704,
+      "raw_target": 0.2353115376393369
+    },
+    {
+      "control_step": 352,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 352,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.7768974758432887,
+      "raw_target": 0.2345504668113141
+    },
+    {
+      "control_step": 353,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 353,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.7930084533404838,
+      "raw_target": 0.23667711584094386
+    },
+    {
+      "control_step": 354,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 354,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.8078963823648517,
+      "raw_target": 0.23864232247216044
+    },
+    {
+      "control_step": 355,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 355,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.8248784540651337,
+      "raw_target": 0.24088395593659767
+    },
+    {
+      "control_step": 356,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 356,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.8384884721302988,
+      "raw_target": 0.24268047832119946
+    },
+    {
+      "control_step": 357,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 357,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.8474227519915158,
+      "raw_target": 0.2438598032628801
+    },
+    {
+      "control_step": 358,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 358,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.8516939141447044,
+      "raw_target": 0.244423596667101
+    },
+    {
+      "control_step": 359,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 359,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.852494185761963,
+      "raw_target": 0.24452923252057912
+    },
+    {
+      "control_step": 360,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 360,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.8508030980106953,
+      "raw_target": 0.24430600893741178
+    },
+    {
+      "control_step": 361,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 361,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.8467931567154994,
+      "raw_target": 0.24377669668644592
+    },
+    {
+      "control_step": 362,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 362,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.840265214385504,
+      "raw_target": 0.24291500829888654
+    },
+    {
+      "control_step": 363,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 363,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.8315261334649224,
+      "raw_target": 0.24176144961736978
+    },
+    {
+      "control_step": 364,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 364,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.8217841777961314,
+      "raw_target": 0.24047551146908935
+    },
+    {
+      "control_step": 365,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 365,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.8128904463218627,
+      "raw_target": 0.23930153891448588
+    },
+    {
+      "control_step": 366,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 366,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.8065873120264737,
+      "raw_target": 0.23846952518749454
+    },
+    {
+      "control_step": 367,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 367,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.8036421672020362,
+      "raw_target": 0.23808076607066878
+    },
+    {
+      "control_step": 368,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 368,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.8036102798077052,
+      "raw_target": 0.2380765569346171
+    },
+    {
+      "control_step": 369,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 369,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.8055159986539389,
+      "raw_target": 0.23832811182231994
+    },
+    {
+      "control_step": 370,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 370,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.8087385559034117,
+      "raw_target": 0.23875348937925037
+    },
+    {
+      "control_step": 371,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 371,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.8133678712123618,
+      "raw_target": 0.23936455900003176
+    },
+    {
+      "control_step": 372,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    },
+    {
+      "control_step": 372,
+      "joint": "r_ankle_roll",
+      "normalized_action": 1.8199568090567084,
+      "raw_target": 0.24023429879548552
+    },
+    {
+      "control_step": 373,
+      "joint": "l_ankle_roll",
+      "normalized_action": -1.0213318279984938,
+      "raw_target": -0.13481580129580117
+    }
+  ],
+  "valid_demonstration": false,
+  "demo_return": 422.964991906328,
+  "zero_action_return": 1654.6556519112785,
+  "sliding_policy_return": 562.1934092827918,
+  "achieved_vx": -0.013745408493705515,
+  "commanded_vx": 0.03,
+  "fwd_dist_m": -0.19488296257906143,
+  "genuine_swings_l": 0,
+  "genuine_swings_r": 0,
+  "demo_fell": true,
+  "reward_components": {
+    "alive": 763.0,
+    "vel": -32.61875983843785,
+    "upright": -3.359723057106056,
+    "effort": -216.74890026674606,
+    "rate": -0.005917807304660809,
+    "collision": 0.0
+  },
+  "demo_steps_survived": 764,
+  "qpos_err_mean": 0.007378489628524072,
+  "torque_frac_mean": 0.2854371359914775,
+  "peak_tilt_deg": 43.03019793078621
+}

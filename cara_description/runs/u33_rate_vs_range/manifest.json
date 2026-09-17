@@ -1,0 +1,31 @@
+{
+  "workstream": "U33 -- separating range from update rate in the U32 teacher-replay failure",
+  "date": "2026-09-16",
+  "motivation": "U32 downsampled a SINGLE recorded 500Hz-native trajectory to 50Hz and clipped it to the RL action bounds -- frequency and clipping changed together, so their individual effects were confounded. U32's evidence established range VIOLATIONS, not that the teacher necessarily requires 500Hz specifically.",
+  "corrected_methodology": "gait.py's own control law (unmodified source) run ONLINE at each of 4 conditions, closed-loop, against the ACTUAL live simulation state at that condition -- never replaying commands recorded on a different state trajectory. mujoco.mj_step monkeypatched (as in U32) to intercept every physics substep: at 'decision boundaries' (every Nth call, N=1 for 500Hz or N=10 for 50Hz) the freshly-computed (LIVE-state-dependent) target is captured and clipped per that condition's bounds; on intermediate calls (50Hz conditions) data.ctrl is overwritten with the held target before the real physics step runs -- so gait.py's own feedback (e.g. the U9 lateral-roll trim, which reads live data.subtree_com each call) genuinely reacts to whatever actually happened under the held target, not to a fixed pre-computed script.",
+  "termination": "CaraWalkEnv's own rule (40deg tilt or 0.15m height) checked once per decision boundary (matching how CaraWalkEnv itself only ever evaluates termination once per control step) via a raised-and-caught sentinel exception -- gait.py's own source has no notion of failing early and was not modified to add one.",
+  "conditions_and_results": {
+    "500Hz_native": {
+      "description": "reference under replay conditions",
+      "result": "SURVIVED all 23,650 decision steps (47.3s). peak_tilt=4.4deg, fwd_dist=+0.058m.",
+      "note": "Confirms the replay harness itself reconciles with gait.py's own reported success (which also PASSED, 57mm advance) -- the reference condition is valid, so no need to fall back to reconciling conditions before drawing conclusions."
+    },
+    "500Hz_rl_bounds": {
+      "description": "isolates the effect of restricted authority ALONE (native 500Hz update rate, but every target clipped through CaraWalkEnv's normalize->clip[-1,1]->denormalize pipeline)",
+      "result": "FELL at decision step 3768 (7.5s), tilt=40.1deg."
+    },
+    "50Hz_native_bounds": {
+      "description": "isolates the effect of slower updates ALONE (50Hz decision rate, but targets clipped only to the model's own joint/actuator limits, not the +/-1 RL bound)",
+      "result": "FELL at decision step 303 (6.1s), tilt=42.0deg."
+    },
+    "50Hz_rl_bounds": {
+      "description": "both changes together -- the true closed-loop equivalent of U32",
+      "result": "FELL at decision step 427 (8.5s), tilt=42.0deg, fwd_dist=+0.144m before falling.",
+      "comparison_to_u32": "U32's naive resample-and-clip of a fixed 500Hz trajectory fell later (15.3s / control-step 764) with NET BACKWARD drift (-0.195m). This online closed-loop version falls SOONER (8.5s) but with positive forward progress right up to the fall. The two numbers genuinely differ -- confirming the concern that motivated this experiment: replaying commands recorded on a different (500Hz, unclipped) state trajectory is itself a distinct source of mismatch from true 50Hz closed-loop behavior, not just a proxy for it."
+    }
+  },
+  "decision_table_outcome": "BOTH isolated changes (500Hz/RL-bounds alone, AND 50Hz/native alone) cause failure independently. Per the pre-set decision rule: 'this teacher depends on both range AND rate -- widening ankle range alone will not transfer it.'",
+  "additional_observation": "All three failing conditions cross the 40deg threshold only marginally (40.1-42.0deg, not a catastrophic full topple past 90deg) and at broadly similar times (6.1-8.5s) -- these read as the SAME underlying marginal instability being triggered from slightly different angles (losing range, losing rate, or losing both), not three qualitatively different failure modes.",
+  "net_assessment": "Per instruction, this experiment measures what THIS controller requires -- not that all possible walking policies need the teacher's authority, and 1.76x the current normalized bound (from U32) means exceeding a provisional POLICY restriction, not necessarily physical actuator capability. Given both range and rate are independently necessary for this specific teacher's balance strategy, widening action_range_frac for ankle_roll alone would NOT be expected to make this teacher transfer through the 50Hz interface. Per the instruction's own guidance for this outcome: 'stop expanding bounds and consider retaining the teacher's fast balance feedback underneath a slower learned controller' -- i.e. a hierarchical design (fast, native-rate balance correction handled by a lower-level controller, with a slower learned policy operating above it) rather than trying to make one 50Hz policy replicate the teacher's full authority and bandwidth directly.",
+  "not_done_this_turn": "No ankle-roll range expansion attempted (correctly not warranted, since range-only widening would not address the independently-necessary rate dependency). No PPO, no behavior cloning. This was the deliverable: a replay that separates range from update rate, with internally consistent reward totals (fixed in the companion U32 update, see cara_description/runs/u32_demo_validate/)."
+}

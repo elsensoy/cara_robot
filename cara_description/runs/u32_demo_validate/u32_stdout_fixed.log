@@ -1,0 +1,64 @@
+=== recording gait.py's own controller (unmodified), n_steps=2 ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+
+  step  lead  advance   place ss margin  ss tilt  ss slip   τ% end tilt  verdict
+  ------------------------------------------------------------------------------
+     1    l_   30.7mm   5.3mm     5.6mm    2.2°    4.3mm  76    0.9°  PASS
+     2    r_   26.6mm   5.9mm     4.5mm    2.7°    3.9mm  76    0.9°  PASS
+
+  footwork (world x, mm -- shows each foot swinging past the other):
+  step swing foot   from x  -> to x   travel  peak lift  stance foot x         pelvis x
+     1          l      15       42      27     10.1mm            15      -1 ->   32
+     2          r      14       68      54     10.1mm            42      32 ->   58
+
+  final hold 3s: tilt 0.9°, COM drift 0.1 mm, 4 corners/foot  [OK]
+  total COM advance over 2 steps: 57 mm (steps: 31, 27 mm; commanded stride 24 mm/step)
+
+==========================================================================
+MILESTONE MET: Cara walks 2 quasi-static steps forward (57 mm), alternating legs, and ends standing.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+gait.py's own exit code: 0 (0 = its own milestone MET)
+recorded 23650 physics substeps
+CaraWalkEnv substeps/control-step: 10  ->  2365 control steps (47.3s at 50Hz)
+
+=== action-range check (a_j = (q_target-q_nominal)/offset_scale) ===
+out-of-range (|a_j|>1) entries: 3764 of 28380 (13.26%)
+  l_ankle_roll: 1340 entries, range [-1.02, 1.98]
+  r_ankle_roll: 1285 entries, range [-1.02, 1.94]
+  l_knee_pitch: 391 entries, range [1.00, 1.39]
+  l_ankle_pitch: 69 entries, range [-1.07, -1.00]
+  r_ankle_pitch: 272 entries, range [-1.66, -1.00]
+  r_knee_pitch: 407 entries, range [1.00, 1.48]
+
+=== replaying the demonstration through CaraWalkEnv (desired_vx=0.03) ===
+  steps survived: 764/2365  fell=True
+  genuine swing phases (>=60ms airborne): L=0 R=0
+  forward distance: -0.195m over 15.3s  achieved_vx(mean)=-0.0137 m/s (commanded 0.03 m/s)
+  DISCLOSURE: demonstrated speed is -45.8% of the commanded 0.03 m/s -- NOT assumed to match.
+  joint tracking error: mean=0.0074 rad  actuator saturation: mean=28.5% max=51.8%
+  peak tilt: 43.0 deg
+  TOTAL RETURN (current reward v4, desired_vx=0.03): 422.96 over 764 steps
+
+  VALID DEMONSTRATION: False (survived=False, both feet swung genuinely, net forward progress)
+
+=== comparison: zero action, over the SAME 764 control steps / 15.3s, desired_vx=0.03 ===
+  zero action: steps=764/764  fell=False  return=533.98
+  sliding policy (/home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u31_exploration_boost/u31_seed1.pt): steps=764/764  fell=False  return=561.40
+
+=== reward component breakdown (demo, summed over 764 non-terminal steps) ===
+  term           raw sum   weight    weighted
+  alive           763.00    1.000     763.000
+  vel             -32.62   10.000    -326.188
+  upright          -3.36    0.500      -1.680
+  effort         -216.75    0.010      -2.167
+  rate             -0.01    0.300      -0.002
+  collision         0.00    1.000       0.000
+  fall_penalty          --       --     -10.000
+  reconstructed total (sum of weighted terms + fall penalty): 422.96  (reported TOTAL RETURN above: 422.96 -- must match)
+
+=== decision readout ===
+  demo return: 422.96   zero-action return: 533.98   sliding-policy return: 561.40
+  -> INVALID DEMONSTRATION through this interface. Do not train on it; identify the specific interface/controller dependency that broke.
+
+saved -> /home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u32_demo_validate/u32_result_fixed.json

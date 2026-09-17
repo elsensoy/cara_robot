@@ -1,0 +1,56 @@
+{
+  "workstream": "U34 -- CaraResidualEnv: a separate residual-RL environment retaining the complete teacher at 500Hz, learned corrections at 50Hz. Integration milestone only -- NO PPO training this session.",
+  "date": "2026-09-17",
+  "architecture": {
+    "formula": "q_target(t) = limit(q_teacher(x_t, z_t) + dq_RL(t))",
+    "teacher_500hz": "gait.py's ENTIRE control law (unmodified source) -- phase state machine, swing tables, U9 lateral-roll balance trim -- recomputes from the CURRENT live simulator state every physics substep (2ms), exactly as it always has. Nothing extracted or re-derived (per instruction: extracting only the balance loop would introduce another untested controller).",
+    "policy_50hz": "requests a bounded correction dq_RL, held constant for 10 physics substeps (matching CaraWalkEnv's own substeps=10). The residual bound applies to dq_RL ONLY -- the combined command is never re-clipped to CaraWalkEnv's nominal-centered [-1,1] bound, which would recreate U32/U33's demonstrated failure.",
+    "final_limits": "joint limits only (mirrors gait.py's own behavior, which never self-clips beyond the model's physical range). Actuator FORCE limits are already enforced by MuJoCo's <position> servo + forcerange, unaffected.",
+    "mechanism": "gait.py's run()/walk() are deeply nested closures with no external pause hook. Implemented via a background thread running gait.py's own run() call, synchronized with the main thread at every mujoco.mj_step() call through a producer/consumer queue pair -- the same non-invasive monkeypatch technique as U32/U33, extended to hold ONLY the residual (not the full combined signal) between decision points so the teacher's own 500Hz reactivity is preserved between policy decisions."
+  },
+  "bug_found_and_fixed_before_trusting_anything": {
+    "description": "An earlier version held the FULL combined (teacher+residual) signal constant for all 10 substeps between decisions -- silently degrading the TEACHER itself to 50Hz too, discarding its intended 500Hz reactivity between policy decisions.",
+    "how_caught": "The zero-residual equivalence check (milestone 1, run BEFORE trusting the architecture) reproduced U33's 50Hz/native FAILURE (fell at decision step 303, tilt 42.0deg) instead of U33's 500Hz/native SUCCESS -- an unambiguous signal given U33's own numbers were already on record.",
+    "fix": "Only the residual (combined_target_at_decision - raw_teacher_target_at_decision) is held between decisions; the teacher's own contribution is re-read from data.ctrl (which gait.py freshly rewrites) on every intermediate substep and re-summed with the held residual before each physics step."
+  },
+  "milestone_1_zero_residual_equivalence": {
+    "requirement": "Match the full 47.3s trial -- actual steps, progress, stopping, peak tilt -- not just survival. Reset all teacher state correctly.",
+    "method": "Fresh background thread (fresh gait.run() call, fresh model/data) started on every reset() -- no state leakage between episodes by construction.",
+    "result_after_fix": {
+      "survived": "2365/2365 decisions (all of it), matching U33's 500Hz/native reference exactly on survival",
+      "peak_tilt_deg": {"u33_reference": 4.3915, "u34_zero_residual": 4.39},
+      "fwd_dist_m": {"u33_reference": 0.058269, "u34_zero_residual": 0.0583},
+      "gait_own_report": "gait.py's own printed output (a side effect of the background thread's call) shows the IDENTICAL result to its native run: step1 l_ PASS, step2 r_ PASS, 57mm total advance (31,27mm), MILESTONE MET.",
+      "measurement_resolution_caveat": "U34 samples tilt once per 50Hz decision (every 10th substep); U33's 500Hz condition sampled every substep. A true peak between U34's sample points could be missed -- the near-identical values (4.39 vs 4.3915) suggest this doesn't matter here (the reference trial has no violent transient), but it's a real resolution difference, disclosed rather than assumed negligible."
+    },
+    "status": "PASSED"
+  },
+  "milestone_2_residual_bound_probes": {
+    "requirement": "Start with a few physically interpretable corrections and measure their effect. Choose correction bounds from these probes, rather than copying action_range_frac=0.30.",
+    "method": "cara_description/scripts/probe_residual_bound.py -- a CONSTANT residual (same value every decision, for the WHOLE episode) applied to one joint pair at a time (ankle_roll, hip_roll), at several magnitudes and both signs, on top of the otherwise-unmodified teacher.",
+    "finding": "Results were ASYMMETRIC and mostly fragile, not a clean symmetric safe zone: for ankle_roll, +0.003 to +0.005 rad survived cleanly (peak tilt slightly BETTER than the zero-residual reference: 3.77-3.99deg vs 4.39deg), but the NEGATIVE direction failed at EVERY tested magnitude from -0.001 rad up to -0.05 rad. hip_roll showed the same pattern (+0.005 survived with a small tilt cost, -0.005 failed immediately).",
+    "interpretation": "A temporally-CONSTANT bias inevitably opposes the teacher's own alternating balance correction (U9's trim sign depends on which foot is currently stance, flipping every step) during roughly half the gait cycle -- this probe measures a WORST CASE (a residual with the wrong sign for the current phase), not what a phase-aware learned policy would actually do. It does not, by itself, identify a bidirectional safe magnitude; it establishes an upper bound on how large a phase-naive constant offset can be before it becomes unsafe in its worse-case sign.",
+    "chosen_default": "residual_bound_rad = 0.005 (radians) -- the largest tested magnitude where at least one sign survived cleanly with a real, interpretable, non-destabilizing effect (a small tilt improvement). Deliberately conservative: since the policy WILL be phase-conditioned (see milestone 3), the true safe range for a context-aware residual is very likely larger than what this worst-case, phase-blind probe could establish -- this default is a starting point for the not-yet-run PPO experiment, not a final answer.",
+    "not_done": "A phase-conditional probe (e.g., a residual that flips sign with the teacher's own stance-side convention) would more fairly probe the achievable range, but was not built this session -- flagged as a natural next refinement if 0.005 rad proves too restrictive once training starts."
+  },
+  "milestone_3_controller_context_exposed": {
+    "requirement": "Include gait phase/support mode, current teacher targets, and previous applied residual, alongside proprioception. Document any teacher inputs that currently require privileged simulator state.",
+    "observation_vector_65d": {
+      "proprioception_30d": "12 joint positions + 12 joint velocities + 3 projected-gravity components + 3 base angular velocity components -- all available via ordinary IMU + joint encoders on real hardware, not privileged.",
+      "controller_context_10d": "8-way one-hot gait phase (settle/A/B/C/D/E/final_hold/done) + 2 foot-contact booleans (support mode) -- phase computed via EXACT arithmetic on the physics-substep counter against gait.py's own scripted phase durations (settle=750, ramp=2000, swing=2000, etc. substeps, all read from the YAML config, cross-checked once against U33's own recorded total of 23650 substeps for n_steps=2) -- not extracted from gait.py's internals, since it exposes no hook for this. Support mode from ACTUAL simulated foot-floor contact, an honestly observable (not scripted) quantity.",
+      "teacher_and_residual_24d": "12 current teacher target values (radians, offset from nominal) + 12 previous applied residual values.",
+      "command_1d": "desired_vx (fixed per-episode for this integration milestone)."
+    },
+    "privileged_state_disclosure": "gait.py's OWN control law (unchanged, per instruction) reads data.subtree_com -- the exact rigid-body center of mass -- every substep for its lateral balance trim. This is genuinely privileged: real hardware would need a full CAD mass model plus forward kinematics (or a dynamic estimator) to approximate it, not a direct sensor reading. Swing-foot height and stance-foot position (data.geom_xpos) are approximable via forward kinematics from joint encoders. Base orientation (qpos[3:7]) is an ordinary IMU-equivalent quantity. This dependency belongs to the TEACHER, which per instruction is retained unchanged -- it does not appear directly in the POLICY's own observation vector above, but the teacher's resulting targets (which the policy does see) are downstream of it.",
+    "status": "IMPLEMENTED"
+  },
+  "milestone_4_reward_accounting_at_50hz": {
+    "requirement": "The teacher's ten internal updates must not multiply the alive reward. Separate penalties on residual changes from measurements of total commanded motion.",
+    "implementation": "Reward computed exactly ONCE per env.step() call (i.e. once per 10 physics substeps / once per 50Hz decision), using the state AFTER those 10 substeps complete -- structurally cannot be multiplied by the teacher's internal update count, since the teacher's substep-level activity is entirely inside the background thread and never triggers a separate reward evaluation.",
+    "components": "alive (+1/step), vel (tracking desired_vx), upright (sign-corrected v4 formula, same as CaraWalkEnv), effort (on the COMBINED command's fractional deviation from nominal -- a measurement of TOTAL commanded motion, logged and weighted), residual_rate (on the RESIDUAL's own step-to-step change ONLY, normalized by residual_bound_rad -- kept SEPARATE from the effort/total-motion term, per instruction). info['total_commanded_motion'] also exposed directly as an unweighted measurement.",
+    "status": "IMPLEMENTED"
+  },
+  "hardware_dependency_recorded": "Retaining 500Hz feedback in simulation does not establish that eventual sensors and servos can support a 500Hz control loop. Recorded here for actuator/controller selection: if this architecture is carried toward hardware, the TEACHER's control rate (not just the RL policy's 50Hz) is a real hardware requirement to validate separately.",
+  "frozen_comparison_preserved": "cara_env.py / CaraWalkEnv is completely untouched -- this is a NEW, separate module (cara_residual_env.py). Regression-checked after this work: CaraWalkEnv's zero-action self-test and reward_audit.py both still pass unchanged.",
+  "not_done_this_turn": "No PPO training, no behavior cloning, no comparison of teacher-only vs teacher+residual under a disturbance family (that is explicitly RL's first objective, gated on this integration milestone, which is what was delivered here). No U31 actor reuse (correctly not done -- its actions have a different meaning, as instructed). Residual actor's mean initialization at zero is a design note for the not-yet-built training script, not implemented here since no actor exists yet."
+}

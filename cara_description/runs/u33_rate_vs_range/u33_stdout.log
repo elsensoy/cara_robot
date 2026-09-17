@@ -1,0 +1,42 @@
+
+=== 500Hz / native teacher targets (reference under replay conditions) ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+
+  step  lead  advance   place ss margin  ss tilt  ss slip   τ% end tilt  verdict
+  ------------------------------------------------------------------------------
+     1    l_   30.7mm   5.3mm     5.6mm    2.2°    4.3mm  76    0.9°  PASS
+     2    r_   26.6mm   5.9mm     4.5mm    2.7°    3.9mm  76    0.9°  PASS
+
+  footwork (world x, mm -- shows each foot swinging past the other):
+  step swing foot   from x  -> to x   travel  peak lift  stance foot x         pelvis x
+     1          l      15       42      27     10.1mm            15      -1 ->   32
+     2          r      14       68      54     10.1mm            42      32 ->   58
+
+  final hold 3s: tilt 0.9°, COM drift 0.1 mm, 4 corners/foot  [OK]
+  total COM advance over 2 steps: 57 mm (steps: 31, 27 mm; commanded stride 24 mm/step)
+
+==========================================================================
+MILESTONE MET: Cara walks 2 quasi-static steps forward (57 mm), alternating legs, and ends standing.
+  U10's step chained + alternated; U9's roll trim on the position PD. no gait optimisation, no dynamic walking, no RL. (provisional masses / gains / friction / foot size)
+  SURVIVED all 23650 decision steps (47.3s)  peak_tilt=4.4deg  fwd_dist=+0.058m
+
+=== 500Hz / current RL bounds (isolates restricted authority) ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+  FELL at decision step 3768 (7.5s), reason=tilt, tilt=40.1deg
+
+=== 50Hz / native teacher targets (isolates slower updates) ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+  FELL at decision step 303 (6.1s), reason=tilt, tilt=42.0deg
+
+=== 50Hz / current RL bounds (reproduces U32) ===
+Short walk (U11)  base 'stand_nominal'  cara_full_body
+4.43 kg (43.5 N)  |  2 steps, stride 24 mm, COM shift 0.028 m, lift 10 mm  |  U9 lateral roll trim kp 50/15 kd 10
+  FELL at decision step 427 (8.5s), reason=tilt, tilt=42.0deg
+
+=== decision readout ===
+  BOTH isolated changes cause failure: this teacher depends on both range AND rate -- widening ankle range alone will not transfer it.
+
+saved -> /home/elida_sensoy/cara_robot/cara_robot/cara_description/runs/u33_rate_vs_range/u33_result.json
