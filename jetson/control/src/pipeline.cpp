@@ -9,8 +9,26 @@ static float clamp01(float x) { return std::clamp(x, 0.f, 1.f); }
 
 // ---------------------------------------------------------------------------
 
-const HealthState& HealthEstimator::update(const PowerSample& s) {
-    if (!s.valid) return st_;   // dropped read: hold the last estimate
+const HealthState& HealthEstimator::update(const PowerSample& s, const PerJointCurrentSample* per_joint) {
+    // s.t_s is set by the driver whether or not the read succeeded, so this
+    // stays a meaningful dt even through a run of failed reads.
+    const double dt = (t_last_call_ >= 0.0) ? std::max(0.0, s.t_s - t_last_call_) : 0.0;
+    t_last_call_ = s.t_s;
+
+    const auto gstate = telemetry_gate_.update(!s.valid);
+    st_.telemetry_state = PersistenceGate::label(gstate);
+
+    if (gstate == PersistenceGate::State::Fault) {
+        // Telemetry has been down long enough that "last known good" is no
+        // longer something to act on as if it were current: decay toward a
+        // conservative floor instead of silently reporting the old reading
+        // forever, however healthy it happened to look when it stopped.
+        st_.system = std::max(cfg_.stale_health_floor,
+                               static_cast<double>(st_.system) - cfg_.stale_decay_per_s * dt);
+        updatePerJoint(nullptr);
+        return st_;
+    }
+    if (!s.valid) return st_;   // degraded but not yet faulted: hold the last estimate, as before
 
     if (!init_) {
         i_ema_ = s.current_ma;
@@ -31,15 +49,35 @@ const HealthState& HealthEstimator::update(const PowerSample& s) {
     const float h = clamp01(std::min(ch, vh));
 
     st_.system = h;
-    st_.per_servo.fill(h);        // mirror the scalar — NOT real attribution yet
-    st_.per_servo_valid = false;  // flip this only when per-joint telemetry lands
     st_.current_ema_ma  = i_ema_;
     st_.voltage_ema_v   = v_ema_;
     st_.label =
         (i_ema_ > cfg_.critical_current_ma || v_ema_ < cfg_.critical_voltage_v) ? "critical" :
         (i_ema_ > cfg_.warn_current_ma     || v_ema_ < cfg_.warn_voltage_v)     ? "warn"     :
                                                                                  "ok";
+
+    updatePerJoint(per_joint, vh);
     return st_;
+}
+
+void HealthEstimator::updatePerJoint(const PerJointCurrentSample* pj, float voltage_health) {
+    if (!pj || !pj->present) {
+        st_.per_servo.fill(st_.system);  // mirror the scalar — NOT real attribution
+        st_.per_servo_valid = false;     // flip only when a real per-joint source is wired
+        return;
+    }
+
+    for (int j = 0; j < NUM_SERVOS; ++j) {
+        if (pj->channel_valid[j]) {
+            if (!pj_init_[j]) { pj_ema_[j] = pj->current_ma[j]; pj_init_[j] = true; }
+            else pj_ema_[j] += cfg_.current_alpha * (pj->current_ma[j] - pj_ema_[j]);
+        }
+        // else: hold that joint's last EMA, same "dropped read holds" policy as the aggregate.
+        const float ch = 1.f - (pj_ema_[j] - cfg_.idle_current_per_joint_ma) /
+                               (cfg_.critical_current_per_joint_ma - cfg_.idle_current_per_joint_ma);
+        st_.per_servo[j] = clamp01(std::min(ch, voltage_health));
+    }
+    st_.per_servo_valid = true;
 }
 
 // ---------------------------------------------------------------------------

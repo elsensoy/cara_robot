@@ -11,14 +11,25 @@
 // follows /joint_commands — the same trajectory_msgs/JointTrajectory the
 // actuator node consumes — so the health controller sees Cara's real commanded
 // motion. Set `setpoint_topic` to "" for the internal demo gait instead.
+//
+// Telemetry trust: ImuGuard (staleness / frozen-data / commanded-vs-measured
+// mismatch, see cara_control/diagnostics.hpp) gates the IMU, and
+// HealthEstimator runs its own persistence gate on power-telemetry validity
+// -- both published (/cara/imu/state, /cara/health/telemetry_state) alongside
+// the existing severity/value topics. `per_joint_addrs` (hw only, 0 or
+// NUM_SERVOS ints) wires real per-joint current sensing; empty (default)
+// leaves /cara/health/per_servo mirroring the aggregate, per_servo_valid=false.
 
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
+#include <cstring>
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float32.hpp"
@@ -26,8 +37,10 @@
 #include "std_msgs/msg/string.hpp"
 #include "trajectory_msgs/msg/joint_trajectory.hpp"
 
+#include "cara_control/diagnostics.hpp"
 #include "cara_control/pipeline.hpp"
 #include "cara_control/sources.hpp"
+#include "std_msgs/msg/bool.hpp"
 
 namespace {
 // Channel index for a joint name in the shared servo table, or -1.
@@ -67,24 +80,45 @@ public:
                   setpoint_topic_.c_str(), setpoint_timeout_s_);
     }
 
+    // Per-joint current sensing: empty (default) = not wired, exactly like
+    // main.cpp's --per-joint-addrs. On "hw" a non-empty list must have one
+    // address per servo. On "sim" it's ignored -- SimPerJointPower is free.
+    const auto per_joint_addrs_i64 =
+      declare_parameter<std::vector<int64_t>>("per_joint_addrs", {});
+
     try {
       if (source == "hw") {
         imu_src_ = cara::makeBno055Imu(bus, imu_addr);
         pwr_src_ = cara::makeIna219Power(bus, ina_addr);
         hw_ = true;
+        if (per_joint_addrs_i64.empty()) {
+          pj_src_ = cara::makeNullPerJointPower();
+        } else if (static_cast<int>(per_joint_addrs_i64.size()) != cara::NUM_SERVOS) {
+          RCLCPP_FATAL(get_logger(), "per_joint_addrs needs exactly %d addresses, got %zu",
+                       cara::NUM_SERVOS, per_joint_addrs_i64.size());
+          throw std::runtime_error("bad per_joint_addrs length");
+        } else {
+          std::vector<int> addrs(per_joint_addrs_i64.begin(), per_joint_addrs_i64.end());
+          pj_src_ = cara::makeIna219MultiPower(bus, addrs);
+        }
       } else {
         imu_src_ = cara::makeSimImu();
         pwr_src_ = cara::makeSimPower();
+        pj_src_  = cara::makeSimPerJointPower();
       }
     } catch (const std::exception & e) {
       RCLCPP_FATAL(get_logger(), "source init failed: %s", e.what());
       throw;
     }
 
-    pub_health_  = create_publisher<std_msgs::msg::Float32>("/cara/health/system", 10);
-    pub_state_   = create_publisher<std_msgs::msg::String>("/cara/health/state", 10);
-    pub_current_ = create_publisher<std_msgs::msg::Float32>("/cara/health/servo_rail_current_ma", 10);
-    pub_voltage_ = create_publisher<std_msgs::msg::Float32>("/cara/health/servo_rail_voltage_v", 10);
+    pub_health_    = create_publisher<std_msgs::msg::Float32>("/cara/health/system", 10);
+    pub_state_     = create_publisher<std_msgs::msg::String>("/cara/health/state", 10);
+    pub_telemetry_ = create_publisher<std_msgs::msg::String>("/cara/health/telemetry_state", 10);
+    pub_current_   = create_publisher<std_msgs::msg::Float32>("/cara/health/servo_rail_current_ma", 10);
+    pub_voltage_   = create_publisher<std_msgs::msg::Float32>("/cara/health/servo_rail_voltage_v", 10);
+    pub_per_servo_       = create_publisher<std_msgs::msg::Float32MultiArray>("/cara/health/per_servo", 10);
+    pub_per_servo_valid_ = create_publisher<std_msgs::msg::Bool>("/cara/health/per_servo_valid", 10);
+    pub_imu_state_ = create_publisher<std_msgs::msg::String>("/cara/imu/state", 10);
     pub_gain_    = create_publisher<std_msgs::msg::Float32>("/cara/control/gain", 10);
     pub_obs_     = create_publisher<std_msgs::msg::Float32MultiArray>("/cara/control/observation", 10);
     pub_action_  = create_publisher<std_msgs::msg::Float32MultiArray>("/cara/control/action", 10);
@@ -106,8 +140,9 @@ public:
       std::chrono::duration_cast<std::chrono::nanoseconds>(period),
       std::bind(&CaraControlNode::step, this));
 
-    RCLCPP_INFO(get_logger(), "cara_control_node: %s mode, %.0f Hz",
-                hw_ ? "HARDWARE" : "SIM", rate_hz_);
+    RCLCPP_INFO(get_logger(), "cara_control_node: %s mode, %.0f Hz, per-joint current %s",
+                hw_ ? "HARDWARE" : "SIM", rate_hz_,
+                (hw_ && per_joint_addrs_i64.empty()) ? "not wired" : "on");
   }
 
 private:
@@ -166,14 +201,27 @@ private:
     const float  dt = static_cast<float>(t - t_prev_);
     t_prev_ = t;
 
-    const cara::PowerSample        ps = pwr_src_->read();
-    const cara::ImuSample          is = imu_src_->read();
-    const cara::ServoCommandSample sp = current_setpoint(t);
+    const cara::PowerSample           ps     = pwr_src_->read();
+    const cara::PerJointCurrentSample pjs    = pj_src_->read();
+    const cara::ImuSample             is_raw = imu_src_->read();
+    // action_ still holds the previous tick's committed, safety-filtered
+    // command here -- what's actually driving the servos right now, which is
+    // what this reading's motion should be checked against.
+    const cara::ImuSample             is     = imu_guard_.update(is_raw, action_, t);
+    const cara::ServoCommandSample    sp     = current_setpoint(t);
 
-    const cara::HealthState & hs = health_.update(ps);
+    const cara::HealthState & hs = health_.update(ps, &pjs);
     obs_builder_.build(is, sp, hs, obs_);
     controller_.compute(obs_, sp, action_);
     safety_.apply(dt > 0.f ? dt : static_cast<float>(1.0 / rate_hz_), action_);
+
+    const auto & imu_diag = imu_guard_.diagnostics();
+    if (imu_diag.frozen_suspected)
+      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000, "IMU: frozen data suspected");
+    if (imu_diag.motion_mismatch)
+      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000, "IMU: commanded-still but measured motion");
+    if (std::strcmp(hs.telemetry_state, "fault") == 0)
+      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000, "power telemetry fault -- health decaying toward floor");
 
     std_msgs::msg::Float32 f;
     f.data = hs.system;               pub_health_->publish(f);
@@ -182,8 +230,17 @@ private:
     f.data = controller_.last_gain(); pub_gain_->publish(f);
 
     std_msgs::msg::String s;
-    s.data = hs.label;
-    pub_state_->publish(s);
+    s.data = hs.label;             pub_state_->publish(s);
+    s.data = hs.telemetry_state;   pub_telemetry_->publish(s);
+    s.data = imu_diag.state;       pub_imu_state_->publish(s);
+
+    std_msgs::msg::Bool b;
+    b.data = hs.per_servo_valid;
+    pub_per_servo_valid_->publish(b);
+
+    std_msgs::msg::Float32MultiArray per_servo_msg;
+    per_servo_msg.data.assign(hs.per_servo.begin(), hs.per_servo.end());
+    pub_per_servo_->publish(per_servo_msg);
 
     std_msgs::msg::Float32MultiArray obs_msg;
     obs_msg.data.assign(obs_.data.begin(), obs_.data.end());
@@ -203,20 +260,23 @@ private:
   cara::ServoCommandSample sp_{};              // latest external setpoint
   bool                     got_setpoint_ = false;
 
-  std::unique_ptr<cara::ImuSource>      imu_src_;
-  std::unique_ptr<cara::PowerSource>    pwr_src_;
-  std::unique_ptr<cara::SetpointSource> gait_src_;   // null when a topic drives the setpoint
+  std::unique_ptr<cara::ImuSource>           imu_src_;
+  std::unique_ptr<cara::PowerSource>         pwr_src_;
+  std::unique_ptr<cara::PerJointPowerSource> pj_src_;
+  std::unique_ptr<cara::SetpointSource>      gait_src_;   // null when a topic drives the setpoint
 
   cara::HealthEstimator      health_;
   cara::ObservationBuilder   obs_builder_;
   cara::HandwrittenController controller_;
   cara::SafetyFilter         safety_;
+  cara::ImuGuard             imu_guard_;
   cara::Observation          obs_;
   cara::Action               action_;
 
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr pub_health_, pub_current_, pub_voltage_, pub_gain_;
-  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pub_state_;
-  rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr pub_obs_, pub_action_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pub_state_, pub_telemetry_, pub_imu_state_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_per_servo_valid_;
+  rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr pub_obs_, pub_action_, pub_per_servo_;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr sub_fault_;
   rclcpp::Subscription<trajectory_msgs::msg::JointTrajectory>::SharedPtr sub_setpoint_;
   rclcpp::TimerBase::SharedPtr timer_;

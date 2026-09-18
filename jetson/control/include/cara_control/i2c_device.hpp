@@ -35,6 +35,18 @@ public:
     I2CDevice(const I2CDevice&)            = delete;
     I2CDevice& operator=(const I2CDevice&) = delete;
 
+    // Movable (not just copyable-deleted) so it can live in a std::vector --
+    // used to hold one open device per joint's current-sense chip.
+    I2CDevice(I2CDevice&& other) noexcept : fd_(other.fd_) { other.fd_ = -1; }
+    I2CDevice& operator=(I2CDevice&& other) noexcept {
+        if (this != &other) {
+            if (fd_ >= 0) ::close(fd_);
+            fd_ = other.fd_;
+            other.fd_ = -1;
+        }
+        return *this;
+    }
+
     void write8(std::uint8_t reg, std::uint8_t v) {
         if (i2c_smbus_write_byte_data(fd_, reg, v) < 0)
             throw std::runtime_error("i2c write8 failed");

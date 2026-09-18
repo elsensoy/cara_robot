@@ -7,22 +7,32 @@ run in simulation and on Cara — the only swap later is `HandwrittenController`
 → exported RL policy.
 
 ```
-BNO055 ──┐
-         ├──► ObservationBuilder ──► Controller ──► SafetyFilter ──► servos
-INA219 ──┴──► HealthEstimator ──┘
-             system_health ∈ [0,1]
+BNO055 ──► ImuGuard ──┐
+                      ├──► ObservationBuilder ──► Controller ──► SafetyFilter ──► servos
+INA219 (+ per-joint) ──┴──► HealthEstimator ──┘
+                          system_health ∈ [0,1]
 ```
 
-## The `system_health` vs per-servo distinction (kept on purpose)
+`ImuGuard` and `HealthEstimator`'s `telemetry_state` are the "can I trust
+this sensor" layer, separate from what the sensor is reporting: staleness, a
+frozen/derivative-implausibility check (real sensor noise doesn't repeat
+bit-for-bit), and a commanded-vs-measured motion cross-check, all behind a
+`PersistenceGate` so one dropped read doesn't flip a trust verdict either
+way. See `diagnostics.hpp` and the "Diagnostics" section below.
 
-| | now | later |
+## The `system_health` vs per-servo distinction
+
+| | without `--per-joint-addrs` (default) | with it wired |
 |---|---|---|
 | `HealthState::system` | **the trustworthy field** — one scalar from the aggregate servo-rail INA219 | unchanged |
-| `HealthState::per_servo` | mirrors `system`; `per_servo_valid == false` | filled once telemetry allows per-joint attribution; flip the flag |
-| `Observation` | appends `system_health` as the last element (`OBS_SIZE = 14`) | append the `per_servo` vector, grow `OBS_SIZE` by `NUM_SERVOS` |
+| `HealthState::per_servo` | mirrors `system`; `per_servo_valid == false` | real per-joint EMA health, `per_servo_valid == true` |
+| `Observation` | appends `system_health` as the last element (`OBS_SIZE = 14`) | unchanged — the per-joint vector isn't in the observation yet, only in `HealthState` for now |
 
-`HealthEstimator::update()` and `ObservationBuilder::build()` each carry a
-`LATER:` comment at the exact spot the per-servo path plugs in.
+The per-joint current-sensing path (`PerJointPowerSource`, `Ina219MultiPower`)
+is real, wired, and exercised in `--sim` by default (`SimPerJointPower`). On
+hardware it stays a no-op (`per_servo_valid == false`, mirroring `system`
+exactly as before) until `--per-joint-addrs` names real INA219 addresses —
+one per servo, needs the A0–A5 pins strapped to distinct addresses.
 
 ## Build
 
@@ -46,7 +56,9 @@ Needs `libi2c-dev` (already on the Jetson). On a machine without it:
 ```
 
 Flags: `--rate HZ` (default 50), `--duration S` (0 = forever), `--bus N`
-(default 1), `--ina-addr 0x45`, `--imu-addr 0x28`.
+(default 1), `--ina-addr 0x45`, `--imu-addr 0x28`, `--per-joint-addrs
+0xNN,...` (7 addresses, hw only, see above), `--test-imu-freeze` /
+`--test-power-dropout` (sim only, see "Diagnostics" below).
 
 ### What to look for in `--sim`
 
@@ -56,17 +68,54 @@ down ~0.98 → ~0.32, and the `action` amplitudes shrink (shoulder ±0.19 →
 ±0.06 rad) — then everything recovers. That is the behavioural response to the
 health input, with no reward function involved.
 
+## Diagnostics
+
+Log columns (`--sim`, `--duration 20`): `sev` is `HealthEstimator`'s existing
+power-level severity (`ok`/`warn`/`critical`); `tlm` is its new
+`telemetry_state` — do we trust that severity at all right now
+(`ok`/`degraded`/`fault`); `imu` is `ImuGuard`'s own verdict on the IMU
+specifically; `pj` is the minimum per-joint health (`-1.00` when no
+per-joint source is present).
+
+Three things are checked before anything downstream trusts a sample:
+
+- **Staleness** — a sample whose timestamp is older than `max_age_s` counts
+  as bad, same as a failed read.
+- **Frozen / derivative-implausible data** — `ImuGuard` compares consecutive
+  IMU samples bit-for-bit; real sensor noise doesn't repeat exactly, so
+  several identical readings in a row (`frozen_repeat_trip`, default 5) is
+  treated as a suspected fault, not a legitimately still robot.
+- **Commanded-vs-measured motion mismatch** — the last safety-filtered servo
+  command is a second, independent prediction of how the robot should be
+  moving. If it's been holding still for `still_hold_s` and the IMU keeps
+  reporting angular velocity above `resting_wobble_rad_s`, that's flagged.
+
+All three feed one `PersistenceGate` (`diagnostics.hpp`): trips `fault`
+after `trip` consecutive bad ticks (default 3, ~60ms at 50Hz), clears back
+to `ok` only after `clear` consecutive good ticks (default 10, ~200ms) —
+quick to distrust, slower to trust again. `HealthEstimator` runs its own
+gate on power-telemetry validity; once that trips, `system` decays toward
+`stale_health_floor` (default 0.5) instead of holding whatever the last good
+reading said, forever.
+
+Exercise both detectors with no hardware: `--sim --test-imu-freeze` latches
+the simulated IMU output for part of each 16s cycle; `--sim
+--test-power-dropout` makes the simulated power source report failed reads
+for part of each cycle. Both recover on their own once the window closes —
+watch the `imu`/`tlm` columns flip to `fault` and back.
+
 ## Components
 
 | File | Role |
 |---|---|
-| `types.hpp` | `NUM_SERVOS`, joint table (from `arduino/main.cpp`), `Observation`/`Action` layout |
-| `HealthEstimator` | EMA + threshold logic ported from `tests/cara_power_monitor.py`, mapped to `[0,1]` |
+| `types.hpp` | `NUM_SERVOS`, joint table (from `arduino/main.cpp`), `Observation`/`Action`/`HealthState` layout, `PerJointCurrentSample`, `ImuDiagnostics` |
+| `diagnostics.hpp/.cpp` | `PersistenceGate` (hysteresis), `ImuGuard` (staleness + frozen-data + motion-mismatch, gated) |
+| `HealthEstimator` | EMA + threshold logic ported from `tests/cara_power_monitor.py`, mapped to `[0,1]`; own telemetry `PersistenceGate`; per-joint EMA when a `PerJointPowerSource` is present |
 | `ObservationBuilder` | commanded joint pos + projected gravity + base ang-vel + `system_health` |
 | `HandwrittenController` | dumb: scales gait amplitude by health and IMU wobble. **The seam the RL policy replaces.** |
 | `SafetyFilter` | clamps to per-joint limits + rate-limits — last line before the servos |
-| `sources_sim.cpp` | synthetic IMU/power/gait with a shared fault timeline |
-| `sources_hw.cpp` | `Ina219Power`, `Bno055Imu` (on `tests/imu_test.cpp`'s `I2CDevice`), `SerialOutput` (`S<ch>,<deg>` to the Nano) |
+| `sources_sim.cpp` | synthetic IMU/power/gait with a shared fault timeline; `SimPerJointPower`; `--test-imu-freeze`/`--test-power-dropout` injection |
+| `sources_hw.cpp` | `Ina219Power`, `Ina219MultiPower` (per-joint), `Bno055Imu` (on `tests/imu_test.cpp`'s `I2CDevice`), `SerialOutput` (`S<ch>,<deg>` to the Nano) |
 
 ## ROS 2 integration (`ros2_ws/src/cara_control`)
 
@@ -74,6 +123,15 @@ health input, with no reward function involved.
 pipeline sources from this directory (single source of truth) and runs them on a
 50 Hz timer. Observation-only — it never commands servos — so it is safe to run
 alongside `cara_stack.launch.py`.
+
+**Not yet wired into the ROS node:** `ImuGuard` and the per-joint power path.
+`cara_control_node.cpp` still calls `health_.update(ps)` with no per-joint
+sample and consumes `imu_src_->read()` directly, so it compiles unchanged
+against the extended `HealthEstimator` (the new parameter defaults to
+`nullptr`) but doesn't get the new trust checks — only the standalone
+`cara_control` binary does. Wiring them in is mechanical (same pattern as
+`main.cpp`'s loop) but deliberately not done here yet, to keep this change
+reviewable in one piece.
 
 ```bash
 # in the container

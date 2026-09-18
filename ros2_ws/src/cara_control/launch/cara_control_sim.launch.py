@@ -33,6 +33,10 @@ def generate_launch_description():
                 "imu_addr": 0x28,
                 "setpoint_topic": LaunchConfiguration("setpoint_topic"),
                 "setpoint_timeout_s": 0.5,
+                # Per-joint current sensing (hw only): 0 or 7 INA219 addresses,
+                # one per servo. Empty = not wired; per_servo mirrors the
+                # aggregate and per_servo_valid stays false, as before.
+                "per_joint_addrs": [],
             }],
         ),
     ])

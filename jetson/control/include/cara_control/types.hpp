@@ -48,8 +48,9 @@ struct ServoCommandSample {
 };
 
 struct ImuSample {
-    double t_s   = 0.0;
-    bool   valid = false;
+    double        t_s   = 0.0;
+    std::uint32_t seq   = 0;                // increments once per read() call, good or bad
+    bool          valid = false;
     float  roll_rad  = 0.f;
     float  pitch_rad = 0.f;
     float  yaw_rad   = 0.f;
@@ -57,10 +58,35 @@ struct ImuSample {
 };
 
 struct PowerSample {
-    double t_s   = 0.0;
-    bool   valid = false;
+    double        t_s   = 0.0;
+    std::uint32_t seq   = 0;
+    bool          valid = false;
     float  bus_voltage_v = 0.f;
     float  current_ma    = 0.f;             // servo-rail aggregate
+};
+
+// Per-joint current, once wiring supports it (one current-sense channel per
+// servo instead of one aggregate rail reading). `present == false` means no
+// per-joint source is configured at all -- consumers should fall back to the
+// aggregate `PowerSample` path, not treat this as a failed read.
+struct PerJointCurrentSample {
+    double        t_s     = 0.0;
+    std::uint32_t seq     = 0;
+    bool          present = false;
+    std::array<bool,  NUM_SERVOS> channel_valid{};   // per-channel read success
+    std::array<float, NUM_SERVOS> current_ma{};
+};
+
+// ---- Diagnostics ----------------------------------------------------------
+
+// ImuGuard's verdict (see diagnostics.hpp). Kept separate from ImuSample
+// itself so "what the sensor said" and "whether we believe it" don't get
+// merged into one ambiguous field.
+struct ImuDiagnostics {
+    const char* state = "ok";       // ok | degraded | fault -- persistence-gated verdict
+    bool stale            = false;  // sample older than the configured max age
+    bool frozen_suspected = false;  // consecutive bit-identical readings (derivative implausibility)
+    bool motion_mismatch  = false;  // commanded "hold still", IMU keeps reporting motion
 };
 
 // ---- Health -------------------------------------------------------------
@@ -78,7 +104,8 @@ struct HealthState {
     // Diagnostics (not part of the observation vector):
     float       current_ema_ma = 0.f;
     float       voltage_ema_v  = 0.f;
-    const char* label          = "ok";              // ok | warn | critical
+    const char* label          = "ok";              // ok | warn | critical -- power-LEVEL severity
+    const char* telemetry_state = "ok";             // ok | degraded | fault -- do we trust `label` at all
 };
 
 // ---- Observation / Action --------------------------------------------------
