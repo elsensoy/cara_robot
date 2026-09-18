@@ -162,16 +162,44 @@ the policy learns its own coordination):
 - **Measured, not necessarily rewarded:** actual foot clearance and
   touchdown, torque saturation, tracking error, distance travelled.
 
-**Roadmap:** (1) stabilize the ankle controller [substantially done, U18 —
-fix identified, not yet wired in] → (2) freeze DCM, keep the model's
-validated milestones as regression [done] → (3) build reset/step/obs/reward
-around the model → (4) train nominal flat-ground walk-and-stop with fixed
-dynamics → (5) add domain randomization (mass/CoM, friction, actuator
-strength, delay, sensor noise, pushes) → (6) add adaptation (recurrent
-policy / history, compared against the robust baseline on held-out
-changes). The first adaptation question is narrow: *can Cara maintain or
-recover walking when payload, friction, or actuator strength change
-unexpectedly?*
+**Roadmap, progress as of U35:**
+
+1. stabilize the ankle controller — ✅ substantially done (U18): a real
+   ankle software-PD instability was root-caused to a saturation-induced
+   limit cycle in the torque PD loop; a contact-gated fix (`kd` low while a
+   foot is unloaded, high while loaded) was found and validated, but not
+   wired into the live DCM controller.
+2. freeze DCM, keep the model's validated milestones as regression — ✅ done.
+3. build reset/step/obs/reward around the model — ✅ done (U19):
+   `CaraWalkEnv`, a from-scratch Gym-style environment — does **not**
+   inherit `dcm_walk`'s footstep schedule, by design.
+4. train nominal flat-ground walk-and-stop with fixed dynamics — 🔶 open,
+   with real negative results kept rather than hidden. ARS and PPO training
+   (U20–U33) converged to safe-but-not-walking local optima, after two
+   genuine reward-design bugs were found and fixed by inspecting reward
+   components first (an early-termination exploit; a velocity term too weak
+   relative to the alive bonus). A direct ablation (U33) then showed the
+   *hand-written* DCM controller itself needs its full 500 Hz / full-range
+   authority to balance — it can't be naively downsampled into a 50 Hz
+   policy — which motivated a pivot to a teacher/student **residual-RL**
+   architecture instead of more training on the same design: the existing
+   controller keeps running at 500 Hz, a learned policy contributes only a
+   small, bounded correction at 50 Hz (U34, `CaraResidualEnv`). Before
+   spending training budget on that comparison, a pre-check (U35) found the
+   *teacher's* own gait has a narrow, magnitude-insensitive fragility at one
+   specific phase transition (a lateral-balance reference that latches from
+   a single instantaneous sample) — even the strongest possible
+   reference-level fix doesn't rescue it. Current open question:
+   characterizing what's physically different at that transition (velocity,
+   momentum, contact state), not tuning the residual interface further.
+5. add domain randomization (mass/CoM, friction, actuator strength, delay,
+   sensor noise, pushes) — ⏳ not started, gated on 4.
+6. add adaptation (recurrent policy / history, compared against the robust
+   baseline on held-out changes) — ⏳ not started, gated on 5. The first
+   adaptation question is narrow: *can Cara maintain or recover walking when
+   payload, friction, or actuator strength change unexpectedly?*
+
+Full story: [`cara_description/docs/rl_environment_notes.md`](cara_description/docs/rl_environment_notes.md).
 
 ```
 MuJoCo (from cara_description) → RL policy → ONNX → ROS 2 → PCA9685 → servos
@@ -302,6 +330,23 @@ the controller stage is swapped. Brought up by `cara_stack.launch.py`
 (`health_source:=sim` for a synthetic timeline with a scripted fault, or `hw`
 for the real BNO055 + INA219). Full topic / parameter reference:
 [`jetson/control/README.md`](jetson/control/README.md).
+
+**Telemetry trust, not just telemetry:** a successful I²C read is no longer
+treated as automatically trustworthy. `ImuGuard` gates the IMU on staleness,
+a derivative-implausibility check (bit-identical consecutive readings —
+real sensor noise doesn't repeat), and a commanded-vs-measured motion
+cross-check (the servo command is a second, independent prediction of how
+the robot should be moving); `HealthEstimator` runs a duration-based
+persistence gate on power-telemetry validity — timed against a monotonic
+clock, not a tick count, so scheduling jitter can't silently redefine what
+"a few bad reads" means — and decays health toward a conservative floor
+rather than trusting a stale reading forever. Per-joint current sensing
+(`PerJointPowerSource` / `Ina219MultiPower`) is wired end-to-end and
+exercised by default in `--sim`; real per-servo wiring, and the I²C-address
+ceiling a 20-servo build would actually hit (an INA219 only has 16 usable
+addresses), are documented as open, not solved. Full story, written as
+"which interview question exposed which gap":
+[`jetson/control/CHANGES.md`](jetson/control/CHANGES.md).
 
 ---
 
