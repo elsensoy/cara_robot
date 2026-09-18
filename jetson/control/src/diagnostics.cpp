@@ -65,7 +65,7 @@ ImuSample ImuGuard::update(const ImuSample& raw, const Action& cmd, double now) 
 
     // -- fold everything into one persistence-gated verdict --
     const bool bad = !raw.valid || stale || frozen || mismatch;
-    const auto gstate = gate_.update(bad);
+    const auto gstate = gate_.update(bad, now);
     diag_.state = PersistenceGate::label(gstate);
 
     if (gstate == PersistenceGate::State::Fault) {

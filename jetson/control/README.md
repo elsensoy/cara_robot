@@ -91,12 +91,24 @@ Three things are checked before anything downstream trusts a sample:
   reporting angular velocity above `resting_wobble_rad_s`, that's flagged.
 
 All three feed one `PersistenceGate` (`diagnostics.hpp`): trips `fault`
-after `trip` consecutive bad ticks (default 3, ~60ms at 50Hz), clears back
-to `ok` only after `clear` consecutive good ticks (default 10, ~200ms) —
-quick to distrust, slower to trust again. `HealthEstimator` runs its own
-gate on power-telemetry validity; once that trips, `system` decays toward
-`stale_health_floor` (default 0.5) instead of holding whatever the last good
-reading said, forever.
+once bad readings have persisted continuously for `trip_s` (default 0.06s),
+clears back to `ok` only once good readings have persisted continuously for
+`clear_s` (default 0.20s) — quick to distrust, slower to trust again.
+`HealthEstimator` runs its own gate on power-telemetry validity; once that
+trips, `system` decays toward `stale_health_floor` (default 0.5) instead of
+holding whatever the last good reading said, forever.
+
+The gate is duration-based, not tick-counted, on purpose: this loop
+nominally runs at a fixed rate, but a tick-counted policy silently
+redefines its own real-time meaning whenever scheduling jitter changes how
+long a tick actually takes (see the timing cluster: what happens if one
+iteration suddenly takes 80ms). Timing it against the caller's own
+monotonic clock (`now` in `ImuGuard::update`, the sample's own `t_s` in
+`HealthEstimator`, which the driver sets whether or not the read succeeded)
+keeps fault semantics defined in wall-clock time regardless of how fast the
+loop happens to be running at that moment. At the nominal 50Hz rate the
+defaults above reproduce the same effective behavior as the tick counts
+they replaced (3 ticks / 10 ticks) — only the mechanism changed.
 
 Exercise both detectors with no hardware: `--sim --test-imu-freeze` latches
 the simulated IMU output for part of each 16s cycle; `--sim

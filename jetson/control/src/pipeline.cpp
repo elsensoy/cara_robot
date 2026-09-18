@@ -15,7 +15,11 @@ const HealthState& HealthEstimator::update(const PowerSample& s, const PerJointC
     const double dt = (t_last_call_ >= 0.0) ? std::max(0.0, s.t_s - t_last_call_) : 0.0;
     t_last_call_ = s.t_s;
 
-    const auto gstate = telemetry_gate_.update(!s.valid);
+    // s.t_s doubles as the monotonic clock the gate is timed against -- the
+    // driver sets it every call, valid or not, so it stays meaningful through
+    // a run of failed reads (unlike a tick counter, which can't tell a fast
+    // burst of failures from a slow one).
+    const auto gstate = telemetry_gate_.update(!s.valid, s.t_s);
     st_.telemetry_state = PersistenceGate::label(gstate);
 
     if (gstate == PersistenceGate::State::Fault) {

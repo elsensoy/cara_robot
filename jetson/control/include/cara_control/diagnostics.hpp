@@ -13,29 +13,43 @@
 
 namespace cara {
 
-// Generic consecutive-bad / consecutive-good hysteresis. Trips FAULT after
-// `trip` consecutive bad ticks; clears back to OK only after `clear`
-// consecutive good ticks. Deliberately asymmetric: quick to distrust, slow
-// to trust again -- replaces reacting to a single dropped read with a real
-// persistence threshold.
+// Duration-based bad/good hysteresis. Trips FAULT once bad readings have
+// persisted continuously for `trip_s`; clears back to OK only once good
+// readings have persisted continuously for `clear_s`. Deliberately
+// asymmetric: quick to distrust, slow to trust again.
+//
+// Time-based on purpose, not tick-counted: this loop nominally runs at a
+// fixed rate, but "3 consecutive bad ticks" silently redefines itself every
+// time real scheduling jitter changes how long a tick actually takes -- a
+// single slow iteration (see the timing cluster: what happens if one
+// iteration takes 80ms) would make 3 ticks cover far more wall-clock time
+// than intended, and a burst of fast ticks would make it cover far less.
+// Driving the gate from the caller's own monotonic timestamp instead keeps
+// fault semantics defined in real time, independent of how fast the loop
+// happens to be running at that moment.
 class PersistenceGate {
 public:
     enum class State { Ok, Degraded, Fault };
-    struct Config { int trip = 3; int clear = 10; };
+    struct Config { double trip_s = 0.06; double clear_s = 0.20; };
 
     PersistenceGate() = default;
     explicit PersistenceGate(Config cfg) : cfg_(cfg) {}
 
-    State update(bool bad) {
+    // `now` must be monotonic (the same clock as the samples' own
+    // timestamps) -- not wall-clock-of-day, which can jump.
+    State update(bool bad, double now) {
         if (bad) {
-            if (++bad_count_ >= cfg_.trip) state_ = State::Fault;
+            if (bad_since_ < 0.0) bad_since_ = now;
+            good_since_ = -1.0;
+            if (now - bad_since_ >= cfg_.trip_s) state_ = State::Fault;
             else if (state_ != State::Fault) state_ = State::Degraded;
-            good_count_ = 0;
         } else {
-            bad_count_ = 0;
+            bad_since_ = -1.0;
             if (state_ == State::Fault) {
-                if (++good_count_ >= cfg_.clear) state_ = State::Ok;
+                if (good_since_ < 0.0) good_since_ = now;
+                if (now - good_since_ >= cfg_.clear_s) state_ = State::Ok;
             } else {
+                good_since_ = -1.0;
                 state_ = State::Ok;
             }
         }
@@ -56,8 +70,8 @@ public:
 private:
     Config cfg_{};
     State  state_      = State::Ok;
-    int    bad_count_  = 0;
-    int    good_count_ = 0;
+    double bad_since_  = -1.0;   // monotonic time the current bad streak started, or -1
+    double good_since_ = -1.0;   // monotonic time the current (post-fault) good streak started, or -1
 };
 
 // Sits between the raw ImuSource and ObservationBuilder. Returns the sample
@@ -74,7 +88,7 @@ public:
         float  still_cmd_eps_rad    = 0.01f;  // commanded per-joint step below this = "holding still"
         float  resting_wobble_rad_s = 0.35f;  // gyro magnitude above this while "still" is suspicious
         double still_hold_s         = 0.3;    // how long "commanded still" must persist before arming
-        PersistenceGate::Config gate{3, 10};
+        PersistenceGate::Config gate{0.06, 0.20};   // seconds: trip / clear (see PersistenceGate)
     };
 
     ImuGuard() : gate_(cfg_.gate) {}

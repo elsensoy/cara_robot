@@ -86,16 +86,36 @@ no distinction between "one transient blip" and "this sensor is actually
 gone."
 
 **What we built:** `PersistenceGate` (`diagnostics.hpp`) — a small,
-reusable consecutive-bad/consecutive-good hysteresis. It trips `fault`
-after `trip` consecutive bad ticks (default 3) and clears back to `ok`
-only after `clear` consecutive good ones (default 10) — deliberately
-asymmetric: quick to distrust, slower to trust again. `ImuGuard` uses one
-to decide whether to hold the last-known-good IMU sample through a short
-grace period or fall back to the existing safe default; `HealthEstimator`
-uses a separate one for power-telemetry validity, and once *that* trips,
-`system` health decays toward a conservative floor (`stale_health_floor`,
-default 0.5) instead of silently reporting whatever the last good reading
-said, forever.
+reusable bad/good hysteresis. `ImuGuard` uses one to decide whether to hold
+the last-known-good IMU sample through a short grace period or fall back to
+the existing safe default; `HealthEstimator` uses a separate one for
+power-telemetry validity, and once *that* trips, `system` health decays
+toward a conservative floor (`stale_health_floor`, default 0.5) instead of
+silently reporting whatever the last good reading said, forever.
+
+### Revision: the gate itself was still rate-dependent
+
+**What it exposed (a follow-up question, not a new one from the original
+list):** the first version of `PersistenceGate` counted consecutive ticks —
+`trip = 3`, `clear = 10` — which quietly assumes every tick takes the same
+20ms this loop nominally runs at. That's exactly the fragility the timing
+cluster warns about (*"suppose one iteration suddenly takes 80ms — what
+happens?"*): a tick-counted gate silently redefines its own real-time
+meaning whenever scheduling jitter changes how long a tick actually takes.
+Three slow ticks and three fast ticks trip the same "fault" state after
+very different amounts of wall-clock time — the gate's behavior wasn't
+actually pinned to anything physical.
+
+**What we built:** `PersistenceGate` now tracks *how long* bad (or good)
+readings have persisted continuously, driven by the caller's own monotonic
+timestamp (`ImuGuard`'s `now`; `HealthEstimator` uses the sample's own
+`t_s`, which the driver sets whether or not the read succeeded) instead of
+a call count. `Config` changed from `{int trip; int clear;}` (ticks) to
+`{double trip_s; double clear_s;}` (seconds); defaults (0.06s / 0.20s) were
+chosen to reproduce the old tick counts' behavior exactly at the nominal
+50Hz rate, so this is a mechanism fix, not a behavior retune — verified by
+rerunning both `--test-imu-freeze` and `--test-power-dropout` and checking
+the trip/recovery timestamps in the log were unchanged.
 
 ---
 

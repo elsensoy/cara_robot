@@ -37,7 +37,7 @@ public:
         // Telemetry persistence / staleness (see class comment).
         double stale_health_floor = 0.5;   // `system` decays toward this, not to 0, while faulted
         double stale_decay_per_s  = 0.5;   // decay rate applied to `system` while faulted
-        PersistenceGate::Config telemetry_gate{3, 10};
+        PersistenceGate::Config telemetry_gate{0.06, 0.20};   // seconds: trip / clear
     };
 
     HealthEstimator() = default;
