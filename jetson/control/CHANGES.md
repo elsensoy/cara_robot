@@ -198,6 +198,101 @@ actuated eye servo, per the hardware table and the joint topology table
 both. If eye servos exist in a newer design than what these docs describe,
 that's worth confirming rather than carrying forward an assumption.
 
+## 7. A layered-observability reframe — architecture designed, not built
+
+**What it exposed:** item 6's answer, even refined, was still shaped like
+"how do I fit N current sensors on a bus." That's the wrong level of the
+problem. The actually defensible framing is a layered observability
+question — what independent evidence sources exist, and what does
+disagreement *between* them tell you — and once posed that way, several
+things fall out cleanly that weren't visible before.
+
+**The five layers, and what's real today for each:**
+
+| Layer | Source | Status |
+|---|---|---|
+| Per-joint command/state | `ServoCommandSample`, the joint table | ✅ real, exists today |
+| Body motion | BNO055 IMU, global inertial response | ✅ real, exists today (now with `ImuGuard`) |
+| Electrical load | per-joint or grouped current sensing | 🔶 software interface real; physical topology not validated (item 4/6) |
+| Expected behavior | URDF/MuJoCo model → predicted joint/body response to a command | ❌ the model exists (`cara_description/`) but is not wired to the live `jetson/control` pipeline as a real-time comparison at all |
+| Learned behavior | RL policy produces motion; diagnostics stay outside it | ✅ already true structurally — see below, not something to build |
+
+**The grouped-rail current design — a better answer to item 6, not a bigger
+one.** Rather than "20 INA219s, mux or multiple buses," the defensible
+starting point is one current-sense channel per limb/rail:
+
+```
+Left leg rail
+Right leg rail
+Left arm rail
+Right arm rail
+Torso / head
+```
+
+Five channels, not twenty — comfortably under the 16-address ceiling with
+room to spare, no mux needed at all. The real engineering question isn't
+"how do I wire twenty sensors," it's "do I actually need twenty
+measurements to localize a useful fault" — and the honest answer, until
+proven otherwise, is probably not. If a rail's current spikes while the
+controller is heavily commanding one joint on that rail, that's already
+strong diagnostic evidence without per-joint granularity; finer granularity
+(hip vs. knee vs. ankle) is something to add *if* a real fault case shows
+up that a rail-level reading can't localize, not something to build
+speculatively now.
+
+**COMMAND / MODEL / MEASUREMENT triangulation — the genuinely new
+capability, and it's unbuilt.** Today the pipeline has COMMAND
+(`ServoCommandSample`) and MEASUREMENT (IMU + current), but nothing
+computes what the command *should* produce and compares it against what
+actually happened. `cara_description`'s forward-kinematics/dynamics model
+already exists and already answers "what should this joint command produce
+in terms of body motion" — it's just never been connected to `jetson/control`'s
+live diagnostics as a real-time expectation to check measurements against.
+The payoff of building that connection is real: a knee-flexion command
+whose model expectation (pelvis shifts, foot trajectory changes) doesn't
+show up in the IMU, paired with a current spike on that rail, points at a
+jammed actuator — a materially different, more useful hypothesis than
+"IMU failed" or "controller is wrong," which is all two sources of evidence
+can distinguish. Three independent sources is what makes the disagreement
+itself informative. Not implemented; a real, well-scoped next step.
+
+**The policy-is-not-the-diagnostician principle — already true, not a
+change.** Worth stating precisely: `HealthEstimator` → `ObservationBuilder`
+→ `Controller` → `SafetyFilter` already only flows health *into* the
+observation and *into* the safety envelope — nothing about the current
+architecture asks `HandwrittenController` (or a future learned policy) to
+decide whether a servo is electrically failing. That separation didn't need
+to be built in response to this feedback; it's a property this pipeline
+already had, which is worth being able to say plainly rather than treating
+every good idea in this framing as a new gap.
+
+**The one gap this reframe makes concrete, that wasn't visible before: the
+diagnostics work and the RL environment are two codebases that don't talk
+to each other yet.** `jetson/control`'s health/telemetry-trust layer is C++,
+runs on real (or simulated) hardware timing, and this week's work all
+happened there. `cara_description/scripts/cara_env.py` — the actual RL
+environment — is a separate Python/MuJoCo codebase, and its 43-dimensional
+observation today has **no health signal in it at all** (12 joint pos + 12
+joint vel + 3 projected gravity + 3 angular velocity + 1 desired velocity +
+12 previous action — see `cara_description/docs/rl_environment_notes.md`
+U19). "Health-conditioned locomotion" is not a training run away; it's an
+unstarted integration: add a health channel to the RL observation, then
+inject the fault modes (reduced actuator strength, delayed response, stuck
+joints, increased friction, noisy/biased IMU, dropped samples,
+brownout-like degradation) that the existing domain-randomization roadmap
+step already gestures at, and ask whether a health-aware policy degrades
+gracefully instead of continuing the same gait into a fall. A real,
+coherent next research question — not started.
+
+**If asked directly how this resolves the 20-servo question:** the software
+path supports per-joint health; a twenty-channel current topology hasn't
+been validated on real hardware, and rather than assume twenty sensors is
+the answer, the right next step is determining the minimum sensing
+granularity that actually localizes useful faults — starting from five
+grouped rails, using the URDF/model comparison to add resolution only where
+a real fault case demands it, then validating the same fault modes in the
+RL environment before adding hardware complexity.
+
 ---
 
 ## Files touched
@@ -269,5 +364,14 @@ measured.
   needs to correlate a current spike to a specific commanded event.
 - Per-joint current sensing is I²C-address-limited to 16 channels per bus
   (the INA219's own A0/A1 addressing range) with no mux/multi-bus support —
-  a hard ceiling for any future 20-servo build, not just a wiring
-  inconvenience at today's 7.
+  though item 7's grouped-rail reframe (5 channels, not 20) means this may
+  never actually bind.
+- No live COMMAND/MODEL/MEASUREMENT comparison exists — `cara_description`'s
+  forward-kinematics/dynamics model is never queried by the running
+  `jetson/control` pipeline to compute an expected response to check a
+  measurement against. Designed (item 7), not built.
+- The RL environment (`cara_env.py`) and the sensor-diagnostics layer are
+  fully disconnected codebases — the RL observation has no health channel,
+  and none of the fault modes this week's work was built to detect (frozen
+  sensor, stale telemetry, motion mismatch) have ever been injected into a
+  training run.

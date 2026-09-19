@@ -639,8 +639,252 @@ describe a check I can't actually run.
 
 ---
 
-*Not from the original question set, but a natural follow-up (addressing
-20 servos instead of 7 changes the I²C-addressing math entirely): see
-`jetson/control/CHANGES.md`, item 6, for that answer written the same way —
-software interface implemented vs. physical topology validated vs. future
-hardware architecture, kept as three separate claims.*
+## Not from the original question set, but a near-certain follow-up
+
+Ben's own note on this: *"INA219 addressing becomes a real architectural
+issue at that scale. You'll likely need multiple buses, an I²C mux, or some
+other topology rather than simply hanging every sensor from one bus."* He
+also listed the natural next questions — max current per servo, shunt
+sizing, voltage drop, whether the measurement hardware itself affects servo
+performance, sampling/conversion rate, whether I can sample fast enough,
+synchronization, whether I even need simultaneity, why per-servo rather
+than grouped domains, and what a current anomaly tells me that position
+doesn't. His advice was not to rush a redesign before the interview, but to
+know precisely which parts are software interface implemented, which are
+physical topology validated, and which are future hardware architecture —
+and I'm keeping that distinction explicit throughout, rather than letting
+any one answer bleed into the others.
+
+**How are you addressing twenty INA219s on the bus?**
+
+Today's code doesn't try to, and the honest reason is sharper than "that's
+a lot of wiring": the INA219 has exactly 16 usable I²C addresses — its
+A0/A1 pins each strap to one of four references (GND, V_S+, SDA, SCL),
+giving 4×4=16 combinations. Twenty servos on one bus, one chip each, cannot
+be addressed at all — that's not a configuration problem, it's an
+arithmetic ceiling. My `Ina219MultiPower` driver just opens one I²C device
+per address on a single bus; it has no notion of a mux or a second bus, and
+it would simply fail — a real address collision, or running out of unique
+addresses — if I pushed it past sixteen. My current seven-joint rig never
+hits this wall, which is exactly why it's easy to miss until someone asks
+the twenty-servo version of the question.
+
+**What would actually fix it?**
+
+My honest first answer isn't a mux — it's to ask whether I actually need
+twenty independent current measurements at all. The defensible starting
+design is one current-sense channel per limb or power rail:
+
+```
+Left leg rail
+Right leg rail
+Left arm rail
+Right arm rail
+Torso / head
+```
+
+Five channels, not twenty — comfortably under the sixteen-address ceiling,
+no mux or second bus required. The real engineering question isn't "how do
+I wire twenty sensors," it's "do I actually need twenty measurements to
+localize a useful fault," and until proven otherwise I think the answer is
+probably not. If a rail's current spikes while the controller is heavily
+commanding one joint on that rail, that's already strong diagnostic
+evidence without per-joint granularity. I'd only reach for finer
+granularity — and then an I²C mux or multiple buses to support it — if a
+real fault case later shows up that a rail-level reading can't localize.
+That's a more defensible engineering progression than maximizing sensor
+count up front, and it's a materially different, better answer than "I'd
+need a mux for twenty."
+
+**But not all twenty servos are the same problem in the first place.** The
+documented joint topology is waist (3), neck (3), shoulders (6), hips (6),
+ears (2) — twenty total. Waist and hips, nine joints, are the highest-load,
+direct balance actuators — the clear must-instrument set, and exactly the
+segment the IMU's own signal is about. Ears, two joints, are the clear
+opposite: 10-gram servos, and the ear-inertia study I ran already measured
+zero effect on whole-body standing tilt or the weight-shift envelope — not
+worth a current-sense channel, let alone per-joint attribution. Neck is
+genuinely mixed: it isn't a balance actuator, but head mass and position do
+move the whole-body center of mass in my dynamics model, so it isn't
+cosmetic the way ears are. Once I group by function instead of treating all
+twenty as equivalent, waist plus hips alone is nine of sixteen addresses;
+even adding shoulders is fifteen. The mux question may simply not come up,
+depending on where the line lands for neck and shoulders. One thing worth
+saying plainly rather than assuming: the documented twenty-DoF breakdown
+has no separate "eyes" servo at all — vision is a fixed USB camera, not an
+actuated eye joint, in the design I'm working from.
+
+**What's the maximum current through each servo? How did you size the
+shunt? What's the voltage drop across it?**
+
+None of these were independently derived for Cara, and I'd rather say that
+directly. The per-joint thresholds in my code are explicitly commented as
+provisional — roughly the bench-measured *aggregate* rail envelope divided
+across joints, not a per-servo datasheet or bench number. The shunt itself
+is whatever ships on the Adafruit INA219 breakout, read out with a register
+value I inherited directly from the well-known Adafruit "32V range, gain
+of 8, 12-bit, continuous" calibration constant rather than choosing it for
+Cara's actual current levels. I haven't calculated the resulting shunt
+voltage drop at Cara's real per-joint currents — a rough estimate is a few
+tens of millivolts at a few hundred milliamps into a typical 0.1-ohm
+breakout shunt, but that's back-of-envelope, not measured.
+
+**Could your measurement hardware itself affect servo performance?**
+
+Yes, plausibly, and I haven't quantified it. Every shunt sits in series
+with its servo's actual power path — it's added resistance in the supply
+line, not a passive tap. At higher currents, exactly the stall or
+simultaneous-start scenario my health signal exists to catch, that
+resistance produces a real voltage drop right at the servo, at precisely
+the moment torque matters most. I'd flag that as a real, open risk rather
+than wave it away.
+
+**What's the INA219 sampling/conversion rate? Can you actually sample
+twenty channels quickly enough? How synchronized are those measurements?
+Do you need simultaneous measurements?**
+
+The configuration I'm using implies roughly 532 microseconds per
+conversion, alternating shunt and bus voltage, so a fresh combined reading
+every roughly 1.1 milliseconds per chip — that's my read of a well-known
+register constant, not something I've put a scope on. More importantly,
+reviewing this for the interview surfaced a real gap in my own code: my
+per-joint driver polls every channel sequentially in one loop, but it
+stamps the entire sample with one shared timestamp taken before the sweep
+starts, not a timestamp per channel. At seven channels the sequential I²C
+overhead is probably a small fraction of my 20-millisecond control budget;
+at twenty channels, with the same three-transaction-per-channel pattern, I
+don't have a measured number either way. So the honest answer to "how
+synchronized are those measurements" is: not synchronized at all today, and
+not labeled as such in the data. Whether I actually need simultaneity
+depends on the question I'm asking with the data — a rough per-joint health
+signal tolerates a few milliseconds of skew fine; attributing a specific
+current spike to a specific commanded motion event would need much tighter
+synchronization than my current design provides.
+
+**Why per-servo sensing rather than grouped current domains?**
+
+Per-servo is what my code targets today because that's what the
+aggregate-vs-per-servo distinction in my health state was built for from
+the start — real fault *attribution*, not just "the rail." But once I stop
+treating all twenty joints as interchangeable, the better answer isn't
+"per-servo versus grouped" as one global choice, it's to group by function.
+Waist and hips are the must-instrument set; ears are the clear exclusion;
+shoulders and neck are judgment calls. That reframing is what turns "twenty
+sensors" into "five rails, escalate only where a real fault demands it,"
+which is the answer I gave above.
+
+**What does a current anomaly tell you that servo position doesn't?**
+
+This is the strongest answer in the cluster, because it's not
+hypothetical: I have zero position feedback anywhere in the stack — no
+encoders; my own commanded-position type literally has a comment saying it
+stands in for measured position until Cara has encoders. Current is
+actually the only signal in my entire pipeline that responds to physical
+*load* rather than to commanded intent. A jammed joint commanded to move
+looks electrically and positionally identical to a healthy one in every
+other signal I have; it would only show up as anomalous stall current.
+That's the specific, load-bearing reason per-joint current sensing is worth
+the addressing headache at all, not something I'd add "for completeness."
+
+**On not redesigning this before the interview:** I agree with that advice,
+and I'd rather say so directly than scramble to sketch a mux topology under
+time pressure. The useful preparation isn't a redesign — it's exactly this
+three-way split, being able to say precisely which of "the interface
+exists," "the topology is physically real," and "the hardware plan exists"
+is true for any given piece, without letting any of the three bleed into
+the others. And one boundary worth stating before it's asked as a trap:
+none of this is about per-joint *orientation* sensing. I have exactly one
+IMU for the whole body and no plan for more — per-joint current sensing and
+per-joint IMU sensing are not the same ask, and I wouldn't want "scaling
+per-joint sensing" to imply more IMUs are coming. Balance is a whole-body
+property; current draw is a per-joint one; they don't scale the same way,
+and even that one IMU's relevance isn't uniform across the body — it's a
+signal about the trunk and legs, not about an ear twitch.
+
+## A layered observability architecture — designed, not built
+
+This is the reframe that actually resolves the cluster above, and it came
+from a good piece of feedback: stop asking "how many current sensors," and
+ask instead what independent evidence sources exist, and what
+*disagreement between them* tells me that no single source can.
+
+**The five layers, and what's actually true for each today:**
+
+- **Per-joint command/state** — my commanded-position type and joint
+  table. Real, exists today.
+- **Body motion** — the BNO055 IMU, a global inertial response. Real,
+  exists today, and now gated by the freshness/frozen-data/motion-mismatch
+  checks I added.
+- **Electrical load** — per-joint or grouped current sensing. The software
+  interface is real; the physical topology is not validated on any real
+  hardware yet.
+- **Expected behavior** — my URDF/MuJoCo dynamics model predicting what a
+  command should produce. The model itself exists in my simulation work,
+  but it has never been connected to the live embedded pipeline as a
+  real-time comparison. This is the one genuinely new, unbuilt piece.
+- **Learned behavior** — an RL policy produces motion, but diagnostics stay
+  outside it. This is already true structurally in what I've built — not
+  something I still need to build.
+
+**Triangulating command, model, and measurement is the actual new
+capability.** Today I have command and measurement, but nothing computes
+what a command *should* produce and checks the measurement against it. My
+own dynamics model already answers that question offline; it's just never
+been wired into the live diagnostics loop. The payoff is concrete. Say I
+command a right knee flexion. The model expects the pelvis orientation to
+shift slightly and the right foot's trajectory to change. If the IMU shows
+no corresponding motion and the right-leg current spikes, my hypothesis
+space becomes a jammed actuator, a stalled servo, or a detached linkage —
+not "the IMU failed," which is what a single-sensor view would default to.
+Or say I command the robot to hold neutral. The model expects near-zero
+angular velocity. If the IMU instead shows large angular velocity while
+current stays normal, my hypotheses become an external disturbance, an
+unstable configuration, or a model-controller mismatch — current staying
+normal is what rules out an actuator-load explanation. Three independent
+sources is what makes the disagreement between them informative; two
+sources just leaves me guessing which one is wrong.
+
+**The policy is not the diagnostician, and I want to be precise that this
+is already true, not a change I need to make.** My pipeline already only
+flows health *into* the observation and the safety envelope —
+`HealthEstimator` feeds `ObservationBuilder` feeds the controller feeds the
+safety filter, one direction. Nothing in my architecture, not the
+hand-written controller and not a future learned policy, is ever asked to
+decide whether a servo is electrically failing. I'd rather state that
+plainly than let a good architectural principle sound like a gap I just
+discovered.
+
+**The one gap this reframe actually makes concrete, and it's the most
+honest thing I can say about where this stands:** my sensor-diagnostics
+work and my RL environment are two codebases that don't talk to each other
+at all. Everything about staleness, frozen data, and motion-mismatch
+detection lives in my C++ embedded pipeline. My RL environment is a
+completely separate Python/MuJoCo codebase, and its observation vector
+today has no health signal in it whatsoever — twelve joint positions,
+twelve velocities, projected gravity, angular velocity, a desired speed,
+and the previous action. "Health-conditioned locomotion" is not a training
+run away from where I am; it's an integration I haven't started.
+
+**The roadmap that follows from that, none of it started yet:** add a
+health channel to the RL observation, then inject the fault modes my
+existing domain-randomization plan already gestures at — reduced actuator
+strength, delayed servo response, stuck joints, increased friction, noisy
+or biased IMU readings, dropped sensor samples, brownout-like actuator
+degradation — and ask whether a health-aware policy degrades gracefully
+instead of continuing the same gait into a fall. Only after that would I
+validate any of it on hardware. Simulation fault injection, then health
+estimation, then health-conditioned locomotion, then hardware validation,
+in that order.
+
+**If Ben asks directly how I'd resolve the twenty-servo question, this is
+how I'd put it:** the software path now supports per-joint health, but I
+haven't validated a twenty-channel current-sensing topology on the physical
+robot. Rather than assume the obvious answer is twenty sensors on one bus,
+my next step is determining the minimum sensing granularity that actually
+localizes useful faults — starting from five grouped rails, using the model
+comparison to add resolution only where a real fault case demands it. Once
+that observability is established in simulation, I can inject the same
+degradation modes into the RL environment and validate a health-aware
+controller before adding any hardware complexity. That's not "I don't have
+a solution" — it's "I know what's implemented, I know what's still
+unknown, and I know how I'd resolve the unknown experimentally."
